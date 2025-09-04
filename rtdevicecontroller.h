@@ -1,0 +1,143 @@
+#pragma once
+#include "rthiddevice.h"
+#include "rtprofilemodel.h"
+#include "rttypes.h"
+#include <QKeyCombination>
+#include <QKeySequence>
+#include <QMap>
+#include <QObject>
+#include <QPushButton>
+#include <QtCompare>
+
+#ifndef CB_CTLR
+#define CB_CTLR(x) RTViewController::x
+#endif
+
+#ifndef CB_BIND
+#define CB_BIND(o, x) std::bind(x, o, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
+#endif
+
+class RTDeviceController : public QObject
+{
+    Q_OBJECT
+
+public:
+    typedef struct
+    {
+        QString name;
+        TyonButtonIndex standard_index;
+        TyonButtonIndex easyshift_index;
+    } TPhysicalButton;
+
+    typedef std::function<int( //
+        TyonButtonIndex,
+        TyonButtonType,
+        const QKeyCombination &)>
+        THandlerSetButton;
+
+    typedef struct
+    {
+        TyonButtonIndex index;
+        THandlerSetButton handler;
+    } TButtonLink;
+
+    explicit RTDeviceController(QObject *parent = nullptr);
+
+    /**
+     * @brief Find ROCCAT Tyon device
+     * @return 0 if success
+     */
+    int lookupDevice();
+
+    /**
+     * @brief Assign given mouse button to specific function
+     * @param The native mouse button type
+     * @param The native function to be assigned
+     * @return 0 if success
+     */
+    int assignButton( //
+        TyonButtonIndex,
+        TyonButtonType,
+        const QKeyCombination &);
+
+    /**
+     * @brief buttonTypes
+     * @return
+     */
+    inline const QMap<quint8, QString> &buttonTypes() { return m_buttonTypes; }
+
+    /**
+     * @brief setupButton
+     * @param type
+     * @param button
+     * @return
+     */
+    void setupButton(const RoccatButton &rb, QPushButton *button);
+
+    /**
+     * @brief toKeySequence
+     * @param button
+     * @return
+     */
+    const QKeySequence toKeySequence(const RoccatButton &button) const;
+
+    /**
+     * @brief profileModel
+     * @return
+     */
+    inline RTProfileModel *profileModel() { return &m_model; }
+
+    /**
+     * @brief selectProfile
+     * @param profile
+     */
+    void selectProfile(quint8 profileIndex);
+
+    void setXSensitivity(quint8 sensitivity);
+    void setYSensitivity(quint8 sensitivity);
+    void setAdvancedSenitivity(quint8 bit, bool state);
+    void setPollRate(quint8 rate);
+    void setDpiSlot(quint8 bit, bool state);
+    void setActiveDpiSlot(quint8 id);
+    void setDpiLevel(quint8 index, quint8 value);
+    void setLightsEnabled(quint8 flag, bool state);
+    void setLightsEffect(quint8 value);
+    void setColorFlow(quint8 value);
+    void setLightColorWheel(const QRgb &color);
+    void setLightColorBottom(const QRgb &color);
+
+    QString profileName() const;
+
+    bool loadProfilesFromFile(const QString &fileName);
+    bool saveProfilesToFile(const QString &fileName);
+    bool saveProfilesToDevice();
+    bool resetProfiles();
+
+signals:
+    void deviceInfoChanged(const TyonInfo &info);
+    void profileIndexChanged(quint8 index);
+    void settingsChanged(const TyonProfileSettings &settings);
+    void buttonsChanged(const TyonProfileButtons &buttons);
+
+private slots:
+    void onDeviceInfo(const TyonInfo &info);
+    void onProfileIndexChanged(const quint8 pix);
+    void onProfileChanged(const RTHidDevice::TProfile &profile);
+    void onModelChanged(const QModelIndex &topLeft,     //
+                        const QModelIndex &bottomRight, //
+                        const QList<int> &roles = QList<int>());
+
+private:
+    RTHidDevice m_device;
+    RTProfileModel m_model;
+    QMap<quint8, QString> m_buttonTypes;
+    QMap<quint8, RTDeviceController::TPhysicalButton> m_physButtons;
+
+private:
+    inline void initButtonTypes();
+    inline void initPhysicalButtons();
+    inline void setButtonType(const QString &name, quint8 type);
+    inline void setPhysicalButton(quint8 index, TPhysicalButton pb);
+};
+Q_DECLARE_METATYPE(RTDeviceController::TPhysicalButton);
+Q_DECLARE_METATYPE(RTDeviceController::TButtonLink);

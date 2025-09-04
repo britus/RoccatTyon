@@ -1,0 +1,148 @@
+#pragma once
+#include "rttypes.h"
+#include <IOKit/hid/IOHIDManager.h>
+#include <QMap>
+#include <QMutex>
+#include <QObject>
+#include <QWaitCondition>
+
+class RTHidDevice : public QObject
+{
+    Q_OBJECT
+
+public:
+    typedef struct
+    {
+        QString name;
+        quint8 index;
+        TyonProfileSettings settings;
+        TyonProfileButtons buttons;
+    } TProfile;
+
+    typedef QMap<quint8, TProfile> TProfiles;
+
+    /**
+     * @brief RTHidDevice
+     * @param parent
+     */
+    explicit RTHidDevice(QObject *parent = nullptr);
+
+    /**
+     */
+    ~RTHidDevice();
+
+    /**
+     * @brief Find ROCCAT Tyon device
+     * @return 0 if success
+     */
+    int lookupDevice();
+
+    /**
+     * @brief Return active profile number
+     * @return
+     */
+    inline quint8 profileIndex() const { return m_profile.profile_index; }
+
+    /**
+     * @brief Return a 'idx/profile' map
+     * @return A list of profiles
+     */
+    inline const TProfiles &profiles() const { return m_profiles; }
+
+#if 0
+    /**
+     * @brief Return active profile
+     * @return RTHidDevice::TProfile type
+     */
+    inline const RTHidDevice::TProfile currentProfile() const
+    {
+        if (profileIndex() < m_profiles.count()) {
+            return m_profiles[profileIndex()];
+        } else {
+            return {};
+        }
+    }
+#endif
+
+    /**
+     * @brief profileName
+     * @return
+     */
+    QString profileName() const;
+
+    /**
+     * @brief saveProfilesToDevice
+     * @return
+     */
+    bool saveProfilesToDevice();
+
+    /**
+     * @brief resetProfiles
+     * @return
+     */
+    bool resetProfiles();
+
+    void setActiveProfile(quint8 profileIndex);
+    void setProfileName(const QString &name, quint8 profileIndex);
+    void setXSensitivity(quint8 sensitivity);
+    void setYSensitivity(quint8 sensitivity);
+    void setAdvancedSenitivity(quint8 bit, bool state);
+    void setPollRate(quint8 rate);
+    void setDpiSlot(quint8 bit, bool state);
+    void setActiveDpiSlot(quint8 id);
+    void setDpiLevel(quint8 index, quint8 value);
+    void setLightsEnabled(quint8 flag, bool state);
+    void setLightsEffect(quint8 value);
+    void setColorFlow(quint8 value);
+    void setLightColorWheel(quint8 red, quint8 green, quint8 blue);
+    void setLightColorBottom(quint8 red, quint8 green, quint8 blue);
+
+signals:
+    void deviceInfo(const TyonInfo &info);
+    void profileIndexChanged(const quint8 pix);
+    void profileChanged(const RTHidDevice::TProfile &profile);
+
+    //public slots:
+    void reportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
+    void deviceFoundCallback(IOReturn status, IOHIDDeviceRef device);
+
+public slots:
+    void onSetReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
+    void onDeviceFound(IOReturn /*status*/, IOHIDDeviceRef device);
+
+private:
+    IOHIDManagerRef m_manager;
+    QList<IOHIDDeviceRef> m_devices;
+    TyonInfo m_info;
+    TyonProfile m_profile;
+    TProfiles m_profiles;
+    QMutex m_mutex;
+    bool m_isCBComplete;
+
+private:
+    inline void releaseManager();
+    inline int deviceReset(IOHIDDeviceRef device);
+    inline int readHidReport(IOHIDDeviceRef device, const int reportId, const CFIndex size);
+    inline int writeHidReport(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req);
+    inline int writeDevice(IOHIDDeviceRef device, quint8 const *buffer, ssize_t length);
+    inline int selectProfileSettings(IOHIDDeviceRef device, uint pix);
+    inline int selectProfileButtons(IOHIDDeviceRef device, uint pix);
+    inline int readProfile(IOHIDDeviceRef device, quint8 pix);
+    inline int selectMacro(IOHIDDeviceRef device, uint pix, uint dix, uint bix);
+    inline int readButtonMacro(IOHIDDeviceRef device, uint pix, uint bix);
+    inline int readDeviceInfo(IOHIDDeviceRef device);
+    inline int readActiveProfile(IOHIDDeviceRef device);
+    inline int readDeviceControl(IOHIDDeviceRef device);
+    inline int readDeviceSpecial(IOHIDDeviceRef device);
+    inline int readProfileSettings(IOHIDDeviceRef device);
+    inline int readProfileButtons(IOHIDDeviceRef device);
+    inline int readDeviceSensor(IOHIDDeviceRef device);
+    inline int readDeviceState(IOHIDDeviceRef device);
+    inline int readDeviceControlUnit(IOHIDDeviceRef device);
+    inline int readDeviceTalk(IOHIDDeviceRef device);
+    inline int readDevice0A(IOHIDDeviceRef device);
+    inline int readDevice11(IOHIDDeviceRef device);
+    inline int readDevice1A(IOHIDDeviceRef device);
+};
+
+Q_DECLARE_METATYPE(RTHidDevice::TProfile);

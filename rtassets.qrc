@@ -1,0 +1,24 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>assets/roccat-tyon-10.png</file>
+        <file>assets/roccat-tyon-8.png</file>
+        <file>assets/roccat-tyon-8-EasyShift.png</file>
+    </qresource>
+    <qresource prefix="/styles">
+        <file>assets/appstyle.css</file>
+    </qresource>
+    <qresource prefix="/indicators">
+        <file>assets/checkbox-24_white_alpha.png</file>
+        <file>assets/checkbox-16_black_alpha.png</file>
+        <file>assets/checkbox-24_black_alpha_unchecked.png</file>
+        <file>assets/checkbox-24_black_alpha.png</file>
+        <file>assets/checkbox-24_white_alpha_unchecked.png</file>
+        <file>assets/radiobutton_unchecked.png</file>
+        <file>assets/radiobutton_checked.png</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file>assets/click-left-mouse-icon-lg.png</file>
+        <file>assets/click-middle-mouse-icon-lg.png</file>
+        <file>assets/click-right-mouse-icon-lg.png</file>
+    </qresource>
+</RCC>
