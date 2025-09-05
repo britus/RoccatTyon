@@ -77,10 +77,33 @@ public:
     bool saveProfilesToDevice();
 
     /**
+     * @brief saveProfilesToFile
+     * @param fileName
+     * @return
+     */
+    bool saveProfilesToFile(const QString &fileName);
+
+    /**
+     * @brief loadProfilesFromFile
+     * @param fileName
+     * @return
+     */
+    bool loadProfilesFromFile(const QString &fileName);
+
+    /**
      * @brief resetProfiles
      * @return
      */
     bool resetProfiles();
+
+    /**
+     * @brief assignButton
+     * @param type
+     * @param func
+     * @param key
+     * @param mods
+     */
+    void assignButton(TyonButtonIndex type, TyonButtonType func, quint8 key, quint8 mods);
 
     void setActiveProfile(quint8 profileIndex);
     void setProfileName(const QString &name, quint8 profileIndex);
@@ -98,6 +121,8 @@ public:
     void setLightColorBottom(quint8 red, quint8 green, quint8 blue);
 
 signals:
+    void deviceError(int error, const QString &message);
+    void deviceFound(const TyonInfo &info);
     void deviceInfo(const TyonInfo &info);
     void profileIndexChanged(const quint8 pix);
     void profileChanged(const RTHidDevice::TProfile &profile);
@@ -118,10 +143,12 @@ private:
     TProfiles m_profiles;
     QMutex m_mutex;
     bool m_isCBComplete;
+    bool m_hasHidApi;
 
 private:
+    inline void releaseDevices();
     inline void releaseManager();
-    inline int deviceReset(IOHIDDeviceRef device);
+    inline int setDeviceState(bool state, IOHIDDeviceRef device = nullptr);
     inline int readHidReport(IOHIDDeviceRef device, const int reportId, const CFIndex size);
     inline int writeHidReport(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req);
     inline int writeDevice(IOHIDDeviceRef device, quint8 const *buffer, ssize_t length);
@@ -137,7 +164,6 @@ private:
     inline int readProfileSettings(IOHIDDeviceRef device);
     inline int readProfileButtons(IOHIDDeviceRef device);
     inline int readDeviceSensor(IOHIDDeviceRef device);
-    inline int readDeviceState(IOHIDDeviceRef device);
     inline int readDeviceControlUnit(IOHIDDeviceRef device);
     inline int readDeviceTalk(IOHIDDeviceRef device);
     inline int readDevice0A(IOHIDDeviceRef device);

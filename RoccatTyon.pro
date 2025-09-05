@@ -1,12 +1,23 @@
-QT       += core gui
-
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+QT     += core
+QT     += gui
+QT     += widgets
+QT     += concurrent
 
 CONFIG += c++17
+CONFIG += lrelease
+CONFIG += embed_translations
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+mac {
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 12.2
+    QMAKE_CFLAGS += -mmacosx-version-min=12.2
+    QMAKE_CXXFLAGS += -mmacosx-version-min=12.2
+    QMAKE_CXXFLAGS += -fno-omit-frame-pointer
+    QMAKE_CXXFLAGS += -funwind-tables
+}
 
 SOURCES += \
     main.cpp \
@@ -31,16 +42,31 @@ FORMS += \
 
 TRANSLATIONS += \
     RoccatTyon_en_US.ts
-CONFIG += lrelease
-CONFIG += embed_translations
+
+### HIDAPI/LIBUSB
+HIDAPI_BUILDER = $$PWD/hidapi.sh
+HIDAPI_SOURCE = $$PWD/hidapi
+HIDAPI_TARGET = $$OUT_PWD/.hidapi
+$${HIDAPI_TARGET}.depends = FORCE # or $${PRETARGET}.CONFIG = phony
+$${HIDAPI_TARGET}.commands = $$HIDAPI_BUILDER $$HIDAPI_SOURCE $$OUT_PWD
+
+# build completion tag
+QMAKE_EXTRA_TARGETS += $${HIDAPI_TARGET}
+PRE_TARGETDEPS += $${HIDAPI_TARGET}
+
+INCLUDEPATH += /usr/local/include
+INCLUDEPATH += /usr/local/include/hidapi
+QMAKE_LIBDIR += /usr/local/lib
+QMAKE_LIBS += -lhidapi
+#QMAKE_LIBS += -lusb-1.0
 
 # Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
-!isEmpty(target.path): INSTALLS += target
+target.path = /Application/$${TARGET}
+INSTALLS += target
 
 RESOURCES += \
-	rtassets.qrc
+    rtassets.qrc
 
 DISTFILES += \
-	roccat.md
+    hidapi.sh \
+    roccat.md

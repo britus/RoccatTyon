@@ -17,6 +17,7 @@
  */
 #include <QObject>
 
+#define USB_DEVICE_ID_VENDOR_ROCCAT 0x1e7d
 #define USB_DEVICE_ID_ROCCAT_TYON_BLACK 0x2e4a
 #define USB_DEVICE_ID_ROCCAT_TYON_WHITE 0x2e4b
 
@@ -320,11 +321,11 @@ struct _RoccatButton
 typedef struct _RoccatButton RoccatButton;
 
 typedef enum {
-    ROCCAT_BUTTON_MODIFIER_BIT_NONE = 0,
-    ROCCAT_BUTTON_MODIFIER_BIT_SHIFT = 1,
-    ROCCAT_BUTTON_MODIFIER_BIT_CTRL = 2,
-    ROCCAT_BUTTON_MODIFIER_BIT_ALT = 3,
-    ROCCAT_BUTTON_MODIFIER_BIT_WIN = 4,
+    ROCCAT_BUTTON_MODIFIER_BIT_NONE = 0x0,
+    ROCCAT_BUTTON_MODIFIER_BIT_SHIFT = 0x1,
+    ROCCAT_BUTTON_MODIFIER_BIT_CTRL = 0x2,
+    ROCCAT_BUTTON_MODIFIER_BIT_ALT = 0x3,
+    ROCCAT_BUTTON_MODIFIER_BIT_WIN = 0x4,
 } RoccatButtonModifierBit;
 
 struct _TyonProfileButtons
@@ -521,11 +522,10 @@ struct _TyonMacro2
     quint8 unused[TYON_MACRO_2_UNUSED_SIZE];
 } __attribute__((packed));
 
-typedef struct _TyonDeviceState TyonDeviceState;
-
 struct _TyonDeviceState
 {
     quint8 report_id; /* TYON_REPORT_ID_DEVICE_STATE */
     quint8 size;      /* always 0x03 */
     quint8 state;
 } __attribute__((packed));
+typedef struct _TyonDeviceState TyonDeviceState;

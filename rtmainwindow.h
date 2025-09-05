@@ -6,6 +6,7 @@
 #include <QMainWindow>
 #include <QMap>
 #include <QPushButton>
+#include <QSettings>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -39,8 +40,17 @@ private:
     QMap<QPushButton *, RTDeviceController::TButtonLink> m_buttons;
     /* Active profile of the device */
     quint8 m_activeProfile;
+    /* UI settings */
+    QSettings *m_settings;
 
 private:
+    inline void initializeUiElements();
+    inline void initializeSettings();
+    inline void connectController();
+    inline void connectUiElements();
+    inline void connectActions();
+    inline void loadSettings(QSettings *settings);
+    inline void saveSettings(QSettings *settings);
     inline void linkButton(QPushButton *pb, const QMap<QString, QActionGroup *> &actions);
     inline QAction *linkAction(QAction *action, TyonButtonType function);
     inline bool selectColor(QColor &color);

@@ -116,13 +116,12 @@ RTDeviceController::RTDeviceController(QObject *parent)
     : QObject(parent)
     , m_device(this)
     , m_model(m_device.profiles())
+    , m_buttonTypes()
+    , m_physButtons()
+    , m_hasDevice(false)
 {
-#if 0
-    QString fileName = QStandardPaths::writableLocation( //
-        QStandardPaths::ConfigLocation);
-    QSettings
-#endif
-
+    connect(&m_device, &RTHidDevice::deviceError, this, &RTDeviceController::onDeviceError);
+    connect(&m_device, &RTHidDevice::deviceFound, this, &RTDeviceController::onDeviceFound);
     connect(&m_device, &RTHidDevice::deviceInfo, this, &RTDeviceController::onDeviceInfo);
     connect(&m_device, &RTHidDevice::profileIndexChanged, this, &RTDeviceController::onProfileIndexChanged);
     connect(&m_device, &RTHidDevice::profileChanged, this, &RTDeviceController::onProfileChanged);
@@ -144,6 +143,41 @@ int RTDeviceController::assignButton( //
     const QKeyCombination &kc)
 {
     qDebug() << "[ROCCAT] assignButton:" << type << function << kc;
+
+    if (function != TYON_BUTTON_TYPE_SHORTCUT) {
+        m_device.assignButton(type, function, 0, 0);
+    } else {
+        // Translate QT key modifiers to ROCCAT Tyon modifiers
+        auto toQtMods2Roccat = [](const Qt::KeyboardModifiers &km) -> quint8 {
+            quint8 mods = 0;
+            /* on Mac OSX Meta must be mapped to CTRL */
+            if (km.testFlag(Qt::ShiftModifier))
+                mods |= ROCCAT_BUTTON_MODIFIER_BIT_SHIFT;
+            if (km.testFlag(Qt::ControlModifier))
+                mods |= ROCCAT_BUTTON_MODIFIER_BIT_CTRL;
+            if (km.testFlag(Qt::AltModifier))
+                mods |= ROCCAT_BUTTON_MODIFIER_BIT_ALT;
+            if (km.testFlag(Qt::GroupSwitchModifier))
+                mods |= ROCCAT_BUTTON_MODIFIER_BIT_WIN;
+            return mods;
+        };
+
+        TUidToQtKeyMap *keymap = nullptr;
+        bool isKeyPad = kc.keyboardModifiers().testFlag(Qt::KeypadModifier);
+        Qt::KeyboardModifier testMod = (isKeyPad ? Qt::KeypadModifier : Qt::NoModifier);
+        for (TUidToQtKeyMap *p = uid_2_qtkey; p->uid_key && p->qt_key != Qt::Key_unknown; p++) {
+            if (kc.key() == p->qt_key && p->modifier == testMod) {
+                keymap = p;
+                break;
+            }
+        }
+        if (!keymap) {
+            return EINVAL;
+        }
+
+        quint8 mods = toQtMods2Roccat(kc.keyboardModifiers());
+        m_device.assignButton(type, function, keymap->uid_key, mods);
+    }
     return 0;
 }
 
@@ -185,9 +219,9 @@ inline void RTDeviceController::initButtonTypes()
     setButtonType(tr("Forward"), TYON_BUTTON_TYPE_BROWSER_FORWARD);
     setButtonType(tr("Double click"), TYON_BUTTON_TYPE_DOUBLE_CLICK);
 
-    setButtonType(tr("CPI cycle"), TYON_BUTTON_TYPE_CPI_CYCLE);
-    setButtonType(tr("CPI up"), TYON_BUTTON_TYPE_CPI_UP);
-    setButtonType(tr("CPI down"), TYON_BUTTON_TYPE_CPI_DOWN);
+    setButtonType(tr("DPI cycle"), TYON_BUTTON_TYPE_CPI_CYCLE);
+    setButtonType(tr("DPI up"), TYON_BUTTON_TYPE_CPI_UP);
+    setButtonType(tr("DPI down"), TYON_BUTTON_TYPE_CPI_DOWN);
 
     setButtonType(tr("Open player"), TYON_BUTTON_TYPE_OPEN_PLAYER);
     setButtonType(tr("Previous track"), TYON_BUTTON_TYPE_PREV_TRACK);
@@ -432,22 +466,12 @@ QString RTDeviceController::profileName() const
 
 bool RTDeviceController::loadProfilesFromFile(const QString &fileName)
 {
-    QFile f(fileName);
-    if (!f.open(QFile::ReadOnly)) {
-        return false;
-    }
-    // TODO: read from encrypted file
-    f.close();
+    return m_device.loadProfilesFromFile(fileName);
 }
 
 bool RTDeviceController::saveProfilesToFile(const QString &fileName)
 {
-    QFile f(fileName);
-    if (!f.open(QFile::Truncate | QFile::WriteOnly)) {
-        return false;
-    }
-    // TODO: Write encrypted file
-    f.close();
+    return m_device.saveProfilesToFile(fileName);
 }
 
 bool RTDeviceController::resetProfiles()
@@ -458,6 +482,17 @@ bool RTDeviceController::resetProfiles()
 bool RTDeviceController::saveProfilesToDevice()
 {
     return m_device.saveProfilesToDevice();
+}
+
+void RTDeviceController::onDeviceFound(const TyonInfo &info)
+{
+    m_hasDevice = (info.dfu_version && info.firmware_version);
+    emit deviceFound();
+}
+
+void RTDeviceController::onDeviceError(int error, const QString &message)
+{
+    emit deviceError(error, message);
 }
 
 void RTDeviceController::onDeviceInfo(const TyonInfo &info)

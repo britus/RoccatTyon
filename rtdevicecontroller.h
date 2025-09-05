@@ -50,6 +50,12 @@ public:
     int lookupDevice();
 
     /**
+     * @brief buttonTypes
+     * @return
+     */
+    inline bool hasDevice() const { return m_hasDevice; }
+
+    /**
      * @brief Assign given mouse button to specific function
      * @param The native mouse button type
      * @param The native function to be assigned
@@ -114,12 +120,16 @@ public:
     bool resetProfiles();
 
 signals:
+    void deviceFound();
+    void deviceError(int error, const QString &message);
     void deviceInfoChanged(const TyonInfo &info);
     void profileIndexChanged(quint8 index);
     void settingsChanged(const TyonProfileSettings &settings);
     void buttonsChanged(const TyonProfileButtons &buttons);
 
 private slots:
+    void onDeviceError(int error, const QString &message);
+    void onDeviceFound(const TyonInfo &info);
     void onDeviceInfo(const TyonInfo &info);
     void onProfileIndexChanged(const quint8 pix);
     void onProfileChanged(const RTHidDevice::TProfile &profile);
@@ -132,6 +142,7 @@ private:
     RTProfileModel m_model;
     QMap<quint8, QString> m_buttonTypes;
     QMap<quint8, RTDeviceController::TPhysicalButton> m_physButtons;
+    bool m_hasDevice;
 
 private:
     inline void initButtonTypes();

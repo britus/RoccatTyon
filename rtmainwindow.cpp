@@ -30,14 +30,89 @@ RTMainWindow::RTMainWindow(QWidget *parent)
     , ui(new Ui::RTMainWindow)
     , m_ctlr(new RTDeviceController(this))
     , m_buttons()
+    , m_settings(nullptr)
 {
     ui->setupUi(this);
-    ui->cbxDPIActiveSlot->setMaxVisibleItems(15);
-    ui->tableView->setModel(m_ctlr->profileModel());
 
     setWindowTitle(QApplication::applicationDisplayName());
 
-    /* standard */
+    initializeSettings();
+    initializeUiElements();
+    connectController();
+    connectUiElements();
+    connectActions();
+
+    loadSettings(m_settings);
+
+    if (m_ctlr->lookupDevice() != 0) {
+        QMessageBox::warning( //
+            this,
+            qApp->applicationDisplayName(),
+            tr("Unable to find ROCCAT Tyon device."));
+        QTimer::singleShot(500, this, []() { qApp->quit(); });
+        return;
+    }
+}
+
+RTMainWindow::~RTMainWindow()
+{
+    saveSettings(m_settings);
+    delete ui;
+}
+
+inline void RTMainWindow::initializeSettings()
+{
+    QString fileName = QStandardPaths::writableLocation( //
+                           QStandardPaths::ConfigLocation)
+                       + "/settings.conf";
+    fileName = QDir::toNativeSeparators(fileName);
+    m_settings = new QSettings(fileName, QSettings::Format::NativeFormat, this);
+}
+
+inline void RTMainWindow::loadSettings(QSettings *settings)
+{
+    if (!settings)
+        return;
+    uint value;
+    m_settings->beginGroup("ui");
+
+    value = m_settings->value("tabWidget").toUInt();
+    ui->tabWidget->setCurrentIndex(value);
+
+    value = m_settings->value("btnWidget").toUInt();
+    ui->tbxMButtons->setCurrentIndex(value);
+
+    QVariant v;
+    v = m_settings->value("window");
+    if (!v.isNull() && v.isValid()) {
+        setGeometry(v.toRect());
+    }
+
+    m_settings->endGroup();
+}
+
+inline void RTMainWindow::saveSettings(QSettings *settings)
+{
+    if (!settings)
+        return;
+    m_settings->beginGroup("ui");
+    m_settings->setValue("window", this->geometry());
+    m_settings->setValue("tabWidget", ui->tabWidget->currentIndex());
+    m_settings->setValue("btnWidget", ui->tbxMButtons->currentIndex());
+    m_settings->endGroup();
+    m_settings->sync();
+}
+
+inline void RTMainWindow::initializeUiElements()
+{
+    ui->cbxDPIActiveSlot->setMaxVisibleItems(15);
+    ui->tableView->setModel(m_ctlr->profileModel());
+    ui->pnlLeft->setEnabled(false);
+    ui->tabWidget->setEnabled(false);
+    ui->pbSave->setEnabled(false);
+    ui->pbReset->setEnabled(false);
+
+    // Standard
     m_buttons[ui->pbMBStdTopLeft] = {TYON_BUTTON_INDEX_LEFT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
     m_buttons[ui->pbMBStdTopRight] = {TYON_BUTTON_INDEX_RIGHT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
     m_buttons[ui->pbMBStdTopWScrollUp] = {TYON_BUTTON_INDEX_WHEEL_UP, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
@@ -57,7 +132,6 @@ RTMainWindow::RTMainWindow(QWidget *parent)
     m_buttons[ui->pbMBStdSideEasyShfit] = {TYON_BUTTON_INDEX_THUMB_PEDAL, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
 
     // EasyShift //
-
     m_buttons[ui->pbMBESTopLeft] = {TYON_BUTTON_INDEX_SHIFT_LEFT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
     m_buttons[ui->pbMBESTopRight] = {TYON_BUTTON_INDEX_SHIFT_RIGHT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
     m_buttons[ui->pbMBESTopWScrollUp] = {TYON_BUTTON_INDEX_SHIFT_WHEEL_UP, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
@@ -144,12 +218,73 @@ RTMainWindow::RTMainWindow(QWidget *parent)
             linkButton(pb, m_actions);
         }
     }
+}
 
+inline void RTMainWindow::connectController()
+{
+    connect(m_ctlr, &RTDeviceController::deviceFound, this, [this]() {
+        ui->pnlLeft->setEnabled(true);
+        ui->tabWidget->setEnabled(true);
+        ui->pbSave->setEnabled(true);
+        ui->pbReset->setEnabled(true);
+    });
+    connect(m_ctlr, &RTDeviceController::deviceError, this, [this](int error, const QString &message) {
+        QMessageBox::warning( //
+            this,
+            qApp->applicationDisplayName(),
+            tr("ERROR %1: %2").arg(error).arg(message));
+        qApp->quit();
+    });
     connect(m_ctlr, &RTDeviceController::deviceInfoChanged, this, &RTMainWindow::onDeviceInfo);
     connect(m_ctlr, &RTDeviceController::profileIndexChanged, this, &RTMainWindow::onProfileIndex);
     connect(m_ctlr, &RTDeviceController::settingsChanged, this, &RTMainWindow::onSettingsChanged);
     connect(m_ctlr, &RTDeviceController::buttonsChanged, this, &RTMainWindow::onButtonsChanged);
+}
 
+inline void RTMainWindow::connectActions()
+{
+    connect(ui->pbImport, &QPushButton::clicked, this, [this](bool) { //
+        QString fileName;
+        if (selectFile(fileName, true)) {
+            m_ctlr->loadProfilesFromFile(fileName);
+        }
+    });
+    connect(ui->pbExport, &QPushButton::clicked, this, [this](bool) { //
+        QString fileName;
+        if (selectFile(fileName, false)) {
+            m_ctlr->saveProfilesToFile(fileName);
+        }
+    });
+    connect(ui->pbReset, &QPushButton::clicked, this, [this](bool) { //
+        const QString title = tr("Device reset");
+        const QString msg = tr("Warning!\nAny changes will be lost.\n\n" //
+                               "Do you want to reset device?\n");
+        if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
+            if (!m_ctlr->resetProfiles()) {
+                QMessageBox::warning( //
+                    this,
+                    title,
+                    tr("Unable to reset device profiles.\n"
+                       "Please close the application and try again."));
+                ui->pnlLeft->setEnabled(false);
+                ui->tabWidget->setEnabled(false);
+                ui->pbSave->setEnabled(false);
+            }
+        }
+    });
+    connect(ui->pbSave, &QPushButton::clicked, this, [this](bool) { //
+        const QString title = tr("Save device profiles");
+        const QString msg = tr("Do you want to updat device profiles?\n");
+        if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
+            if (!m_ctlr->saveProfilesToDevice()) {
+                QMessageBox::warning(this, title, tr("Unable to save device profiles."));
+            }
+        }
+    });
+}
+
+inline void RTMainWindow::connectUiElements()
+{
     connect(ui->tableView, &QTableView::clicked, this, [this](const QModelIndex &index) { //
         m_ctlr->selectProfile(index.row());
     });
@@ -287,51 +422,6 @@ RTMainWindow::RTMainWindow(QWidget *parent)
             m_ctlr->setLightColorBottom(color.rgb());
         }
     });
-
-    connect(ui->pbImport, &QPushButton::clicked, this, [this](bool) { //
-        QString fileName;
-        if (selectFile(fileName, true)) {
-            m_ctlr->loadProfilesFromFile(fileName);
-        }
-    });
-    connect(ui->pbExport, &QPushButton::clicked, this, [this](bool) { //
-        QString fileName;
-        if (selectFile(fileName, false)) {
-            m_ctlr->saveProfilesToFile(fileName);
-        }
-    });
-    connect(ui->pbReset, &QPushButton::clicked, this, [this](bool) { //
-        const QString title = tr("Device reset");
-        const QString msg = tr("Warning!\nAny changes will be lost.\n\n" //
-                               "Do you want to reset device?\n");
-        if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
-            if (!m_ctlr->resetProfiles()) {
-                QMessageBox::warning(this, title, tr("Unable to reset device profiles."));
-            }
-        }
-    });
-    connect(ui->pbSave, &QPushButton::clicked, this, [this](bool) { //
-        const QString title = tr("Save device profiles");
-        const QString msg = tr("Do you want to updat device profiles?\n");
-        if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
-            if (!m_ctlr->saveProfilesToDevice()) {
-                QMessageBox::warning(this, title, tr("Unable to save device profiles."));
-            }
-        }
-    });
-
-    /* find ROCCAT Tyon mouse ... */
-    QTimer::singleShot(50, this, [this]() {
-        if (m_ctlr->lookupDevice() != 0) {
-            ui->pbReset->setEnabled(false);
-            ui->pbSave->setEnabled(false);
-        }
-    });
-}
-
-RTMainWindow::~RTMainWindow()
-{
-    delete ui;
 }
 
 inline bool RTMainWindow::selectColor(QColor &color)
@@ -386,40 +476,42 @@ inline bool RTMainWindow::selectFile(QString &file, bool isOpen)
 inline QAction *RTMainWindow::linkAction(QAction *action, TyonButtonType function)
 {
     connect(action, &QAction::triggered, this, [this, action, function](bool) { //
-        if (action->isEnabled()) {
-            /* the button object is set by push button event handler */
-            QVariant v = action->property("button");
-            if (v.isNull() || !v.isValid()) {
-                return;
-            }
-            QPushButton *pb = v.value<QPushButton *>();
-            if (!pb) {
-                return;
-            }
+        if (!action->isEnabled()) {
+            return;
+        }
 
-            qDebug() << "--------------------------";
-            qDebug() << "[APPWIN] triggered():" << function << action;
-            qDebug() << "[APPWIN] triggered():" << pb << pb->text();
+        /* the push button object is set by its event handler */
+        QVariant v = action->property("button");
+        if (v.isNull() || !v.isValid()) {
+            return;
+        }
+        QPushButton *pb = v.value<QPushButton *>();
+        if (!pb) {
+            return;
+        }
 
-            RTDeviceController::THandlerSetButton handler;
-            if (m_buttons.contains(pb)) {
-                const RTDeviceController::TButtonLink bl = m_buttons[pb];
-                if ((handler = bl.handler) != nullptr) {
-                    if (function != TYON_BUTTON_TYPE_SHORTCUT) {
-                        handler(bl.index, function, {});
-                    } else {
-                        RTShortcutDialog d(this);
-                        if (d.exec() != QDialog::Accepted) {
-                            return;
-                        }
-                        handler(bl.index, function, d.data().keyCombo);
-                    }
+        //qDebug() << "--------------------------";
+        //qDebug() << "[APPWIN] triggered():" << function << action;
+        //qDebug() << "[APPWIN] triggered():" << pb << pb->text();
+
+        RTDeviceController::THandlerSetButton handler;
+        if (m_buttons.contains(pb)) {
+            const RTDeviceController::TButtonLink bl = m_buttons[pb];
+            if ((handler = bl.handler) != nullptr) {
+                if (function != TYON_BUTTON_TYPE_SHORTCUT) {
+                    handler(bl.index, function, {});
                 } else {
-                    qCritical() << "[APPWIN] ROCCAT handler NULL pointer.";
+                    RTShortcutDialog d(this);
+                    if (d.exec() != QDialog::Accepted) {
+                        return;
+                    }
+                    handler(bl.index, function, d.data().keyCombo);
                 }
             } else {
-                qCritical() << "[APPWIN] Given push button not found.";
+                qCritical() << "[APPWIN] ROCCAT handler NULL pointer.";
             }
+        } else {
+            qCritical() << "[APPWIN] Given push button not found.";
         }
     });
 
@@ -435,7 +527,7 @@ inline void RTMainWindow::linkButton(QPushButton *pb, const QMap<QString, QActio
         foreach (const QString key, groupNames) {
             QMenu *subMenu = new QMenu(key, pb);
             foreach (QAction *action, actions[key]->actions()) {
-                /* assing calling push button to menu action which is
+                /* assign calling push button to menu action which is
                  * referenced in action event handler */
                 action->setProperty("button", QVariant::fromValue(pb));
                 subMenu->addAction(action);

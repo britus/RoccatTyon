@@ -2,7 +2,6 @@
     <qresource prefix="/images">
         <file>assets/roccat-tyon-10.png</file>
         <file>assets/roccat-tyon-8.png</file>
-        <file>assets/roccat-tyon-8-EasyShift.png</file>
     </qresource>
     <qresource prefix="/styles">
         <file>assets/appstyle.css</file>

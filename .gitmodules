@@ -1,0 +1,4 @@
+[submodule "hidapi"]
+	path = hidapi
+	url = https://github.com/britus/hidapi.git
+	branch = master
