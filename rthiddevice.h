@@ -33,9 +33,8 @@ public:
 
     /**
      * @brief Find ROCCAT Tyon device
-     * @return 0 if success
      */
-    int lookupDevice();
+    void lookupDevice();
 
     /**
      * @brief Return active profile number
@@ -121,6 +120,7 @@ public:
     void setLightColorBottom(quint8 red, quint8 green, quint8 blue);
 
 signals:
+    void lookupStarted();
     void deviceError(int error, const QString &message);
     void deviceFound(const TyonInfo &info);
     void deviceInfo(const TyonInfo &info);

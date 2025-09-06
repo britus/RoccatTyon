@@ -45,9 +45,8 @@ public:
 
     /**
      * @brief Find ROCCAT Tyon device
-     * @return 0 if success
      */
-    int lookupDevice();
+    void lookupDevice();
 
     /**
      * @brief buttonTypes
@@ -120,6 +119,7 @@ public:
     bool resetProfiles();
 
 signals:
+    void lookupStarted();
     void deviceFound();
     void deviceError(int error, const QString &message);
     void deviceInfoChanged(const TyonInfo &info);
@@ -128,6 +128,7 @@ signals:
     void buttonsChanged(const TyonProfileButtons &buttons);
 
 private slots:
+    void onLookupStarted();
     void onDeviceError(int error, const QString &message);
     void onDeviceFound(const TyonInfo &info);
     void onDeviceInfo(const TyonInfo &info);

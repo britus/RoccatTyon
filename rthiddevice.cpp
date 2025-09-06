@@ -11,7 +11,7 @@
 #include <QMutexLocker>
 #include <QThread>
 
-#undef QT_DEBUG
+//#undef QT_DEBUG
 
 static int ROCCAT_VENDOR_ID = 0x1e7d;
 static int ROCCAT_TYON_RID = 0x2e4a;
@@ -57,7 +57,7 @@ RTHidDevice::~RTHidDevice()
 static inline void deviceMatched(void *context, IOReturn result, void *, IOHIDDeviceRef device)
 {
     if (result != 0) {
-        qCritical("[HIDDEV] Device matcher IOResult not zero: %d", result);
+        qCritical("[HIDDEV] Device matcher IOResult none zero: %d", result);
         return;
     }
 
@@ -77,12 +77,13 @@ static inline void deviceMatched(void *context, IOReturn result, void *, IOHIDDe
     }
 }
 
-int RTHidDevice::lookupDevice()
+void RTHidDevice::lookupDevice()
 {
     IOHIDManagerRef manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
     if (!manager) {
         qCritical() << "[HIDDEV] Unable to create IOHIDManager instance.";
-        return EINVAL;
+        emit deviceError(EINVAL, "Unable to connect HID manager.");
+        return;
     }
 
     // Device-Matching: Only ROCCAT Tyon
@@ -106,9 +107,9 @@ int RTHidDevice::lookupDevice()
     IOHIDManagerRegisterDeviceMatchingCallback(manager, deviceMatched, this);
     IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
     IOHIDManagerOpen(manager, kIOHIDOptionsTypeNone);
-    CFRunLoopRun(); // wait for completion
-
-    return (m_devices.isEmpty() ? ENODEV : kIOReturnSuccess);
+    //CFRunLoopRun(); // wait for completion
+    //return (m_devices.isEmpty() ? ENODEV : kIOReturnSuccess);
+    emit lookupStarted();
 }
 
 bool RTHidDevice::resetProfiles()
@@ -231,9 +232,13 @@ void RTHidDevice::setActiveProfile(quint8 profileIndex)
     if (m_profile.profile_index != profileIndex) {
         m_profile.profile_index = profileIndex;
         emit profileIndexChanged(profileIndex);
-        if (m_profiles.contains(profileIndex)) {
-            emit profileChanged(m_profiles[profileIndex]);
+        if (!m_profiles.contains(profileIndex)) {
+            m_profiles[profileIndex].index = 0;
+            m_profiles[profileIndex].name = tr("Profile %1").arg(0);
+            m_profiles[profileIndex].buttons = {};
+            m_profiles[profileIndex].settings = {};
         }
+        emit profileChanged(m_profiles[profileIndex]);
     }
 }
 
@@ -420,17 +425,18 @@ void RTHidDevice::onDeviceFound(IOReturn /*status*/, IOHIDDeviceRef device)
     IOReturn ret;
 
     /* skip if already read */
-    //if (m_devices.contains(device)) {
-    //    return;
-    //}
-    if (!m_devices.isEmpty()) {
+    if (m_devices.contains(device)) {
         return;
     }
 
-    if ((ret = setDeviceState(true, device)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to set device state.");
-        goto error_exit;
-    }
+    //if (!m_devices.isEmpty()) {
+    //    return;
+    //}
+
+    //if ((ret = setDeviceState(true, device)) != kIOReturnSuccess) {
+    //    qCritical("[HIDDEV] Unable to set device state.");
+    //    goto error_exit;
+    //}
 
     /* read firmware release */
     if ((ret = readDeviceInfo(device)) != kIOReturnSuccess) {
@@ -490,6 +496,7 @@ inline int RTHidDevice::readProfile(IOHIDDeviceRef device, quint8 pix)
         return ret;
     }
 
+#if 0
     /* read all button slots including combined with EasyShift */
     for (quint8 bix = 0; bix < TYON_PROFILE_BUTTON_NUM; bix++) {
         if ((ret = readButtonMacro(device, pix, bix)) != kIOReturnSuccess) {
@@ -499,6 +506,7 @@ inline int RTHidDevice::readProfile(IOHIDDeviceRef device, quint8 pix)
             }
         }
     }
+#endif
 
     return kIOReturnSuccess;
 }
@@ -776,6 +784,8 @@ inline int RTHidDevice::readHidReport(IOHIDDeviceRef device, const int reportId,
         }
         case TYON_REPORT_ID_MACRO: {
             TyonMacro *p = (TyonMacro *) payload.constData();
+            if (p->count != sizeof(TyonMacro))
+                break;
 #ifdef QT_DEBUG
             qDebug("[HIDDEV] MACRO: #%02d group=%s name=%s", //
                    p->button_index,

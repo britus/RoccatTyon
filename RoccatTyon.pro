@@ -25,6 +25,7 @@ SOURCES += \
     rthiddevice.cpp \
     rtmainwindow.cpp \
     rtprofilemodel.cpp \
+    rtprogress.cpp \
     rtshortcutdialog.cpp
 
 HEADERS += \
@@ -33,6 +34,7 @@ HEADERS += \
     rthiddevice.h \
     rtmainwindow.h \
     rtprofilemodel.h \
+    rtprogress.h \
     rtshortcutdialog.h \
     rttypes.h
 
@@ -68,5 +70,7 @@ RESOURCES += \
     rtassets.qrc
 
 DISTFILES += \
+    .gitignore \
+    .gitmodules \
     hidapi.sh \
     roccat.md

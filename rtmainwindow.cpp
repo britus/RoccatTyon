@@ -1,5 +1,6 @@
 #include "rtmainwindow.h"
 #include "rtdevicecontroller.h"
+#include "rtprogress.h"
 #include "rtshortcutdialog.h"
 #include "rttypes.h"
 #include "ui_rtmainwindow.h"
@@ -17,12 +18,15 @@
 #include <QMessageBox>
 #include <QModelIndex>
 #include <QModelIndexList>
+#include <QProcessEnvironment>
 #include <QRadioButton>
+#include <QScreen>
 #include <QSlider>
 #include <QSpinBox>
 #include <QStandardPaths>
 #include <QTableView>
 #include <QTableWidgetItem>
+#include <QThread>
 #include <QTimer>
 
 RTMainWindow::RTMainWindow(QWidget *parent)
@@ -34,24 +38,27 @@ RTMainWindow::RTMainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    QProcessEnvironment pe = QProcessEnvironment::systemEnvironment();
+    QScreen *scn = qApp->primaryScreen();
+    QRect r = scn->availableGeometry();
+    //bool isXWindow;
+    //isXWindow |= (pe.contains("DISPLAY") || pe.contains("XDG_SESSION_DESKTOP"));
+
+    QStringList sl;
+    sl << tr("res:%3x%4").arg(r.size().width()).arg(r.size().height());
+    sl << tr("dpi:%1x%2").arg((uint) scn->logicalDotsPerInchX()).arg((uint) scn->logicalDotsPerInchY());
+    qInfo() << "[APPWIN] Screen" << sl;
+
     setWindowTitle(QApplication::applicationDisplayName());
 
     initializeSettings();
     initializeUiElements();
+    loadSettings(m_settings);
     connectController();
     connectUiElements();
     connectActions();
 
-    loadSettings(m_settings);
-
-    if (m_ctlr->lookupDevice() != 0) {
-        QMessageBox::warning( //
-            this,
-            qApp->applicationDisplayName(),
-            tr("Unable to find ROCCAT Tyon device."));
-        QTimer::singleShot(500, this, []() { qApp->quit(); });
-        return;
-    }
+    m_ctlr->lookupDevice();
 }
 
 RTMainWindow::~RTMainWindow()
@@ -233,8 +240,10 @@ inline void RTMainWindow::connectController()
             this,
             qApp->applicationDisplayName(),
             tr("ERROR %1: %2").arg(error).arg(message));
+        RTProgress::dismiss();
         qApp->quit();
     });
+    connect(m_ctlr, &RTDeviceController::lookupStarted, this, &RTMainWindow::onLookupStarted);
     connect(m_ctlr, &RTDeviceController::deviceInfoChanged, this, &RTMainWindow::onDeviceInfo);
     connect(m_ctlr, &RTDeviceController::profileIndexChanged, this, &RTMainWindow::onProfileIndex);
     connect(m_ctlr, &RTDeviceController::settingsChanged, this, &RTMainWindow::onSettingsChanged);
@@ -543,6 +552,27 @@ inline void RTMainWindow::linkButton(QPushButton *pb, const QMap<QString, QActio
     });
 }
 
+static int progress_count = 0;
+void RTMainWindow::onLookupStarted()
+{
+    progress_count = 0;
+    RTProgress::present(this);
+
+    // timeout timer
+    QTimer::singleShot(4000, this, [this]() {
+        if (!m_ctlr->hasDevice()) {
+            QMessageBox::warning( //
+                this,
+                qApp->applicationDisplayName(),
+                tr("Unable to find ROCCAT Tyon device."));
+            RTProgress::dismiss();
+            QTimer::singleShot(500, this, []() { qApp->quit(); });
+            return;
+        }
+    });
+    QThread::yieldCurrentThread();
+}
+
 void RTMainWindow::onDeviceInfo(const TyonInfo &info)
 {
     setWindowTitle(           //
@@ -678,13 +708,16 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
 /* Assign ROCCAT button actions to UI push buttons */
 void RTMainWindow::onButtonsChanged(const TyonProfileButtons &buttons)
 {
+    if (ui->tableView->model()->rowCount({}) >= TYON_PROFILE_NUM) {
+        RTProgress::dismiss();
+    }
+
     /* skip */
     if (buttons.profile_index != m_activeProfile) {
         return;
     }
 
-    /* physical buttons and with EasyShift combined
-     * 32 buttons (16x2) */
+    /* physical buttons and with EasyShift combined. 32 buttons (16x2) */
     const quint8 idxStart = TYON_BUTTON_INDEX_LEFT;
     const quint8 idxCount = TYON_PROFILE_BUTTON_NUM;
     const TyonProfileButtons *b = &buttons;

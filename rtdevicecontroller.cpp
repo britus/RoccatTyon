@@ -120,6 +120,7 @@ RTDeviceController::RTDeviceController(QObject *parent)
     , m_physButtons()
     , m_hasDevice(false)
 {
+    connect(&m_device, &RTHidDevice::lookupStarted, this, &RTDeviceController::onLookupStarted);
     connect(&m_device, &RTHidDevice::deviceError, this, &RTDeviceController::onDeviceError);
     connect(&m_device, &RTHidDevice::deviceFound, this, &RTDeviceController::onDeviceFound);
     connect(&m_device, &RTHidDevice::deviceInfo, this, &RTDeviceController::onDeviceInfo);
@@ -132,9 +133,9 @@ RTDeviceController::RTDeviceController(QObject *parent)
     initPhysicalButtons();
 }
 
-int RTDeviceController::lookupDevice()
+void RTDeviceController::lookupDevice()
 {
-    return m_device.lookupDevice();
+    m_device.lookupDevice();
 }
 
 int RTDeviceController::assignButton( //
@@ -488,6 +489,11 @@ void RTDeviceController::onDeviceFound(const TyonInfo &info)
 {
     m_hasDevice = (info.dfu_version && info.firmware_version);
     emit deviceFound();
+}
+
+void RTDeviceController::onLookupStarted()
+{
+    emit lookupStarted();
 }
 
 void RTDeviceController::onDeviceError(int error, const QString &message)
