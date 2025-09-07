@@ -6,6 +6,8 @@
 #include <QObject>
 #include <QWaitCondition>
 
+#define HIDAPI_MAX_STR 255
+
 class RTHidDevice : public QObject
 {
     Q_OBJECT
@@ -116,8 +118,8 @@ public:
     void setLightsEnabled(quint8 flag, bool state);
     void setLightsEffect(quint8 value);
     void setColorFlow(quint8 value);
-    void setLightColorWheel(quint8 red, quint8 green, quint8 blue);
-    void setLightColorBottom(quint8 red, quint8 green, quint8 blue);
+    void setLightColorWheel(const TyonRmpLightInfo &color);
+    void setLightColorBottom(const TyonRmpLightInfo &color);
 
 signals:
     void lookupStarted();
@@ -127,6 +129,8 @@ signals:
     void deviceInfo(const TyonInfo &info);
     void profileIndexChanged(const quint8 pix);
     void profileChanged(const RTHidDevice::TProfile &profile);
+    void saveProfilesStarted();
+    void saveProfilesFinished();
 
     //public slots:
     void reportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
@@ -152,8 +156,8 @@ private:
     inline void releaseManager();
     inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
     inline int hidSetRoccatControl(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req);
-    inline int hidWriteReport(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
-    inline int hidWriteRaw(IOHIDDeviceRef device, quint8 const *buffer, ssize_t length);
+    inline int hidCheckWrite(IOHIDDeviceRef device);
+    inline int hidSetReportRaw(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
     inline int parsePayload(int reportId, const quint8 *buffer, CFIndex length);
     inline int setDeviceState(bool state, IOHIDDeviceRef device = nullptr);
     inline int selectProfileSettings(IOHIDDeviceRef device, uint pix);

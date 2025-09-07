@@ -21,6 +21,7 @@ mac {
 
 SOURCES += \
     main.cpp \
+    rtcolordialog.cpp \
     rtdevicecontroller.cpp \
     rthiddevice.cpp \
     rtmainwindow.cpp \
@@ -30,8 +31,10 @@ SOURCES += \
 
 HEADERS += \
     hid_uid.h \
+    rtcolordialog.h \
     rtdevicecontroller.h \
     rthiddevice.h \
+    rthiddevicedbg.hpp \
     rtmainwindow.h \
     rtprofilemodel.h \
     rtprogress.h \
@@ -39,6 +42,7 @@ HEADERS += \
     rttypes.h
 
 FORMS += \
+    rtcolordialog.ui \
     rtmainwindow.ui \
     rtshortcutdialog.ui
 

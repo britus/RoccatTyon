@@ -30,6 +30,8 @@ private slots:
     void onProfileIndex(const quint8 pix);
     void onSettingsChanged(const TyonProfileSettings &settings);
     void onButtonsChanged(const TyonProfileButtons &buttons);
+    void onSaveProfilesStarted();
+    void onSaveProfilesFinished();
 
 private:
     Ui::RTMainWindow *ui;
@@ -56,6 +58,6 @@ private:
     inline void saveSettings(QSettings *settings);
     inline void linkButton(QPushButton *pb, const QMap<QString, QActionGroup *> &actions);
     inline QAction *linkAction(QAction *action, TyonButtonType function);
-    inline bool selectColor(QColor &color);
+    inline bool selectColor(TyonRmpLightInfo &color);
     inline bool selectFile(QString &file, bool isOpen = true);
 };

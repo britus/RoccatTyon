@@ -1045,7 +1045,7 @@
                         <item row="1" column="0">
                          <widget class="QRadioButton" name="rbColorAllLights">
                           <property name="text">
-                           <string>All lights</string>
+                           <string>All color random</string>
                           </property>
                          </widget>
                         </item>
@@ -1065,7 +1065,7 @@
                      <item>
                       <widget class="QGroupBox" name="gbxLightColor">
                        <property name="enabled">
-                        <bool>false</bool>
+                        <bool>true</bool>
                        </property>
                        <property name="title">
                         <string>Light color</string>
@@ -1086,9 +1086,6 @@
                         </item>
                         <item row="0" column="1">
                          <widget class="QPushButton" name="pbLightColorWheel">
-                          <property name="enabled">
-                           <bool>false</bool>
-                          </property>
                           <property name="maximumSize">
                            <size>
                             <width>32</width>
@@ -1102,9 +1099,6 @@
                         </item>
                         <item row="0" column="2">
                          <widget class="QCheckBox" name="cbxLightWheel">
-                          <property name="enabled">
-                           <bool>false</bool>
-                          </property>
                           <property name="text">
                            <string>Enable Wheel</string>
                           </property>
@@ -1119,9 +1113,6 @@
                         </item>
                         <item row="1" column="1">
                          <widget class="QPushButton" name="pbLightColorBottom">
-                          <property name="enabled">
-                           <bool>false</bool>
-                          </property>
                           <property name="maximumSize">
                            <size>
                             <width>32</width>
@@ -1135,9 +1126,6 @@
                         </item>
                         <item row="1" column="2">
                          <widget class="QCheckBox" name="cbxLightBottom">
-                          <property name="enabled">
-                           <bool>false</bool>
-                          </property>
                           <property name="text">
                            <string>Enable Bottom</string>
                           </property>
@@ -3158,70 +3146,6 @@
     <hint type="destinationlabel">
      <x>371</x>
      <y>318</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>rbLightCustomColor</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>pbLightColorWheel</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>319</x>
-     <y>385</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>560</x>
-     <y>355</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>rbLightCustomColor</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>pbLightColorBottom</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>404</x>
-     <y>384</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>565</x>
-     <y>392</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>rbLightCustomColor</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>cbxLightWheel</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>318</x>
-     <y>377</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>633</x>
-     <y>349</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>rbLightCustomColor</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>cbxLightBottom</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>342</x>
-     <y>382</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>673</x>
-     <y>385</y>
     </hint>
    </hints>
   </connection>

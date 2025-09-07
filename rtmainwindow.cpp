@@ -1,4 +1,5 @@
 #include "rtmainwindow.h"
+#include "rtcolordialog.h"
 #include "rtdevicecontroller.h"
 #include "rtprogress.h"
 #include "rtshortcutdialog.h"
@@ -29,6 +30,8 @@
 #include <QThread>
 #include <QTimer>
 
+Q_DECLARE_METATYPE(TyonRmpLightInfo);
+
 RTMainWindow::RTMainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::RTMainWindow)
@@ -36,6 +39,9 @@ RTMainWindow::RTMainWindow(QWidget *parent)
     , m_buttons()
     , m_settings(nullptr)
 {
+    qRegisterMetaType<TyonRmpLightInfo>();
+
+    // --
     ui->setupUi(this);
 
     QProcessEnvironment pe = QProcessEnvironment::systemEnvironment();
@@ -114,7 +120,7 @@ inline void RTMainWindow::saveSettings(QSettings *settings)
 inline void RTMainWindow::initializeUiElements()
 {
     ui->cbxDPIActiveSlot->setMaxVisibleItems(15);
-    ui->tableView->setModel(m_ctlr->profileModel());
+    ui->tableView->setModel(m_ctlr->model());
     ui->pnlLeft->setEnabled(false);
     ui->tabWidget->setEnabled(false);
     ui->pbSave->setEnabled(false);
@@ -238,6 +244,8 @@ inline void RTMainWindow::connectController()
     connect(m_ctlr, &RTDeviceController::profileIndexChanged, this, &RTMainWindow::onProfileIndex);
     connect(m_ctlr, &RTDeviceController::settingsChanged, this, &RTMainWindow::onSettingsChanged);
     connect(m_ctlr, &RTDeviceController::buttonsChanged, this, &RTMainWindow::onButtonsChanged);
+    connect(m_ctlr, &RTDeviceController::saveProfilesStarted, this, &RTMainWindow::onSaveProfilesStarted);
+    connect(m_ctlr, &RTDeviceController::saveProfilesFinished, this, &RTMainWindow::onSaveProfilesFinished);
 }
 
 inline void RTMainWindow::connectActions()
@@ -259,6 +267,7 @@ inline void RTMainWindow::connectActions()
         const QString msg = tr("Warning!\nAny changes will be lost.\n\n" //
                                "Do you want to reset device?\n");
         if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
+            RTProgress::present(tr("Please wait..."), this);
             if (!m_ctlr->resetProfiles()) {
                 QMessageBox::warning( //
                     this,
@@ -386,51 +395,62 @@ inline void RTMainWindow::connectUiElements()
             m_ctlr->setLightsEnabled(TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR, true);
         }
     });
-    connect(ui->cbxLightWheel, &QCheckBox::clicked, this, [this](bool checked) { //
-        if (checked) {
-            m_ctlr->setLightsEnabled(TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_WHEEL, checked);
-        }
-    });
-    connect(ui->cbxLightBottom, &QCheckBox::clicked, this, [this](bool checked) { //
-        if (checked) {
-            m_ctlr->setLightsEnabled(TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_BOTTOM, checked);
-        }
-    });
 
     connect(ui->rbColorNoFlow, &QRadioButton::clicked, this, [this](bool) { //
         m_ctlr->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_OFF);
+        ui->gbxLightColor->setEnabled(true);
     });
     connect(ui->rbColorAllLights, &QRadioButton::clicked, this, [this](bool) { //
         m_ctlr->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_SIMULTANEOUSLY);
+        ui->gbxLightColor->setEnabled(false);
     });
     connect(ui->rbColorDirUp, &QRadioButton::clicked, this, [this](bool) { //
         m_ctlr->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_UP);
+        ui->gbxLightColor->setEnabled(false);
     });
     connect(ui->rbColorDirDown, &QRadioButton::clicked, this, [this](bool) { //
         m_ctlr->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_DOWN);
+        ui->gbxLightColor->setEnabled(false);
+    });
+
+    // -- gbxLightColor
+    connect(ui->cbxLightWheel, &QCheckBox::clicked, this, [this](bool checked) { //
+        m_ctlr->setLightsEnabled(TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_WHEEL, checked);
     });
     connect(ui->pbLightColorWheel, &QPushButton::clicked, this, [this]() { //
-        QColor color;
+        TyonRmpLightInfo color;
         if (selectColor(color)) {
-            m_ctlr->setLightColorWheel(color.rgb());
+            m_ctlr->setLightColorWheel(color);
         }
     });
+    connect(ui->cbxLightBottom, &QCheckBox::clicked, this, [this](bool checked) { //
+        m_ctlr->setLightsEnabled(TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_BOTTOM, checked);
+    });
     connect(ui->pbLightColorBottom, &QPushButton::clicked, this, [this]() { //
-        QColor color;
+        TyonRmpLightInfo color;
         if (selectColor(color)) {
-            m_ctlr->setLightColorBottom(color.rgb());
+            m_ctlr->setLightColorBottom(color);
         }
     });
 }
 
-inline bool RTMainWindow::selectColor(QColor &color)
+inline bool RTMainWindow::selectColor(TyonRmpLightInfo &color)
 {
+#if 0
     QColorDialog d(this);
     d.setTabletTracking(this->hasTabletTracking());
     if (d.exec() == QColorDialog::Accepted) {
         color = d.selectedColor();
         return true;
     }
+#endif
+
+    RTColorDialog d(this);
+    if (d.exec() == RTColorDialog::Accepted) {
+        color = d.selectedColor();
+        return true;
+    }
+
     return false;
 }
 
@@ -617,10 +637,7 @@ void RTMainWindow::onProfileIndex(const quint8 pix)
 {
     m_activeProfile = pix;
 
-    if (ui->tableView->model()) {
-        // TODO: set active profile
-    }
-
+    ui->tableView->setCurrentIndex(m_ctlr->profileIndex(pix));
     statusBar()->showMessage(tr("Active profile: %1").arg(pix));
 }
 
@@ -770,4 +787,14 @@ void RTMainWindow::onButtonsChanged(const TyonProfileButtons &buttons)
             m_ctlr->setupButton(b->buttons[index], pb);
         }
     }
+}
+
+void RTMainWindow::onSaveProfilesStarted()
+{
+    RTProgress::present(tr("Please wait..."), this);
+}
+
+void RTMainWindow::onSaveProfilesFinished()
+{
+    RTProgress::dismiss();
 }

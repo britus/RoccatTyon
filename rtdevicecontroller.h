@@ -87,10 +87,17 @@ public:
     const QKeySequence toKeySequence(const RoccatButton &button) const;
 
     /**
-     * @brief profileModel
+     * @brief model
      * @return
      */
-    inline RTProfileModel *profileModel() { return &m_model; }
+    inline RTProfileModel *model() { return &m_model; }
+
+    /**
+     * @brief profileIndex
+     * @param pix
+     * @return QModelIndex
+     */
+    inline QModelIndex profileIndex(uint pix) { return m_model.index(pix, 0, {}); }
 
     /**
      * @brief selectProfile
@@ -108,8 +115,8 @@ public:
     void setLightsEnabled(quint8 flag, bool state);
     void setLightsEffect(quint8 value);
     void setColorFlow(quint8 value);
-    void setLightColorWheel(const QRgb &color);
-    void setLightColorBottom(const QRgb &color);
+    void setLightColorWheel(const TyonRmpLightInfo &color);
+    void setLightColorBottom(const TyonRmpLightInfo &color);
 
     QString profileName() const;
 
@@ -127,6 +134,8 @@ signals:
     void profileIndexChanged(quint8 index);
     void settingsChanged(const TyonProfileSettings &settings);
     void buttonsChanged(const TyonProfileButtons &buttons);
+    void saveProfilesStarted();
+    void saveProfilesFinished();
 
 private slots:
     void onLookupStarted();
@@ -136,6 +145,8 @@ private slots:
     void onDeviceInfo(const TyonInfo &info);
     void onProfileIndexChanged(const quint8 pix);
     void onProfileChanged(const RTHidDevice::TProfile &profile);
+    void onSaveProfilesStarted();
+    void onSaveProfilesFinished();
     void onModelChanged(const QModelIndex &topLeft,     //
                         const QModelIndex &bottomRight, //
                         const QList<int> &roles = QList<int>());

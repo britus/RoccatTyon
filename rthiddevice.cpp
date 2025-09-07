@@ -10,12 +10,15 @@
 #include <QFileInfo>
 #include <QMutexLocker>
 #include <QThread>
+#include <QTimer>
 
 //#undef QT_DEBUG
 
-Q_DECLARE_OPAQUE_POINTER(IOHIDDeviceRef)
+#ifdef QT_DEBUG
+#include "rthiddevicedbg.hpp"
+#endif
 
-#define HIDAPI_MAX_STR 255
+Q_DECLARE_OPAQUE_POINTER(IOHIDDeviceRef)
 
 // -------------------------------------------------------------
 //
@@ -23,10 +26,15 @@ Q_DECLARE_OPAQUE_POINTER(IOHIDDeviceRef)
 static inline void debugSettings(const RTHidDevice::TProfile profile, quint8 currentPix);
 static inline void debugButtons(const RTHidDevice::TProfile profile, quint8 currentPix);
 static inline void debugDevInfo(TyonInfo *p);
+static inline void debugDevice(IOHIDDeviceRef device);
 #endif
 
 static inline void _deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
 {
+#ifdef QT_DEBUG
+    debugDevice(device);
+#endif
+
     RTHidDevice *ctx = static_cast<RTHidDevice *>(context);
     ctx->onDeviceFound(device);
 }
@@ -101,6 +109,12 @@ RTHidDevice::RTHidDevice(QObject *parent)
     , m_hasHidApi((hid_init() == 0))
 {
     qRegisterMetaType<IOHIDDeviceRef>();
+    for (quint8 i = 0; i < TYON_PROFILE_NUM; i++) {
+        TProfile profile;
+        profile.index = i;
+        profile.name = tr("Default_%1").arg(profile.index);
+        m_profiles[i] = profile;
+    }
 }
 
 RTHidDevice::~RTHidDevice()
@@ -176,41 +190,146 @@ void RTHidDevice::lookupDevice()
         return;
     }
 
-#ifndef QT_DEBUG
+    //#ifndef QT_DEBUG
     // Run event loop in separate thread
     std::thread([]() { CFRunLoopRun(); }).detach();
-#endif
+    //#endif
 
     emit lookupStarted();
 }
 
 bool RTHidDevice::resetProfiles()
 {
-    releaseManager();
+    TyonInfo info = {};
+    const quint8 *buffer = (const quint8 *) &info;
+    info.report_id = TYON_REPORT_ID_INFO;
+    info.size = sizeof(TyonInfo);
+    info.function = TYON_INFO_FUNCTION_RESET;
+
     m_profiles.clear();
     m_profile = {};
     m_info = {};
 
-    TyonInfo info = {};
-    info.report_id = TYON_REPORT_ID_INFO;
-    info.function = TYON_INFO_FUNCTION_RESET;
-    info.size = sizeof(TyonInfo);
-
-    const quint8 *buf = (const quint8 *) &info;
-    if (hidWriteRaw(nullptr, buf, sizeof(info)) != kIOReturnSuccess) {
-        return false;
+    // Run event loop in separate thread
+    IOReturn ret;
+    foreach (IOHIDDeviceRef device, m_devices) {
+        if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+            return ret;
+        }
+        if (hidSetReportRaw(device, buffer, info.size) == kIOReturnSuccess) {
+            break;
+        }
     }
 
+    QThread::yieldCurrentThread();
+
+    releaseManager();
     lookupDevice();
+
     return true;
 }
 
 bool RTHidDevice::saveProfilesToDevice()
 {
-    foreach (const TProfile p, m_profiles) {
-    }
+    emit saveProfilesStarted();
 
-    return false;
+    auto writeIndex = [this](IOHIDDeviceRef device) -> IOReturn {
+        IOReturn ret = kIOReturnSuccess;
+        CFIndex length = sizeof(TyonProfile);
+        quint8 *buffer = (quint8 *) &m_profile;
+
+        if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+            return ret;
+        }
+        if ((ret = hidSetReportRaw(device, buffer, length)) != kIOReturnSuccess) {
+            return ret;
+        }
+
+        QThread::yieldCurrentThread();
+
+        return ret;
+    };
+    auto writeProfile = [this](IOHIDDeviceRef device, const TProfile &p) -> IOReturn {
+        IOReturn ret = kIOReturnSuccess;
+        CFIndex length;
+        quint8 *buffer;
+
+        length = sizeof(TyonProfileSettings);
+        buffer = (quint8 *) &p.settings;
+
+        if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+            return ret;
+        }
+        if ((ret = hidSetReportRaw(device, buffer, length)) != kIOReturnSuccess) {
+            return ret;
+        }
+
+        length = sizeof(TyonProfileButtons);
+        buffer = (quint8 *) &p.buttons;
+
+        if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+            return ret;
+        }
+        if ((ret = hidSetReportRaw(device, buffer, length)) != kIOReturnSuccess) {
+            return ret;
+        }
+
+        QThread::yieldCurrentThread();
+
+        return ret;
+    };
+
+    QThread *t = new QThread();
+    connect(t, &QThread::started, this, [this, t, writeIndex, writeProfile]() { //
+        IOReturn ret;
+        foreach (IOHIDDeviceRef device, m_devices) {
+            if ((ret = writeIndex(device)) != kIOReturnSuccess) {
+                goto thread_exit;
+            }
+            foreach (const TProfile p, m_profiles) {
+                if ((ret = writeProfile(device, p)) != kIOReturnSuccess) {
+                    goto thread_exit;
+                }
+            }
+        }
+    thread_exit:
+        t->exit(ret);
+    });
+    connect(t, &QThread::finished, this, [t]() { //
+        t->deleteLater();
+    });
+    connect(
+        t,
+        &QThread::destroyed,
+        this,
+        [this]() //
+        {
+            emit saveProfilesFinished();
+            releaseManager();
+            lookupDevice();
+        },
+        Qt::QueuedConnection);
+    t->start(QThread::LowPriority);
+
+#if 0
+    QTimer::singleShot(200, this, [this, writeIndex, writeProfile]() {
+        IOReturn ret;
+        foreach (IOHIDDeviceRef device, m_devices) {
+            if ((ret = writeIndex(device)) != kIOReturnSuccess) {
+                return false;
+            }
+            foreach (const TProfile p, m_profiles) {
+                if ((ret = writeProfile(device, p)) != kIOReturnSuccess) {
+                    return false;
+                }
+            }
+        }
+
+        releaseManager();
+        lookupDevice();
+    });
+#endif
+    return true;
 }
 
 bool RTHidDevice::saveProfilesToFile(const QString &fileName)
@@ -452,32 +571,36 @@ void RTHidDevice::setColorFlow(quint8 value)
     }
 }
 
-void RTHidDevice::setLightColorWheel(quint8 red, quint8 green, quint8 blue)
+void RTHidDevice::setLightColorWheel(const TyonRmpLightInfo &color)
 {
     if (m_profiles.contains(profileIndex())) {
         TProfile p = m_profiles[profileIndex()];
-        if (p.settings.lights[0].red != red        //
-            || p.settings.lights[0].green != green //
-            || p.settings.lights[0].blue != blue) {
-            p.settings.lights[0].red = red;
-            p.settings.lights[0].green = green;
-            p.settings.lights[0].blue = blue;
+        if (p.settings.lights[0].red != color.red        //
+            || p.settings.lights[0].green != color.green //
+            || p.settings.lights[0].blue != color.blue   //
+            || p.settings.lights[0].index != color.index) {
+            p.settings.lights[0].index = color.index;
+            p.settings.lights[0].red = color.red;
+            p.settings.lights[0].green = color.green;
+            p.settings.lights[0].blue = color.blue;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
         }
     }
 }
 
-void RTHidDevice::setLightColorBottom(quint8 red, quint8 green, quint8 blue)
+void RTHidDevice::setLightColorBottom(const TyonRmpLightInfo &color)
 {
     if (m_profiles.contains(profileIndex())) {
         TProfile p = m_profiles[profileIndex()];
-        if (p.settings.lights[0].red != red        //
-            || p.settings.lights[0].green != green //
-            || p.settings.lights[0].blue != blue) {
-            p.settings.lights[1].red = red;
-            p.settings.lights[1].green = green;
-            p.settings.lights[1].blue = blue;
+        if (p.settings.lights[1].red != color.red        //
+            || p.settings.lights[1].green != color.green //
+            || p.settings.lights[1].blue != color.blue   //
+            || p.settings.lights[1].index != color.index) {
+            p.settings.lights[1].index = color.index;
+            p.settings.lights[1].red = color.red;
+            p.settings.lights[1].green = color.green;
+            p.settings.lights[1].blue = color.blue;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
         }
@@ -499,18 +622,23 @@ void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
     // some devices cannot open ?? 4 times called for product
     ret = IOHIDDeviceOpen(device, kIOHIDOptionsTypeSeizeDevice);
     if (ret != kIOReturnSuccess) {
+        qDebug("[HIDDEV] Unable to open device: %p", device);
         return;
     }
+
+#ifdef QT_DEBUG
+    qDebug("[HIDDEV] Device(%p) opened", device);
+#endif
 
     /* skip if already read */
     if (m_devices.contains(device)) {
         return;
     }
 
-    //if ((ret = setDeviceState(true, device)) != kIOReturnSuccess) {
-    //    qCritical("[HIDDEV] Unable to set device state.");
-    //    goto error_exit;
-    //}
+    if ((ret = setDeviceState(true, device)) != kIOReturnSuccess) {
+        qCritical("[HIDDEV] Unable to set device state.");
+        goto error_exit;
+    }
 
     /* read firmware release */
     if ((ret = readDeviceInfo(device)) != kIOReturnSuccess) {
@@ -559,25 +687,25 @@ inline int RTHidDevice::readProfile(IOHIDDeviceRef device, quint8 pix)
 
     /* select profile settings store */
     if ((ret = selectProfileSettings(device, pix)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to select profile %d. ret=%d", pix, ret);
+        qCritical("[HIDDEV] Unable to select profile %d. ret=0x%08x", pix, ret);
         return ret;
     }
 
     /* read profile settings */
     if ((ret = readProfileSettings(device)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to read profile settings. ret=%d", ret);
+        qCritical("[HIDDEV] Unable to read profile settings. ret=0x%08x", ret);
         return ret;
     }
 
     /* select profile buttons store */
     if ((ret = selectProfileButtons(device, pix)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to select profile %d. ret=%d", pix, ret);
+        qCritical("[HIDDEV] Unable to select profile %d. ret=0x%08x", pix, ret);
         return ret;
     }
 
     /* read profile buttons */
     if ((ret = readProfileButtons(device)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to read profile buttons. ret=%d", ret);
+        qCritical("[HIDDEV] Unable to read profile buttons. ret=0x%08x", ret);
         return ret;
     }
 
@@ -586,7 +714,7 @@ inline int RTHidDevice::readProfile(IOHIDDeviceRef device, quint8 pix)
     for (quint8 bix = 0; bix < TYON_PROFILE_BUTTON_NUM; bix++) {
         if ((ret = readButtonMacro(device, pix, bix)) != kIOReturnSuccess) {
             if (ret != ENODATA) { // optional macros
-                qCritical("[HIDDEV] Unable to read profile macro #%d. ret=%d", bix, ret);
+                qCritical("[HIDDEV] Unable to read profile macro #%d. ret=0x%08x", bix, ret);
                 return ret;
             }
         }
@@ -598,12 +726,20 @@ inline int RTHidDevice::readProfile(IOHIDDeviceRef device, quint8 pix)
 
 inline int RTHidDevice::setDeviceState(bool state, IOHIDDeviceRef device)
 {
+    IOReturn ret;
+    if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+        return ret;
+    }
+
     TyonDeviceState device_state;
     device_state.report_id = TYON_REPORT_ID_DEVICE_STATE;
     device_state.size = sizeof(TyonDeviceState);
     device_state.state = (state ? 0x01 : 0x00);
     const quint8 *buf = (const quint8 *) &device_state;
-    return hidWriteRaw(device, buf, device_state.size);
+    if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+        return ret;
+    }
+    return hidSetReportRaw(device, buf, device_state.size);
 }
 
 inline void RTHidDevice::releaseDevices()
@@ -723,43 +859,100 @@ inline int RTHidDevice::readButtonMacro(IOHIDDeviceRef device, uint pix, uint bi
     return kIOReturnSuccess;
 }
 
-inline int RTHidDevice::selectMacro(IOHIDDeviceRef device, uint pix, uint dix, uint bix)
+inline int RTHidDevice::selectProfileSettings(IOHIDDeviceRef device, uint pix)
 {
     IOReturn ret;
-    /* tyon_select(
-     *  device: device,
-     *  profile_index: profile_index,
-     *  data_index: TYON_CONTROL_DATA_INDEX_MACRO_1 or 2,
-     *  request: bix,
-     *  error)
-     *
-     * roccat_select(
-     *  device: device,
+
+    if (pix > TYON_PROFILE_NUM) {
+        qCritical("[HIDDEV] Invalid profile index: %d", pix);
+        return EINVAL;
+    }
+
+    /* roccat_select:
      *  endpoint: TYON_INTERFACE_MOUSE,
      *  report_id: TYON_REPORT_ID_CONTROL,
-     *  profile_index: data_index | profile_index,
-     *  request: request,
-     *  error)
+     *  profile_index: TYON_CONTROL_DATA_INDEX_NONE | profile_index,
+     *  request: TYON_CONTROL_REQUEST_PROFILE_SETTINGS,
      */
     const quint8 HEP = TYON_INTERFACE_MOUSE;
     const quint8 RID = TYON_REPORT_ID_CONTROL;
-    const quint8 PIX = (dix | pix);
-    const quint8 REQ = bix;
+    const quint8 DIX = (TYON_CONTROL_DATA_INDEX_NONE | pix);
+    const quint8 REQ = TYON_CONTROL_REQUEST_PROFILE_SETTINGS;
 
-    if ((ret = hidSetRoccatControl(device, HEP, RID, PIX, REQ)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to select macro %d. ret=%d", REQ, ret);
+#ifdef QT_DEBUG
+    qDebug("[HIDDEV] Select profile settings. DIX=0x%02x PIX=%d REQ=0x%02x", DIX, pix, REQ);
+#endif
+
+    if ((ret = hidSetRoccatControl(device, HEP, RID, DIX, REQ)) != kIOReturnSuccess) {
+        qCritical("[HIDDEV] Unable to select profile %d. ret=0x%08x", pix, ret);
         return ret;
     }
 
+    return kIOReturnSuccess;
+}
+
+inline int RTHidDevice::selectProfileButtons(IOHIDDeviceRef device, uint pix)
+{
+    IOReturn ret;
+
+    if (pix > TYON_PROFILE_NUM) {
+        qCritical("[HIDDEV] Invalid profile index: %d", pix);
+        return EINVAL;
+    }
+
+    /* roccat_select:
+     *  endpoint: TYON_INTERFACE_MOUSE,
+     *  report_id: TYON_REPORT_ID_CONTROL,
+     *  profile_index: TYON_CONTROL_DATA_INDEX_NONE | profile_index,
+     *  request: TYON_CONTROL_REQUEST_PROFILE_BUTTONS,
+     */
+    const quint8 HEP = TYON_INTERFACE_MOUSE;
+    const quint8 RID = TYON_REPORT_ID_CONTROL;
+    const quint8 DIX = (TYON_CONTROL_DATA_INDEX_NONE | pix);
+    const quint8 REQ = TYON_CONTROL_REQUEST_PROFILE_BUTTONS;
+
 #ifdef QT_DEBUG
-    qDebug("[HIDDEV] Macro selected. PIX=%d (0x%02x) REQ=%d (0x%02x)", PIX, PIX, REQ, REQ);
+    qDebug("[HIDDEV] Select profile buttons. DIX=0x%02x PIX=%d REQ=0x%02x", DIX, pix, REQ);
 #endif
+
+    if ((ret = hidSetRoccatControl(device, HEP, RID, DIX, REQ)) != kIOReturnSuccess) {
+        qCritical("[HIDDEV] Unable to select profile %d. ret=0x%08x", pix, ret);
+        return ret;
+    }
+
+    return kIOReturnSuccess;
+}
+
+inline int RTHidDevice::selectMacro(IOHIDDeviceRef device, uint pix, uint dix, uint bix)
+{
+    IOReturn ret;
+
+    /* roccat_select(
+     *  device: device,
+     *  endpoint: TYON_INTERFACE_MOUSE,
+     *  report_id: TYON_REPORT_ID_CONTROL,
+     *  profile_index: (TYON_CONTROL_DATA_INDEX_MACRO_1 or _2) | profile_index,
+     *  request: bix,
+     */
+    const quint8 HEP = TYON_INTERFACE_MOUSE;
+    const quint8 RID = TYON_REPORT_ID_CONTROL;
+    const quint8 DIX = (dix | pix);
+    const quint8 REQ = bix;
+
+#ifdef QT_DEBUG
+    qDebug("[HIDDEV] Select macro. DIX=0x%02x PIX=%d REQ=0x%02x", DIX, pix, REQ);
+#endif
+
+    if ((ret = hidSetRoccatControl(device, HEP, RID, DIX, REQ)) != kIOReturnSuccess) {
+        qCritical("[HIDDEV] Unable to select macro %d. ret=0x%08x", REQ, ret);
+        return ret;
+    }
 
     return kIOReturnSuccess;
 }
 
 // Read ROCCAT Mouse report descriptor
-inline int RTHidDevice::parsePayload(int reportId, const quint8 *buffer, CFIndex length)
+inline int RTHidDevice::parsePayload(int rid, const quint8 *buffer, CFIndex length)
 {
     QByteArray payload;
 
@@ -768,19 +961,8 @@ inline int RTHidDevice::parsePayload(int reportId, const quint8 *buffer, CFIndex
         payload.append(buffer[i]);
     }
 
-    auto toProfile = [this](quint8 pix) -> TProfile {
-        TProfile profile = {};
-        if (m_profiles.contains(pix)) {
-            profile = m_profiles[pix];
-        } else {
-            profile.index = pix;
-            profile.name = tr("Default_%1").arg(profile.index);
-        }
-        return profile;
-    };
-
     TProfile profile = {};
-    switch (reportId) {
+    switch (rid) {
         case TYON_REPORT_ID_INFO: {
             TyonInfo *p = (TyonInfo *) payload.constData();
             memcpy(&m_info, p, sizeof(TyonInfo));
@@ -796,12 +978,14 @@ inline int RTHidDevice::parsePayload(int reportId, const quint8 *buffer, CFIndex
             qDebug("[HIDDEV] PROFILE: ACTIVE_PROFILE=%d", p->profile_index);
 #endif
             memcpy(&m_profile, p, sizeof(TyonProfile));
+            profile = m_profiles[p->profile_index];
+            m_profiles[profile.index] = profile;
             emit profileIndexChanged(p->profile_index);
             break;
         }
         case TYON_REPORT_ID_PROFILE_SETTINGS: {
             TyonProfileSettings *p = (TyonProfileSettings *) payload.constData();
-            profile = toProfile(p->profile_index);
+            profile = m_profiles[p->profile_index];
             memcpy(&profile.settings, p, sizeof(TyonProfileSettings));
             m_profiles[profile.index] = profile;
 #ifdef QT_DEBUG
@@ -812,7 +996,7 @@ inline int RTHidDevice::parsePayload(int reportId, const quint8 *buffer, CFIndex
         }
         case TYON_REPORT_ID_PROFILE_BUTTONS: {
             TyonProfileButtons *p = (TyonProfileButtons *) payload.constData();
-            profile = toProfile(p->profile_index);
+            profile = m_profiles[p->profile_index];
             memcpy(&profile.buttons, p, sizeof(TyonProfileButtons));
             m_profiles[profile.index] = profile;
 #ifdef QT_DEBUG
@@ -831,10 +1015,7 @@ inline int RTHidDevice::parsePayload(int reportId, const quint8 *buffer, CFIndex
             if (p->count != sizeof(TyonMacro))
                 break;
 #ifdef QT_DEBUG
-            qDebug("[HIDDEV] MACRO: #%02d group=%s name=%s", //
-                   p->button_index,
-                   p->macroset_name,
-                   p->macro_name);
+            qDebug("[HIDDEV] MACRO: #%02d group=%s name=%s", p->button_index, p->macroset_name, p->macro_name);
 #else
             Q_UNUSED(p);
 #endif
@@ -848,16 +1029,16 @@ inline int RTHidDevice::parsePayload(int reportId, const quint8 *buffer, CFIndex
             break;
         }
         default: {
-            qDebug("[HIDDEV] RID UNHANDLED: rid=%d", reportId);
+            qDebug("[HIDDEV] RID UNHANDLED: rid=%d", rid);
         }
     }
 
     return kIOReturnSuccess;
 }
 
-inline int RTHidDevice::hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size)
+inline int RTHidDevice::hidGetReportById(IOHIDDeviceRef device, int rid, CFIndex size)
 {
-    if (!size || !reportId) {
+    if (!size || !rid) {
         qCritical() << "[HIDDEV] Invalid parameters.";
         return EINVAL;
     }
@@ -867,30 +1048,25 @@ inline int RTHidDevice::hidGetReportById(IOHIDDeviceRef device, int reportId, CF
     quint8 *buffer = (quint8 *) malloc(length);
     memset(buffer, 0x00, length);
 
-    ret = IOHIDDeviceGetReport(device, kIOHIDReportTypeFeature, reportId, buffer, &length);
+    ret = IOHIDDeviceGetReport(device, kIOHIDReportTypeFeature, rid, buffer, &length);
     if (ret != kIOReturnSuccess) {
         qCritical("[HIDDEV] Unable to read HID device.");
         free(buffer);
         return EIO;
     }
     if (length == 0) {
-        qWarning("[HIDDEV] Unexpected data length of HID report 0x%02x.", reportId);
+        qWarning("[HIDDEV] Unexpected data length of HID report 0x%02x.", rid);
         free(buffer);
         return EIO;
     }
 
 #ifdef QT_DEBUG
     QByteArray d((char *) buffer, length);
-    qDebug("[HIDDEV] GetReport(%p): [ID:0x%04x LEN:%lld] pl=%s", //
-           device,
-           reportId,
-           d.length(),
-           qPrintable(d.toHex(' ')));
+    qDebug("[HIDDEV] GetReport(%p): [ID:0x%04x LEN:%lld] pl=%s", device, rid, d.length(), qPrintable(d.toHex(' ')));
 #endif
 
-    ret = parsePayload(reportId, buffer, length);
+    ret = parsePayload(rid, buffer, length);
     free(buffer);
-
     return ret;
 }
 
@@ -900,7 +1076,7 @@ void RTHidDevice::onSetReportCallback(IOReturn status, uint rid, CFIndex length,
 
 #ifdef QT_DEBUG
     if (length > 0) {
-        qDebug("[HIDDEV] status=%d RID=%d SIZE=%ld", status, rid, length);
+        qDebug("[HIDDEV] status=%d RID=0x%02x SIZE=%ld", status, rid, length);
         qDebug("[HIDDEV] data=%s", qPrintable(data.toHex(' ')));
     }
 #else
@@ -916,7 +1092,7 @@ void RTHidDevice::onSetReportCallback(IOReturn status, uint rid, CFIndex length,
 
 inline int RTHidDevice::hidSetRoccatControl(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req)
 {
-    IOReturn ret;
+    /* ROCCAT control message */
     RoccatControl control;
     control.report_id = rid;
     control.request = req;
@@ -924,25 +1100,22 @@ inline int RTHidDevice::hidSetRoccatControl(IOHIDDeviceRef device, uint ep, uint
 
     m_isCBComplete = false;
     const IOHIDReportType hrt = toMacOSReportType(ep);
-    const CFTimeInterval timeout = 2.0f;
     const CFIndex length = sizeof(RoccatControl);
-    const uint8_t *payload = (const uint8_t *) &control;
+    const uint8_t *buffer = (const uint8_t *) &control;
+    IOReturn ret = kIOReturnSuccess;
 
 #ifdef QT_DEBUG
-    QByteArray d((char *) payload, length);
-    qDebug("[HIDDEV] SetReport(%p): [ID:0x%04x LEN:%lld] pl=%s", //
-           device,
-           control.report_id,
-           d.length(),
-           qPrintable(d.toHex(' ')));
+    QByteArray d((char *) buffer, length);
+    qDebug("[HIDDEV] SetRoccatControl(%p): [RID:0x%04x LEN:%lld] pl=%s", device, control.report_id, d.length(), qPrintable(d.toHex(' ')));
 #endif
 
-    //ret = IOHIDDeviceSetReport(device, hrt, rid, payload, sizeof(RoccatControl));
+#if 1
+    const CFTimeInterval timeout = 2.0f;
     ret = IOHIDDeviceSetReportWithCallback( //
         device,
         hrt,
         rid,
-        payload,
+        buffer,
         length,
         timeout,         // Timeout in Sekunden
         _reportCallback, // Callback-Funktion
@@ -971,330 +1144,91 @@ inline int RTHidDevice::hidSetRoccatControl(IOHIDDeviceRef device, uint ep, uint
         qCritical("[HIDDEV] Timeout while waiting for HID device %p.", device);
         return EIO;
     }
+#else
+    ret = IOHIDDeviceSetReport(device, hrt, rid, buffer, sizeof(RoccatControl));
+#endif
 
-    return kIOReturnSuccess;
+    return ret;
 }
 
-inline int RTHidDevice::hidWriteReport(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length)
+inline int RTHidDevice::hidCheckWrite(IOHIDDeviceRef device)
+{
+    const IOHIDReportType hrt = toMacOSReportType(TYON_INTERFACE_MOUSE);
+
+    quint8 rid = TYON_REPORT_ID_CONTROL;
+    CFIndex length = sizeof(RoccatControl);
+    RoccatControl *buffer = (RoccatControl *) malloc(length);
+
+    memset(buffer, 0x00, length);
+
+    IOReturn ret = kIOReturnSuccess;
+    while (ret == kIOReturnSuccess) {
+        ret = IOHIDDeviceGetReport(device, hrt, rid, (quint8 *) buffer, &length);
+        if (ret != kIOReturnSuccess) {
+            qCritical("[HIDDEV] Unable to read HID device.");
+            goto func_exit;
+        }
+        if (length == 0) {
+            qWarning("[HIDDEV] Unexpected data length of HID report 0x%02x.", rid);
+            goto func_exit;
+        }
+
+#ifdef QT_DEBUG
+        QByteArray d((char *) buffer, length);
+        qDebug("[HIDDEV] hidCheckWrite(%p): [RID:0x%04x LEN:%lld] pl=%s", device, rid, d.length(), qPrintable(d.toHex(' ')));
+#endif
+
+        switch (buffer->value) {
+            case ROCCAT_CONTROL_VALUE_STATUS_OK: {
+                goto func_exit;
+            }
+            case ROCCAT_CONTROL_VALUE_STATUS_BUSY: {
+                QThread::msleep(500);
+                break;
+            }
+            case ROCCAT_CONTROL_VALUE_STATUS_CRITICAL_1:
+            case ROCCAT_CONTROL_VALUE_STATUS_CRITICAL_2: {
+                emit deviceError(buffer->value, tr("Got critical status"));
+                ret = kIOReturnIOError;
+                break;
+            }
+            case ROCCAT_CONTROL_VALUE_STATUS_INVALID: {
+                emit deviceError(buffer->value, tr("Got invalid status"));
+                ret = kIOReturnIOError;
+                break;
+            }
+            default: {
+                emit deviceError(buffer->value, tr("Got unknown error"));
+                ret = kIOReturnIOError;
+                break;
+            }
+        }
+    }
+
+func_exit:
+    free(buffer);
+    return ret;
+}
+
+inline int RTHidDevice::hidSetReportRaw(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length)
 {
     IOReturn ret;
 
-    m_isCBComplete = false;
-    const uint reportId = buffer[0];
     const IOHIDReportType hrt = toMacOSReportType(TYON_INTERFACE_MOUSE);
-    const uint8_t *buf = &buffer[1];
+    const quint8 rid = buffer[0]; // required!
 
 #ifdef QT_DEBUG
     QByteArray d((char *) buffer, length);
-    qDebug("[HIDDEV] SetReport(%p): [ID:0x%04x LEN:%lld] pl=%s", //
-           device,
-           reportId,
-           d.length(),
-           qPrintable(d.toHex(' ')));
+    qDebug("[HIDDEV] hidSetReportRaw(%p): [RID:0x%04x LEN:%lld] pl=%s", device, rid, d.length(), qPrintable(d.toHex(' ')));
 #endif
 
-    ret = IOHIDDeviceSetReport(device, hrt, reportId, buf, length);
+    m_isCBComplete = false;
+    ret = IOHIDDeviceSetReport(device, hrt, rid, buffer, length);
     if (ret != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to write HID raw message. ret=%d", ret);
+        qCritical("[HIDDEV] Unable to write HID raw message. ret=0x%08x", ret);
         return ret;
     }
 
-    QThread::msleep(200);
-
+    QThread::msleep(150);
     return kIOReturnSuccess;
 }
-
-inline int RTHidDevice::hidWriteRaw(IOHIDDeviceRef device, const quint8 *buffer, ssize_t length)
-{
-    m_profiles.clear();
-    qApp->processEvents();
-
-    auto writeByOSX = [this, device, buffer, length]() -> IOReturn {
-        IOReturn ret = kIOReturnSuccess;
-        const IOHIDReportType hrt = toMacOSReportType(TYON_INTERFACE_MOUSE);
-        const quint8 reportId = buffer[0];
-        const CFTimeInterval timeout = 2.0f;
-        const uint8_t *payload = (const uint8_t *) &buffer[1];
-        m_isCBComplete = false;
-        //ret = IOHIDDeviceSetReport(device, hrt, buffer[0], payload, length);
-        ret = IOHIDDeviceSetReportWithCallback( //
-            device,
-            hrt,
-            reportId,
-            payload,
-            length,
-            timeout,         // Timeout in Sekunden
-            _reportCallback, // Callback-Funktion
-            this             // context
-        );
-
-        if (ret != kIOReturnSuccess) {
-            qCritical("[HIDDEV] Unable to write HID raw message. ret=%d", ret);
-            return ret;
-        }
-
-        auto checkComplete = [this]() -> bool {
-            QMutexLocker lock(&m_mutex);
-            return m_isCBComplete;
-        };
-
-        QDeadlineTimer dt(500, Qt::PreciseTimer);
-        do {
-            if (checkComplete()) {
-                break;
-            }
-            qApp->processEvents();
-        } while (!dt.hasExpired());
-
-        if (dt.hasExpired()) {
-            qCritical("[HIDDEV] Timeout while waiting for HID device %p.", device);
-            return EIO;
-        }
-        return kIOReturnSuccess;
-    };
-
-    auto writeByHidApi = [this, buffer, length]() -> IOReturn {
-        IOReturn ret = kIOReturnSuccess;
-        hid_device *handle;
-#ifdef QT_DEBUG
-        wchar_t wstr[HIDAPI_MAX_STR];
-#endif
-
-        if (!m_hasHidApi) {
-            qCritical("[HIDDEV] HIDAPI not initialized.");
-            return ENODEV;
-        }
-
-        // Open the device using the VID, PID,
-        // and optionally the Serial number.
-        handle = hid_open( //
-            USB_DEVICE_ID_VENDOR_ROCCAT,
-            USB_DEVICE_ID_ROCCAT_TYON_BLACK,
-            NULL);
-        if (!handle) {
-            qCritical("[HIDDEV] Unable to open device.");
-            return ENODEV;
-        }
-
-#ifdef QT_DEBUG
-        // Read the Manufacturer String
-        ret = hid_get_manufacturer_string(handle, wstr, HIDAPI_MAX_STR);
-        if (ret) {
-            QString msg = QString::fromStdWString(hid_error(handle));
-            qCritical("[HIDDEV] Unable to get device manufacturer. ret=%d (%s)", ret, qPrintable(msg));
-            goto func_exit;
-        }
-        qDebug("[HIDDEV] Manufacturer String: %s", qPrintable(QString::fromStdWString(wstr)));
-#endif
-
-#ifdef QT_DEBUG
-        // Read the Product String
-        ret = hid_get_product_string(handle, wstr, HIDAPI_MAX_STR);
-        if (ret) {
-            QString msg = QString::fromStdWString(hid_error(handle));
-            qCritical("[HIDDEV] Unable to get device product id. ret=%d (%s)", ret, qPrintable(msg));
-            goto func_exit;
-        }
-        qDebug("[HIDDEV] Product String: %s", qPrintable(QString::fromStdWString(wstr)));
-#endif
-
-#ifdef QT_DEBUG
-        // Read the Serial Number String
-        ret = hid_get_serial_number_string(handle, wstr, HIDAPI_MAX_STR);
-        if (ret) {
-            QString msg = QString::fromStdWString(hid_error(handle));
-            qCritical("[HIDDEV] Unable to get device serial number. ret=%d (%s)", ret, qPrintable(msg));
-            goto func_exit;
-        }
-        qDebug("[HIDDEV] Serial Number String: %s", qPrintable(QString::fromStdWString(wstr)));
-#endif
-
-        // write HID message
-        ret = hid_write(handle, buffer, length);
-        //ret = hid_send_output_report(handle, buffer, length);
-        //ret = hid_send_feature_report(handle, buffer, length);
-        if (ret != length) {
-            QString msg = QString::fromStdWString(hid_error(handle));
-            qCritical("[HIDDEV] Unable to write HID message. ret=%d (%s)", ret, qPrintable(msg));
-            goto func_exit;
-        } else {
-            ret = kIOReturnSuccess;
-        }
-
-    func_exit:
-        hid_close(handle);
-        return ret;
-    };
-
-    if (!device) {
-        IOReturn ret;
-        if ((ret = writeByHidApi()) != kIOReturnSuccess) {
-            return ret;
-        }
-        return kIOReturnSuccess;
-    }
-
-    return writeByOSX();
-}
-
-inline int RTHidDevice::selectProfileSettings(IOHIDDeviceRef device, uint pix)
-{
-    IOReturn ret;
-
-    if (pix > TYON_PROFILE_NUM) {
-        qCritical("[HIDDEV] Invalid profile index: %d", pix);
-        return EINVAL;
-    }
-
-    /* tyon_select(
-     *  device: device,
-     *  profile_index: profile_index,
-     *  data_index: TYON_CONTROL_DATA_INDEX_NONE,
-     *  request: TYON_CONTROL_REQUEST_PROFILE_BUTTONS,
-     *  error)
-     *
-     * roccat_select(
-     *  device: device,
-     *  endpoint: TYON_INTERFACE_MOUSE,
-     *  report_id: TYON_REPORT_ID_CONTROL,
-     *  profile_index: data_index | profile_index,
-     *  request: request,
-     *  error)
-     */
-    const quint8 HEP = TYON_INTERFACE_MOUSE;
-    const quint8 RID = TYON_REPORT_ID_CONTROL;
-    const quint8 PIX = (TYON_CONTROL_DATA_INDEX_NONE | pix);
-    const quint8 REQ = TYON_CONTROL_REQUEST_PROFILE_SETTINGS;
-
-    if ((ret = hidSetRoccatControl(device, HEP, RID, PIX, REQ)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to select profile %d. ret=%d", pix, ret);
-        return ret;
-    }
-
-#ifdef QT_DEBUG
-    qDebug("[HIDDEV] Profile settings selected. PIX=%d (0x%02x) REQ=%d (0x%02x)", PIX, PIX, REQ, REQ);
-#endif
-
-    return kIOReturnSuccess;
-}
-
-inline int RTHidDevice::selectProfileButtons(IOHIDDeviceRef device, uint pix)
-{
-    IOReturn ret;
-
-    if (pix > TYON_PROFILE_NUM) {
-        qCritical("[HIDDEV] Invalid profile index: %d", pix);
-        return EINVAL;
-    }
-
-    /* tyon_select(
-     *  device: device,
-     *  profile_index: profile_index,
-     *  data_index: TYON_CONTROL_DATA_INDEX_NONE,
-     *  request: TYON_CONTROL_REQUEST_PROFILE_BUTTONS,
-     *  error)
-     *
-     * roccat_select(
-     *  device: device,
-     *  endpoint: TYON_INTERFACE_MOUSE,
-     *  report_id: TYON_REPORT_ID_CONTROL,
-     *  profile_index: data_index | profile_index,
-     *  request: request,
-     *  error)
-     */
-    const quint8 HEP = TYON_INTERFACE_MOUSE;
-    const quint8 RID = TYON_REPORT_ID_CONTROL;
-    const quint8 PIX = (TYON_CONTROL_DATA_INDEX_NONE | pix);
-    const quint8 REQ = TYON_CONTROL_REQUEST_PROFILE_BUTTONS;
-
-    if ((ret = hidSetRoccatControl(device, HEP, RID, PIX, REQ)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to select profile %d. ret=%d", pix, ret);
-        return ret;
-    }
-
-#ifdef QT_DEBUG
-    qDebug("[HIDDEV] Profile buttons selected. PIX=%d (0x%02x) REQ=%d (0x%02x)", PIX, PIX, REQ, REQ);
-#endif
-
-    return kIOReturnSuccess;
-}
-
-// -----------------------------------------------------
-//
-// -----------------------------------------------------
-
-#ifdef QT_DEBUG
-static inline void debugSettings(const RTHidDevice::TProfile profile, quint8 currentPix)
-{
-    const TyonProfileSettings *s = &profile.settings;
-
-    qDebug("[HIDDEV] PROFILE: INDEX=%d NAME=%s", //
-           profile.index,
-           qPrintable(profile.name));
-
-    qDebug("[HIDDEV] SETTINGS: SIZE=%d PIX=%d (ACT=%d) CHKS=%d", s->size, s->profile_index, currentPix, s->checksum);
-    qDebug("[HIDDEV] SETTINGS: DPI_LEVs_EN=%d DPI_ACTIVE=%d SENS_X=%d SENS_Y=%d ADV_SENS=%d TFX_POLLRATE=%d", //
-           s->cpi_levels_enabled,
-           s->cpi_active,
-           s->sensitivity_x,
-           s->sensitivity_y,
-           s->advanced_sensitivity,
-           s->talkfx_polling_rate);
-
-    for (qint8 i = 0; i < TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM; i++) {
-        qDebug("[HIDDEV] SETTINGS: DPI-%d DPI-LEVEL=%d ((>>2)*200 = %d)", //
-               i,
-               s->cpi_levels[i],
-               (s->cpi_levels[i] >> 2) * 200);
-    }
-
-    qDebug("[HIDDEV] SETTINGS: LIGHT_EN=%d LIGHT_EFF=0x%02x CLR_FLOW=0x%02x SPEED=%d", //
-           s->lights_enabled,
-           s->light_effect,
-           s->color_flow,
-           s->effect_speed);
-
-    for (qint8 i = 0; i < TYON_LIGHTS_NUM; i++) {
-        qDebug("[HIDDEV] SETTINGS: LIGHT-%d RED=%d GREEN=%d BLUE=%d IDX=%d", //
-               i,
-               s->lights[i].red,
-               s->lights[i].green,
-               s->lights[i].blue,
-               s->lights[i].index);
-    }
-}
-
-static inline void debugButtons(const RTHidDevice::TProfile profile, quint8 currentPix)
-{
-    const TyonProfileButtons *b = &profile.buttons;
-
-    qDebug("[HIDDEV] BUTTONS: SIZE=%d PIX=%d (ACT=%d)", b->size, b->profile_index, currentPix);
-
-    /* physical buttons and with EasyShift combined
-     * 32 buttons (16x2) */
-    const quint8 bixStart = TYON_BUTTON_INDEX_LEFT;
-    const quint8 bixCount = TYON_PROFILE_BUTTON_NUM;
-
-    for (quint8 index = bixStart; index < bixCount; index++) {
-        qDebug("[HIDDEV] BUTTONS: #%02d B_TYPE=0x%04x B_KEY=0x%02x '%c' B_MOD=0x%04x", //
-               index,
-               b->buttons[index].type, /* -> button function */
-               b->buttons[index].key,
-               b->buttons[index].key >= 0x20 && b->buttons[index].key < 0x7f ? b->buttons[index].key : ' ',
-               b->buttons[index].modifier);
-    }
-}
-
-static inline void debugDevInfo(TyonInfo *p)
-{
-    qDebug("[HIDDEV] DEVINFO: SIZE=%d DFU=%d FW=%d", //
-           p->size,
-           p->dfu_version,
-           p->firmware_version);
-    qDebug("[HIDDEV] DEVINFO: XC_MIN=%d XC_MID=%d XC_MAX=%d", //
-           p->xcelerator_min,
-           p->xcelerator_mid,
-           p->xcelerator_max);
-    qDebug("[HIDDEV] DEVINFO: FUNCTION=%d", p->function);
-}
-#endif

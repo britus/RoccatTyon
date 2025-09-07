@@ -426,8 +426,8 @@ typedef enum {
 } TyonProfileSettingsTalkfx;
 
 typedef enum {
-    TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_WHEEL = 2, //EOF-BUTFIX: 0 -> 2
-    TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_BOTTOM = 1,
+    TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_WHEEL = 1, //EOF-BUTFIX: 0 -> 1
+    TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_BOTTOM = 2,
     TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR = 4,
 } TyonProfileSettingsLightsEnabled;
 
@@ -529,3 +529,28 @@ struct _TyonDeviceState
     quint8 state;
 } __attribute__((packed));
 typedef struct _TyonDeviceState TyonDeviceState;
+
+enum {
+    TYON_RMP_LIGHT_INFO_COLORS_NUM = 16,
+};
+
+typedef enum {
+    TYON_RMP_LIGHT_INFO_STATE_ON = 1,
+    TYON_RMP_LIGHT_INFO_STATE_OFF = 2,
+} TyonRmpLightInfoState;
+
+struct _TyonRmpLightInfo
+{
+    quint8 index;
+    quint8 state;
+    quint8 red;
+    quint8 green;
+    quint8 blue;
+    quint8 null;
+    quint8 checksum;
+} __attribute__((packed));
+typedef struct _TyonRmpLightInfo TyonRmpLightInfo;
+
+enum {
+    GDK_ROCCAT_BYTE_TO_COLOR_FACTOR = 257,
+};

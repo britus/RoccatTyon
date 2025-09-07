@@ -125,8 +125,11 @@ RTDeviceController::RTDeviceController(QObject *parent)
     connect(&m_device, &RTHidDevice::deviceFound, this, &RTDeviceController::onDeviceFound);
     connect(&m_device, &RTHidDevice::deviceRemoved, this, &RTDeviceController::onDeviceRemoved);
     connect(&m_device, &RTHidDevice::deviceInfo, this, &RTDeviceController::onDeviceInfo);
-    connect(&m_device, &RTHidDevice::profileIndexChanged, this, &RTDeviceController::onProfileIndexChanged);
     connect(&m_device, &RTHidDevice::profileChanged, this, &RTDeviceController::onProfileChanged);
+    connect(&m_device, &RTHidDevice::profileIndexChanged, this, &RTDeviceController::onProfileIndexChanged);
+    connect(&m_device, &RTHidDevice::saveProfilesStarted, this, &RTDeviceController::onSaveProfilesStarted);
+    connect(&m_device, &RTHidDevice::saveProfilesFinished, this, &RTDeviceController::onSaveProfilesFinished);
+    // --
     connect(&m_device, &RTHidDevice::profileChanged, &m_model, &RTProfileModel::onProfileChanged);
     connect(&m_model, &RTProfileModel::dataChanged, this, &RTDeviceController::onModelChanged);
 
@@ -451,14 +454,14 @@ void RTDeviceController::setColorFlow(quint8 value)
     m_device.setColorFlow(value);
 }
 
-void RTDeviceController::setLightColorWheel(const QRgb &color)
+void RTDeviceController::setLightColorWheel(const TyonRmpLightInfo &color)
 {
-    m_device.setLightColorWheel(qRed(color), qGreen(color), qBlue(color));
+    m_device.setLightColorWheel(color);
 }
 
-void RTDeviceController::setLightColorBottom(const QRgb &color)
+void RTDeviceController::setLightColorBottom(const TyonRmpLightInfo &color)
 {
-    m_device.setLightColorBottom(qRed(color), qGreen(color), qBlue(color));
+    m_device.setLightColorBottom(color);
 }
 
 QString RTDeviceController::profileName() const
@@ -512,6 +515,16 @@ void RTDeviceController::onDeviceError(int error, const QString &message)
 void RTDeviceController::onDeviceInfo(const TyonInfo &info)
 {
     emit deviceInfoChanged(info);
+}
+
+void RTDeviceController::onSaveProfilesStarted()
+{
+    emit saveProfilesStarted();
+}
+
+void RTDeviceController::onSaveProfilesFinished()
+{
+    emit saveProfilesFinished();
 }
 
 void RTDeviceController::onProfileIndexChanged(const quint8 pix)

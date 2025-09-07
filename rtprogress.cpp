@@ -48,7 +48,7 @@ void RTProgress::present(const QString &message, QWidget *parent)
     instance->move(scr.center() - instance->rect().center());
     instance->setWindowTitle(message);
     instance->setVisible(true);
-    //instance->raise();
+    instance->raise();
     QApplication::processEvents();
 }
 
