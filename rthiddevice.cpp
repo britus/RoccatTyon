@@ -23,16 +23,38 @@ static inline void debugButtons(const RTHidDevice::TProfile profile, quint8 curr
 static inline void debugDevInfo(TyonInfo *p);
 #endif
 
-static inline void deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
+static inline void _deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
 {
-    RTHidDevice *controller = static_cast<RTHidDevice *>(context);
-    controller->onDeviceFound(device);
+    RTHidDevice *ctx = static_cast<RTHidDevice *>(context);
+    ctx->onDeviceFound(device);
 }
 
-static inline void deviceRemovedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
+static inline void _deviceRemovedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
 {
-    RTHidDevice *controller = static_cast<RTHidDevice *>(context);
-    controller->onDeviceRemoved(device);
+    RTHidDevice *ctx = static_cast<RTHidDevice *>(context);
+    ctx->onDeviceRemoved(device);
+}
+
+// Callback for IOHIDDeviceSetReportWithCallback
+static inline void writeReportCallback( //
+    void *context,
+    IOReturn result,
+    void *,
+    IOHIDReportType type,
+    uint32_t reportID,
+    uint8_t *report,
+    CFIndex reportLength)
+{
+#if 0
+    qDebug("[HIDDEV] (WRCB) IOHIDDeviceSetReportWithCallback result=%d", result);
+    qDebug("[HIDDEV] (WRCB) RT=%d RID=%d SIZE=%ld CTX=%p", type, reportID, reportLength, context);
+#else
+    Q_UNUSED(type)
+#endif
+
+    RTHidDevice *ctx = static_cast<RTHidDevice *>(context);
+    const QByteArray data((char *) report, reportLength);
+    ctx->onSetReportCallback(result, reportID, data.length(), data);
 }
 
 // -------------------------------------------------------------
@@ -108,8 +130,8 @@ void RTHidDevice::lookupDevice()
     CFRelease(matchingDicts);
 
     // Register for device attached and removed callbacks
-    IOHIDManagerRegisterDeviceMatchingCallback(m_manager, deviceAttachedCallback, this);
-    IOHIDManagerRegisterDeviceRemovalCallback(m_manager, deviceRemovedCallback, this);
+    IOHIDManagerRegisterDeviceMatchingCallback(m_manager, _deviceAttachedCallback, this);
+    IOHIDManagerRegisterDeviceRemovalCallback(m_manager, _deviceRemovedCallback, this);
 
     // Open HID manager
     IOReturn result = IOHIDManagerOpen(m_manager, kIOHIDOptionsTypeNone);
@@ -757,31 +779,6 @@ inline int RTHidDevice::readHidReport(IOHIDDeviceRef device, const int reportId,
     }
 
     return kIOReturnSuccess;
-}
-
-// Callback for IOHIDDeviceSetReportWithCallback
-static inline void writeReportCallback( //
-    void *context,
-    IOReturn result,
-    void *,
-    IOHIDReportType type,
-    uint32_t reportID,
-    uint8_t *report,
-    CFIndex reportLength)
-{
-#if 0
-    qDebug("[HIDDEV] (WRCB) IOHIDDeviceSetReportWithCallback result=%d", result);
-    qDebug("[HIDDEV] (WRCB) RT=%d RID=%d SIZE=%ld CTX=%p", type, reportID, reportLength, context);
-#else
-    Q_UNUSED(type)
-#endif
-
-    RTHidDevice *ctx;
-    if ((ctx = dynamic_cast<RTHidDevice *>((QObject *) context))) {
-        const QByteArray data((char *) report, reportLength);
-        //emit ctx->reportCallback(result, reportID, data.length(), data);
-        ctx->onSetReportCallback(result, reportID, data.length(), data);
-    }
 }
 
 void RTHidDevice::onSetReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data)
