@@ -150,14 +150,15 @@ private:
 private:
     inline void releaseDevices();
     inline void releaseManager();
-    inline int setDeviceState(bool state, IOHIDDeviceRef device = nullptr);
-    inline int readHidReport(IOHIDDeviceRef device, const int reportId, const CFIndex size);
-    inline int writeHidReport(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req);
+    inline int hidReadReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
+    inline int hidWriteControlAsync(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req);
     inline int writeDevice(IOHIDDeviceRef device, quint8 const *buffer, ssize_t length);
+    inline int parsePayload(int reportId, const quint8 *buffer, CFIndex length);
+    inline int setDeviceState(bool state, IOHIDDeviceRef device = nullptr);
     inline int selectProfileSettings(IOHIDDeviceRef device, uint pix);
     inline int selectProfileButtons(IOHIDDeviceRef device, uint pix);
-    inline int readProfile(IOHIDDeviceRef device, quint8 pix);
     inline int selectMacro(IOHIDDeviceRef device, uint pix, uint dix, uint bix);
+    inline int readProfile(IOHIDDeviceRef device, quint8 pix);
     inline int readButtonMacro(IOHIDDeviceRef device, uint pix, uint bix);
     inline int readDeviceInfo(IOHIDDeviceRef device);
     inline int readActiveProfile(IOHIDDeviceRef device);
