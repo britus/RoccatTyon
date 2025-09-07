@@ -302,8 +302,7 @@ bool RTHidDevice::saveProfilesToDevice()
         t,
         &QThread::destroyed,
         this,
-        [this]() //
-        {
+        [this]() {
             emit saveProfilesFinished();
             releaseManager();
             lookupDevice();
@@ -1229,6 +1228,6 @@ inline int RTHidDevice::hidSetReportRaw(IOHIDDeviceRef device, const uint8_t *bu
         return ret;
     }
 
-    QThread::msleep(150);
+    QThread::msleep(250);
     return kIOReturnSuccess;
 }
