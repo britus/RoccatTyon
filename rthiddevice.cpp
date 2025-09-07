@@ -87,9 +87,9 @@ void RTHidDevice::lookupDevice()
         qCritical("[HIDDEV] Failed to create HID manager.");
         return;
     }
-
+#if 0
     // Set up matching dictionary for Roccat Tyon devices
-    CFMutableArrayRef matchingDicts = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+    CFMutableArrayRef filter = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
 
     // Constants for Roccat Tyon mouse Black and White variants
     const uint32_t vendorId = USB_DEVICE_ID_VENDOR_ROCCAT;
@@ -97,8 +97,12 @@ void RTHidDevice::lookupDevice()
         {USB_DEVICE_ID_ROCCAT_TYON_BLACK, //
          USB_DEVICE_ID_ROCCAT_TYON_WHITE};
 
-    auto createDeviceMatchingDictionary = [](uint32_t vendorId, uint32_t productId) -> CFMutableDictionaryRef {
-        CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    auto createMatching = [](uint32_t vendorId, uint32_t productId) -> CFMutableDictionaryRef {
+        CFMutableDictionaryRef dict = CFDictionaryCreateMutable( //
+            kCFAllocatorDefault,
+            0,
+            &kCFTypeDictionaryKeyCallBacks,
+            &kCFTypeDictionaryValueCallBacks);
         if (!dict)
             return nullptr;
 
@@ -118,20 +122,57 @@ void RTHidDevice::lookupDevice()
         return dict;
     };
 
+    CFMutableDictionaryRef dict;
     for (auto productId : productIds) {
-        CFMutableDictionaryRef dict = createDeviceMatchingDictionary(vendorId, productId);
-        if (dict) {
-            CFArrayAppendValue(matchingDicts, dict);
+        if ((dict = createMatching(vendorId, productId))) {
+            CFArrayAppendValue(filter, dict);
             CFRelease(dict);
         }
     }
 
-    IOHIDManagerSetDeviceMatchingMultiple(m_manager, matchingDicts);
-    CFRelease(matchingDicts);
+    IOHIDManagerSetDeviceMatchingMultiple(m_manager, filter);
+    CFRelease(filter);
 
     // Register for device attached and removed callbacks
     IOHIDManagerRegisterDeviceMatchingCallback(m_manager, _deviceAttachedCallback, this);
     IOHIDManagerRegisterDeviceRemovalCallback(m_manager, _deviceRemovedCallback, this);
+    IOHIDManagerScheduleWithRunLoop(m_manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+#endif
+#if 1
+    m_manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+    if (!m_manager) {
+        qCritical() << "[HIDDEV] Unable to create IOHIDManager instance.";
+        emit deviceError(EINVAL, "Unable to connect HID manager.");
+        return;
+    }
+
+    // Device-Matching: Only ROCCAT Tyon
+    CFMutableDictionaryRef matchingDict = CFDictionaryCreateMutable( //
+        kCFAllocatorDefault,
+        0,
+        &kCFTypeDictionaryKeyCallBacks,
+        &kCFTypeDictionaryValueCallBacks);
+
+    const uint32_t _vendorId = USB_DEVICE_ID_VENDOR_ROCCAT;
+    const uint32_t _productIds[2] =       //
+        {USB_DEVICE_ID_ROCCAT_TYON_BLACK, //
+         USB_DEVICE_ID_ROCCAT_TYON_WHITE};
+
+    CFNumberRef vendorId = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &_vendorId);
+    CFNumberRef productId = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &_productIds[0]);
+
+    CFDictionarySetValue(matchingDict, CFSTR(kIOHIDVendorIDKey), vendorId);
+    CFDictionarySetValue(matchingDict, CFSTR(kIOHIDProductIDKey), productId);
+
+    IOHIDManagerSetDeviceMatching(m_manager, matchingDict);
+    CFRelease(matchingDict);
+    CFRelease(vendorId);
+    CFRelease(productId);
+
+    IOHIDManagerRegisterDeviceMatchingCallback(m_manager, _deviceAttachedCallback, this);
+    IOHIDManagerRegisterDeviceRemovalCallback(m_manager, _deviceRemovedCallback, this);
+    IOHIDManagerScheduleWithRunLoop(m_manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+#endif
 
     // Open HID manager
     IOReturn result = IOHIDManagerOpen(m_manager, kIOHIDOptionsTypeNone);
@@ -459,6 +500,12 @@ QString RTHidDevice::profileName() const
 void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
 {
     IOReturn ret;
+
+    // some devices cannot open ?? 4 times called for product
+    ret = IOHIDDeviceOpen(device, kIOHIDOptionsTypeSeizeDevice);
+    if (ret != kIOReturnSuccess) {
+        return;
+    }
 
     /* skip if already read */
     if (m_devices.contains(device)) {
