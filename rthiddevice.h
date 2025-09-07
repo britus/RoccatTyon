@@ -150,9 +150,10 @@ private:
 private:
     inline void releaseDevices();
     inline void releaseManager();
-    inline int hidReadReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
-    inline int hidWriteControlAsync(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req);
-    inline int writeDevice(IOHIDDeviceRef device, quint8 const *buffer, ssize_t length);
+    inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
+    inline int hidSetRoccatControl(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req);
+    inline int hidWriteReport(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
+    inline int hidWriteRaw(IOHIDDeviceRef device, quint8 const *buffer, ssize_t length);
     inline int parsePayload(int reportId, const quint8 *buffer, CFIndex length);
     inline int setDeviceState(bool state, IOHIDDeviceRef device = nullptr);
     inline int selectProfileSettings(IOHIDDeviceRef device, uint pix);

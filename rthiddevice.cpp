@@ -15,6 +15,8 @@
 
 Q_DECLARE_OPAQUE_POINTER(IOHIDDeviceRef)
 
+#define HIDAPI_MAX_STR 255
+
 // -------------------------------------------------------------
 //
 #ifdef QT_DEBUG
@@ -36,7 +38,7 @@ static inline void _deviceRemovedCallback(void *context, IOReturn, void *, IOHID
 }
 
 // Callback for IOHIDDeviceSetReportWithCallback
-static inline void writeReportCallback( //
+static inline void _reportCallback( //
     void *context,
     IOReturn result,
     void *,
@@ -195,7 +197,7 @@ bool RTHidDevice::resetProfiles()
     info.size = sizeof(TyonInfo);
 
     const quint8 *buf = (const quint8 *) &info;
-    if (writeDevice(nullptr, buf, sizeof(info)) != kIOReturnSuccess) {
+    if (hidWriteRaw(nullptr, buf, sizeof(info)) != kIOReturnSuccess) {
         return false;
     }
 
@@ -601,7 +603,7 @@ inline int RTHidDevice::setDeviceState(bool state, IOHIDDeviceRef device)
     device_state.size = sizeof(TyonDeviceState);
     device_state.state = (state ? 0x01 : 0x00);
     const quint8 *buf = (const quint8 *) &device_state;
-    return writeDevice(device, buf, device_state.size);
+    return hidWriteRaw(device, buf, device_state.size);
 }
 
 inline void RTHidDevice::releaseDevices()
@@ -627,62 +629,62 @@ inline void RTHidDevice::releaseManager()
 
 inline int RTHidDevice::readDeviceSpecial(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_SPECIAL, 256);
+    return hidGetReportById(device, TYON_REPORT_ID_SPECIAL, 256);
 }
 
 inline int RTHidDevice::readDeviceControl(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_CONTROL, 3);
+    return hidGetReportById(device, TYON_REPORT_ID_CONTROL, 3);
 }
 
 inline int RTHidDevice::readActiveProfile(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_PROFILE, sizeof(TyonProfile));
+    return hidGetReportById(device, TYON_REPORT_ID_PROFILE, sizeof(TyonProfile));
 }
 
 inline int RTHidDevice::readProfileSettings(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_PROFILE_SETTINGS, sizeof(TyonProfileSettings));
+    return hidGetReportById(device, TYON_REPORT_ID_PROFILE_SETTINGS, sizeof(TyonProfileSettings));
 }
 
 inline int RTHidDevice::readProfileButtons(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_PROFILE_BUTTONS, sizeof(TyonProfileButtons));
+    return hidGetReportById(device, TYON_REPORT_ID_PROFILE_BUTTONS, sizeof(TyonProfileButtons));
 }
 
 inline int RTHidDevice::readDeviceInfo(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_INFO, sizeof(TyonInfo));
+    return hidGetReportById(device, TYON_REPORT_ID_INFO, sizeof(TyonInfo));
 }
 
 inline int RTHidDevice::readDevice0A(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_A, 8);
+    return hidGetReportById(device, TYON_REPORT_ID_A, 8);
 }
 
 inline int RTHidDevice::readDeviceSensor(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_SENSOR, 4);
+    return hidGetReportById(device, TYON_REPORT_ID_SENSOR, 4);
 }
 
 inline int RTHidDevice::readDeviceControlUnit(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_CONTROL_UNIT, 6);
+    return hidGetReportById(device, TYON_REPORT_ID_CONTROL_UNIT, 6);
 }
 
 inline int RTHidDevice::readDeviceTalk(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_TALK, 16);
+    return hidGetReportById(device, TYON_REPORT_ID_TALK, 16);
 }
 
 inline int RTHidDevice::readDevice11(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_11, 16);
+    return hidGetReportById(device, TYON_REPORT_ID_11, 16);
 }
 
 inline int RTHidDevice::readDevice1A(IOHIDDeviceRef device)
 {
-    return hidReadReportById(device, TYON_REPORT_ID_1A, 1029);
+    return hidGetReportById(device, TYON_REPORT_ID_1A, 1029);
 }
 
 inline int RTHidDevice::readButtonMacro(IOHIDDeviceRef device, uint pix, uint bix)
@@ -706,7 +708,7 @@ inline int RTHidDevice::readButtonMacro(IOHIDDeviceRef device, uint pix, uint bi
         return ret;
     }
 
-    if ((ret = hidReadReportById(device, TYON_REPORT_ID_MACRO, sizeof(TyonMacro1))) != kIOReturnSuccess) {
+    if ((ret = hidGetReportById(device, TYON_REPORT_ID_MACRO, sizeof(TyonMacro1))) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -714,7 +716,7 @@ inline int RTHidDevice::readButtonMacro(IOHIDDeviceRef device, uint pix, uint bi
         return ret;
     }
 
-    if ((ret = hidReadReportById(device, TYON_REPORT_ID_MACRO, sizeof(TyonMacro2))) != kIOReturnSuccess) {
+    if ((ret = hidGetReportById(device, TYON_REPORT_ID_MACRO, sizeof(TyonMacro2))) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -744,7 +746,7 @@ inline int RTHidDevice::selectMacro(IOHIDDeviceRef device, uint pix, uint dix, u
     const quint8 PIX = (dix | pix);
     const quint8 REQ = bix;
 
-    if ((ret = hidWriteControlAsync(device, HEP, RID, PIX, REQ)) != kIOReturnSuccess) {
+    if ((ret = hidSetRoccatControl(device, HEP, RID, PIX, REQ)) != kIOReturnSuccess) {
         qCritical("[HIDDEV] Unable to select macro %d. ret=%d", REQ, ret);
         return ret;
     }
@@ -849,9 +851,11 @@ inline int RTHidDevice::parsePayload(int reportId, const quint8 *buffer, CFIndex
             qDebug("[HIDDEV] RID UNHANDLED: rid=%d", reportId);
         }
     }
+
+    return kIOReturnSuccess;
 }
 
-inline int RTHidDevice::hidReadReportById(IOHIDDeviceRef device, int reportId, CFIndex size)
+inline int RTHidDevice::hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size)
 {
     if (!size || !reportId) {
         qCritical() << "[HIDDEV] Invalid parameters.";
@@ -869,11 +873,6 @@ inline int RTHidDevice::hidReadReportById(IOHIDDeviceRef device, int reportId, C
         free(buffer);
         return EIO;
     }
-    if (buffer[0] != reportId) {
-        qCritical("[HIDDEV] Invalid HID report data.");
-        free(buffer);
-        return EIO;
-    }
     if (length == 0) {
         qWarning("[HIDDEV] Unexpected data length of HID report 0x%02x.", reportId);
         free(buffer);
@@ -882,17 +881,17 @@ inline int RTHidDevice::hidReadReportById(IOHIDDeviceRef device, int reportId, C
 
 #ifdef QT_DEBUG
     QByteArray d((char *) buffer, length);
-    qDebug("[HIDDEV] ReadReport(%p): [ID:0x%04x LEN:%lld] pl=%s", //
+    qDebug("[HIDDEV] GetReport(%p): [ID:0x%04x LEN:%lld] pl=%s", //
            device,
            reportId,
            d.length(),
            qPrintable(d.toHex(' ')));
 #endif
 
-    parsePayload(reportId, buffer, length);
-
+    ret = parsePayload(reportId, buffer, length);
     free(buffer);
-    return kIOReturnSuccess;
+
+    return ret;
 }
 
 void RTHidDevice::onSetReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data)
@@ -915,7 +914,7 @@ void RTHidDevice::onSetReportCallback(IOReturn status, uint rid, CFIndex length,
     m_isCBComplete = true;
 }
 
-inline int RTHidDevice::hidWriteControlAsync(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req)
+inline int RTHidDevice::hidSetRoccatControl(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req)
 {
     IOReturn ret;
     RoccatControl control;
@@ -926,8 +925,17 @@ inline int RTHidDevice::hidWriteControlAsync(IOHIDDeviceRef device, uint ep, uin
     m_isCBComplete = false;
     const IOHIDReportType hrt = toMacOSReportType(ep);
     const CFTimeInterval timeout = 2.0f;
-    const CFIndex payloadSize = sizeof(RoccatControl);
+    const CFIndex length = sizeof(RoccatControl);
     const uint8_t *payload = (const uint8_t *) &control;
+
+#ifdef QT_DEBUG
+    QByteArray d((char *) payload, length);
+    qDebug("[HIDDEV] SetReport(%p): [ID:0x%04x LEN:%lld] pl=%s", //
+           device,
+           control.report_id,
+           d.length(),
+           qPrintable(d.toHex(' ')));
+#endif
 
     //ret = IOHIDDeviceSetReport(device, hrt, rid, payload, sizeof(RoccatControl));
     ret = IOHIDDeviceSetReportWithCallback( //
@@ -935,10 +943,10 @@ inline int RTHidDevice::hidWriteControlAsync(IOHIDDeviceRef device, uint ep, uin
         hrt,
         rid,
         payload,
-        payloadSize,
-        timeout,             // Timeout in Sekunden
-        writeReportCallback, // Callback-Funktion
-        this                 // context
+        length,
+        timeout,         // Timeout in Sekunden
+        _reportCallback, // Callback-Funktion
+        this             // context
     );
 
     if (ret != kIOReturnSuccess) {
@@ -967,8 +975,36 @@ inline int RTHidDevice::hidWriteControlAsync(IOHIDDeviceRef device, uint ep, uin
     return kIOReturnSuccess;
 }
 
-#define HIDAPI_MAX_STR 255
-inline int RTHidDevice::writeDevice(IOHIDDeviceRef device, const quint8 *buffer, ssize_t length)
+inline int RTHidDevice::hidWriteReport(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length)
+{
+    IOReturn ret;
+
+    m_isCBComplete = false;
+    const uint reportId = buffer[0];
+    const IOHIDReportType hrt = toMacOSReportType(TYON_INTERFACE_MOUSE);
+    const uint8_t *buf = &buffer[1];
+
+#ifdef QT_DEBUG
+    QByteArray d((char *) buffer, length);
+    qDebug("[HIDDEV] SetReport(%p): [ID:0x%04x LEN:%lld] pl=%s", //
+           device,
+           reportId,
+           d.length(),
+           qPrintable(d.toHex(' ')));
+#endif
+
+    ret = IOHIDDeviceSetReport(device, hrt, reportId, buf, length);
+    if (ret != kIOReturnSuccess) {
+        qCritical("[HIDDEV] Unable to write HID raw message. ret=%d", ret);
+        return ret;
+    }
+
+    QThread::msleep(200);
+
+    return kIOReturnSuccess;
+}
+
+inline int RTHidDevice::hidWriteRaw(IOHIDDeviceRef device, const quint8 *buffer, ssize_t length)
 {
     m_profiles.clear();
     qApp->processEvents();
@@ -987,9 +1023,9 @@ inline int RTHidDevice::writeDevice(IOHIDDeviceRef device, const quint8 *buffer,
             reportId,
             payload,
             length,
-            timeout,             // Timeout in Sekunden
-            writeReportCallback, // Callback-Funktion
-            this                 // context
+            timeout,         // Timeout in Sekunden
+            _reportCallback, // Callback-Funktion
+            this             // context
         );
 
         if (ret != kIOReturnSuccess) {
@@ -1130,7 +1166,7 @@ inline int RTHidDevice::selectProfileSettings(IOHIDDeviceRef device, uint pix)
     const quint8 PIX = (TYON_CONTROL_DATA_INDEX_NONE | pix);
     const quint8 REQ = TYON_CONTROL_REQUEST_PROFILE_SETTINGS;
 
-    if ((ret = hidWriteControlAsync(device, HEP, RID, PIX, REQ)) != kIOReturnSuccess) {
+    if ((ret = hidSetRoccatControl(device, HEP, RID, PIX, REQ)) != kIOReturnSuccess) {
         qCritical("[HIDDEV] Unable to select profile %d. ret=%d", pix, ret);
         return ret;
     }
@@ -1171,7 +1207,7 @@ inline int RTHidDevice::selectProfileButtons(IOHIDDeviceRef device, uint pix)
     const quint8 PIX = (TYON_CONTROL_DATA_INDEX_NONE | pix);
     const quint8 REQ = TYON_CONTROL_REQUEST_PROFILE_BUTTONS;
 
-    if ((ret = hidWriteControlAsync(device, HEP, RID, PIX, REQ)) != kIOReturnSuccess) {
+    if ((ret = hidSetRoccatControl(device, HEP, RID, PIX, REQ)) != kIOReturnSuccess) {
         qCritical("[HIDDEV] Unable to select profile %d. ret=%d", pix, ret);
         return ret;
     }
