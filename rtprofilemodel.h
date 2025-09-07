@@ -27,6 +27,7 @@ public:
 
     // Editable:
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
+    bool clearItemData(const QModelIndex &index) override;
 
     Qt::ItemFlags flags(const QModelIndex &index) const override;
 

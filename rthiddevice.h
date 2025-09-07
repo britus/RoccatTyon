@@ -121,8 +121,9 @@ public:
 
 signals:
     void lookupStarted();
+    void deviceFound();
+    void deviceRemoved();
     void deviceError(int error, const QString &message);
-    void deviceFound(const TyonInfo &info);
     void deviceInfo(const TyonInfo &info);
     void profileIndexChanged(const quint8 pix);
     void profileChanged(const RTHidDevice::TProfile &profile);
@@ -133,7 +134,8 @@ signals:
 
 public slots:
     void onSetReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
-    void onDeviceFound(IOReturn /*status*/, IOHIDDeviceRef device);
+    void onDeviceFound(IOHIDDeviceRef device);
+    void onDeviceRemoved(IOHIDDeviceRef device);
 
 private:
     IOHIDManagerRef m_manager;

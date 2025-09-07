@@ -73,4 +73,11 @@ DISTFILES += \
     .gitignore \
     .gitmodules \
     hidapi.sh \
-    roccat.md
+    linux-app-reset-3t-sniff.txt \
+    linux-app-reset-3u-sniff.txt \
+    linux-app-saveall-lightchg-sniff.txt \
+    linux-app-saveall-sniff.txt \
+    linux-app-start-sniff.txt \
+    roccat.md \
+    tyon_hid_todo.txt \
+    writeByHidApi.txt

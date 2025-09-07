@@ -1,6 +1,5 @@
 #pragma once
 #include "rtdevicecontroller.h"
-#include "rtprofilemodel.h"
 #include <QAction>
 #include <QActionGroup>
 #include <QMainWindow>
@@ -24,6 +23,9 @@ public:
 
 private slots:
     void onLookupStarted();
+    void onDeviceFound();
+    void onDeviceRemoved();
+    void onDeviceError(uint error, const QString &message);
     void onDeviceInfo(const TyonInfo &info);
     void onProfileIndex(const quint8 pix);
     void onSettingsChanged(const TyonProfileSettings &settings);

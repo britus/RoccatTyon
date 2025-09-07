@@ -12,12 +12,12 @@ class RTProgress : public QDialog
     Q_OBJECT
 
 public:
-    static void present(QWidget *parent = nullptr);
+    static void present(const QString &message, QWidget *parent = nullptr);
     static void dismiss();
     static void setProgress(int value); // 0 - 100
 
 protected:
-    explicit RTProgress(QWidget *parent = nullptr);
+    explicit RTProgress(const QString &message, QWidget *parent = nullptr);
 
 private:
     static QPointer<RTProgress> instance;

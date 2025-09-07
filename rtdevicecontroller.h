@@ -121,6 +121,7 @@ public:
 signals:
     void lookupStarted();
     void deviceFound();
+    void deviceRemoved();
     void deviceError(int error, const QString &message);
     void deviceInfoChanged(const TyonInfo &info);
     void profileIndexChanged(quint8 index);
@@ -130,7 +131,8 @@ signals:
 private slots:
     void onLookupStarted();
     void onDeviceError(int error, const QString &message);
-    void onDeviceFound(const TyonInfo &info);
+    void onDeviceFound();
+    void onDeviceRemoved();
     void onDeviceInfo(const TyonInfo &info);
     void onProfileIndexChanged(const quint8 pix);
     void onProfileChanged(const RTHidDevice::TProfile &profile);

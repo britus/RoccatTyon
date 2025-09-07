@@ -74,6 +74,17 @@ QVariant RTProfileModel::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
+bool RTProfileModel::clearItemData(const QModelIndex &index)
+{
+    if (!index.isValid()) {
+        beginResetModel();
+        m_profiles.clear();
+        endResetModel();
+        return true;
+    }
+    return QAbstractItemModel::clearItemData(index);
+}
+
 bool RTProfileModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
     if (!index.isValid() || index.row() >= m_profiles.count()) {

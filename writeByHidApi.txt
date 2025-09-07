@@ -1,0 +1,79 @@
+auto writeByHidApi = [this, buffer, length]() -> IOReturn {
+    IOReturn ret = kIOReturnSuccess;
+    hid_device *handle;
+#ifdef QT_DEBUG
+    wchar_t wstr[HIDAPI_MAX_STR];
+#endif
+
+    if (!m_hasHidApi) {
+        qCritical("[HIDDEV] HIDAPI not initialized.");
+        return ENODEV;
+    }
+
+    // Open the device using the VID, PID,
+    // and optionally the Serial number.
+    handle = hid_open( //
+        USB_DEVICE_ID_VENDOR_ROCCAT,
+        USB_DEVICE_ID_ROCCAT_TYON_BLACK,
+        NULL);
+    if (!handle) {
+        qCritical("[HIDDEV] Unable to open device.");
+        return ENODEV;
+    }
+
+#ifdef QT_DEBUG
+    // Read the Manufacturer String
+    ret = hid_get_manufacturer_string(handle, wstr, HIDAPI_MAX_STR);
+    if (ret) {
+        QString msg = QString::fromStdWString(hid_error(handle));
+        qCritical("[HIDDEV] Unable to get device manufacturer. ret=0x%x (%s)", ret, qPrintable(msg));
+        goto func_exit;
+    }
+    qDebug("[HIDDEV] Manufacturer String: %s", qPrintable(QString::fromStdWString(wstr)));
+#endif
+
+#ifdef QT_DEBUG
+    // Read the Product String
+    ret = hid_get_product_string(handle, wstr, HIDAPI_MAX_STR);
+    if (ret) {
+        QString msg = QString::fromStdWString(hid_error(handle));
+        qCritical("[HIDDEV] Unable to get device product id. ret=0x%x (%s)", ret, qPrintable(msg));
+        goto func_exit;
+    }
+    qDebug("[HIDDEV] Product String: %s", qPrintable(QString::fromStdWString(wstr)));
+#endif
+
+#ifdef QT_DEBUG
+    // Read the Serial Number String
+    ret = hid_get_serial_number_string(handle, wstr, HIDAPI_MAX_STR);
+    if (ret) {
+        QString msg = QString::fromStdWString(hid_error(handle));
+        qCritical("[HIDDEV] Unable to get device serial number. ret=0x%x (%s)", ret, qPrintable(msg));
+        goto func_exit;
+    }
+    qDebug("[HIDDEV] Serial Number String: %s", qPrintable(QString::fromStdWString(wstr)));
+#endif
+
+    // write HID message
+    ret = hid_write(handle, buffer, length);
+    //ret = hid_send_output_report(handle, buffer, length);
+    //ret = hid_send_feature_report(handle, buffer, length);
+    if (ret != length) {
+        QString msg = QString::fromStdWString(hid_error(handle));
+        qCritical("[HIDDEV] Unable to write HID message. ret=0x%x (%s)", ret, qPrintable(msg));
+        goto func_exit;
+    } else {
+        ret = kIOReturnSuccess;
+    }
+
+func_exit:
+    hid_close(handle);
+    return ret;
+};
+
+
+
+IOReturn ret;
+if ((ret = writeByHidApi()) != kIOReturnSuccess) {
+    return ret;
+}

@@ -13,10 +13,30 @@
 
 //#undef QT_DEBUG
 
-static int ROCCAT_VENDOR_ID = 0x1e7d;
-static int ROCCAT_TYON_RID = 0x2e4a;
-
 Q_DECLARE_OPAQUE_POINTER(IOHIDDeviceRef)
+
+// -------------------------------------------------------------
+//
+#ifdef QT_DEBUG
+static inline void debugSettings(const RTHidDevice::TProfile profile, quint8 currentPix);
+static inline void debugButtons(const RTHidDevice::TProfile profile, quint8 currentPix);
+static inline void debugDevInfo(TyonInfo *p);
+#endif
+
+static inline void deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
+{
+    RTHidDevice *controller = static_cast<RTHidDevice *>(context);
+    controller->onDeviceFound(device);
+}
+
+static inline void deviceRemovedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
+{
+    RTHidDevice *controller = static_cast<RTHidDevice *>(context);
+    controller->onDeviceRemoved(device);
+}
+
+// -------------------------------------------------------------
+//
 
 RTHidDevice::RTHidDevice(QObject *parent)
     : QObject{parent}
@@ -27,88 +47,82 @@ RTHidDevice::RTHidDevice(QObject *parent)
     , m_profiles()
     , m_mutex()
     , m_isCBComplete(false)
-    , m_hasHidApi(false)
+    , m_hasHidApi((hid_init() == 0))
 {
     qRegisterMetaType<IOHIDDeviceRef>();
-
-    connect( //
-        this,
-        &RTHidDevice::deviceFoundCallback,
-        this,
-        &RTHidDevice::onDeviceFound,
-        Qt::QueuedConnection);
-    connect( //
-        this,
-        &RTHidDevice::reportCallback,
-        this,
-        &RTHidDevice::onSetReportCallback,
-        Qt::QueuedConnection);
-
-    m_hasHidApi = (hid_init() == 0);
 }
 
 RTHidDevice::~RTHidDevice()
 {
-    releaseManager();
     hid_exit();
-}
-
-/* Called by Mac OSX multiple times for same single device */
-static inline void deviceMatched(void *context, IOReturn result, void *, IOHIDDeviceRef device)
-{
-    if (result != 0) {
-        qCritical("[HIDDEV] Device matcher IOResult none zero: %d", result);
-        return;
-    }
-
-    IOReturn ret = IOHIDDeviceOpen(device, kIOHIDOptionsTypeSeizeDevice);
-    if (ret != kIOReturnSuccess) {
-        return;
-    }
-
-#ifdef QT_DEBUG
-    qDebug("[HIDDEV] Device %p found. -----------------------------", device);
-#endif
-
-    RTHidDevice *ctx;
-    if ((ctx = dynamic_cast<RTHidDevice *>((QObject *) context))) {
-        //emit ctx->deviceFoundCallback(result, device);
-        ctx->onDeviceFound(result, device);
-    }
+    releaseManager();
 }
 
 void RTHidDevice::lookupDevice()
 {
-    IOHIDManagerRef manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
-    if (!manager) {
-        qCritical() << "[HIDDEV] Unable to create IOHIDManager instance.";
-        emit deviceError(EINVAL, "Unable to connect HID manager.");
+    m_manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+    if (!m_manager) {
+        qCritical("[HIDDEV] Failed to create HID manager.");
         return;
     }
 
-    // Device-Matching: Only ROCCAT Tyon
-    CFMutableDictionaryRef matchingDict = CFDictionaryCreateMutable( //
-        kCFAllocatorDefault,
-        0,
-        &kCFTypeDictionaryKeyCallBacks,
-        &kCFTypeDictionaryValueCallBacks);
+    // Set up matching dictionary for Roccat Tyon devices
+    CFMutableArrayRef matchingDicts = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
 
-    CFNumberRef vendorId = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &ROCCAT_VENDOR_ID);
-    CFNumberRef productId = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &ROCCAT_TYON_RID);
+    // Constants for Roccat Tyon mouse Black and White variants
+    const uint32_t vendorId = USB_DEVICE_ID_VENDOR_ROCCAT;
+    const uint32_t productIds[2] =        //
+        {USB_DEVICE_ID_ROCCAT_TYON_BLACK, //
+         USB_DEVICE_ID_ROCCAT_TYON_WHITE};
 
-    CFDictionarySetValue(matchingDict, CFSTR(kIOHIDVendorIDKey), vendorId);
-    CFDictionarySetValue(matchingDict, CFSTR(kIOHIDProductIDKey), productId);
+    auto createDeviceMatchingDictionary = [](uint32_t vendorId, uint32_t productId) -> CFMutableDictionaryRef {
+        CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+        if (!dict)
+            return nullptr;
 
-    IOHIDManagerSetDeviceMatching(manager, matchingDict);
-    CFRelease(matchingDict);
-    CFRelease(vendorId);
-    CFRelease(productId);
+        CFNumberRef vendorIdRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &vendorId);
+        CFNumberRef productIdRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &productId);
 
-    IOHIDManagerRegisterDeviceMatchingCallback(manager, deviceMatched, this);
-    IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-    IOHIDManagerOpen(manager, kIOHIDOptionsTypeNone);
-    //CFRunLoopRun(); // wait for completion
-    //return (m_devices.isEmpty() ? ENODEV : kIOReturnSuccess);
+        if (vendorIdRef) {
+            CFDictionarySetValue(dict, CFSTR(kIOHIDVendorIDKey), vendorIdRef);
+            CFRelease(vendorIdRef);
+        }
+
+        if (productIdRef) {
+            CFDictionarySetValue(dict, CFSTR(kIOHIDProductIDKey), productIdRef);
+            CFRelease(productIdRef);
+        }
+
+        return dict;
+    };
+
+    for (auto productId : productIds) {
+        CFMutableDictionaryRef dict = createDeviceMatchingDictionary(vendorId, productId);
+        if (dict) {
+            CFArrayAppendValue(matchingDicts, dict);
+            CFRelease(dict);
+        }
+    }
+
+    IOHIDManagerSetDeviceMatchingMultiple(m_manager, matchingDicts);
+    CFRelease(matchingDicts);
+
+    // Register for device attached and removed callbacks
+    IOHIDManagerRegisterDeviceMatchingCallback(m_manager, deviceAttachedCallback, this);
+    IOHIDManagerRegisterDeviceRemovalCallback(m_manager, deviceRemovedCallback, this);
+
+    // Open HID manager
+    IOReturn result = IOHIDManagerOpen(m_manager, kIOHIDOptionsTypeNone);
+    if (result != kIOReturnSuccess && result != -536870174) {
+        qCritical("Failed to open HID manager: %d", result);
+        CFRelease(m_manager);
+        m_manager = nullptr;
+        return;
+    }
+
+    // Run event loop in separate thread
+    std::thread([this]() { CFRunLoopRun(); }).detach();
+
     emit lookupStarted();
 }
 
@@ -420,7 +434,7 @@ QString RTHidDevice::profileName() const
     return "";
 }
 
-void RTHidDevice::onDeviceFound(IOReturn /*status*/, IOHIDDeviceRef device)
+void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
 {
     IOReturn ret;
 
@@ -428,10 +442,6 @@ void RTHidDevice::onDeviceFound(IOReturn /*status*/, IOHIDDeviceRef device)
     if (m_devices.contains(device)) {
         return;
     }
-
-    //if (!m_devices.isEmpty()) {
-    //    return;
-    //}
 
     //if ((ret = setDeviceState(true, device)) != kIOReturnSuccess) {
     //    qCritical("[HIDDEV] Unable to set device state.");
@@ -460,12 +470,23 @@ void RTHidDevice::onDeviceFound(IOReturn /*status*/, IOHIDDeviceRef device)
     }
 
     m_devices.append(device);
-    emit deviceFound(m_info);
+
+    if (m_profiles.count() >= TYON_PROFILE_NUM) {
+        emit deviceFound();
+    }
     return;
 
 error_exit:
     IOHIDDeviceClose(device, kIOHIDOptionsTypeSeizeDevice);
     emit deviceError(ENODEV, "Unable to load device data.");
+}
+
+void RTHidDevice::onDeviceRemoved(IOHIDDeviceRef device)
+{
+    if (m_devices.contains(device)) {
+        m_devices.removeOne(device);
+    }
+    emit deviceRemoved();
 }
 
 inline int RTHidDevice::readProfile(IOHIDDeviceRef device, quint8 pix)
@@ -526,10 +547,7 @@ inline void RTHidDevice::releaseDevices()
     IOHIDDeviceRef dev;
     while (!m_devices.isEmpty()) {
         if ((dev = m_devices.takeFirst())) {
-            try {
-                //IOHIDDeviceClose(dev, kIOHIDOptionsTypeSeizeDevice);
-            } catch (...) {
-            }
+            IOHIDDeviceClose(dev, kIOHIDOptionsTypeSeizeDevice);
         }
     }
     m_devices.clear();
@@ -540,6 +558,7 @@ inline void RTHidDevice::releaseManager()
     releaseDevices();
 
     if (m_manager) {
+        IOHIDManagerClose(m_manager, kIOHIDOptionsTypeNone);
         CFRelease(m_manager);
     }
 }
@@ -603,82 +622,6 @@ inline int RTHidDevice::readDevice1A(IOHIDDeviceRef device)
 {
     return readHidReport(device, TYON_REPORT_ID_1A, 1029);
 }
-
-#ifdef QT_DEBUG
-static inline void debugSettings(const RTHidDevice::TProfile profile, quint8 currentPix)
-{
-    const TyonProfileSettings *s = &profile.settings;
-
-    qDebug("[HIDDEV] PROFILE: INDEX=%d NAME=%s", //
-           profile.index,
-           qPrintable(profile.name));
-
-    qDebug("[HIDDEV] SETTINGS: SIZE=%d PIX=%d (ACT=%d) CHKS=%d", s->size, s->profile_index, currentPix, s->checksum);
-    qDebug("[HIDDEV] SETTINGS: DPI_LEVs_EN=%d DPI_ACTIVE=%d SENS_X=%d SENS_Y=%d ADV_SENS=%d TFX_POLLRATE=%d", //
-           s->cpi_levels_enabled,
-           s->cpi_active,
-           s->sensitivity_x,
-           s->sensitivity_y,
-           s->advanced_sensitivity,
-           s->talkfx_polling_rate);
-
-    for (qint8 i = 0; i < TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM; i++) {
-        qDebug("[HIDDEV] SETTINGS: DPI-%d DPI-LEVEL=%d ((>>2)*200 = %d)", //
-               i,
-               s->cpi_levels[i],
-               (s->cpi_levels[i] >> 2) * 200);
-    }
-
-    qDebug("[HIDDEV] SETTINGS: LIGHT_EN=%d LIGHT_EFF=0x%02x CLR_FLOW=0x%02x SPEED=%d", //
-           s->lights_enabled,
-           s->light_effect,
-           s->color_flow,
-           s->effect_speed);
-
-    for (qint8 i = 0; i < TYON_LIGHTS_NUM; i++) {
-        qDebug("[HIDDEV] SETTINGS: LIGHT-%d RED=%d GREEN=%d BLUE=%d IDX=%d", //
-               i,
-               s->lights[i].red,
-               s->lights[i].green,
-               s->lights[i].blue,
-               s->lights[i].index);
-    }
-}
-
-static inline void debugButtons(const RTHidDevice::TProfile profile, quint8 currentPix)
-{
-    const TyonProfileButtons *b = &profile.buttons;
-
-    qDebug("[HIDDEV] BUTTONS: SIZE=%d PIX=%d (ACT=%d)", b->size, b->profile_index, currentPix);
-
-    /* physical buttons and with EasyShift combined
-     * 32 buttons (16x2) */
-    const quint8 bixStart = TYON_BUTTON_INDEX_LEFT;
-    const quint8 bixCount = TYON_PROFILE_BUTTON_NUM;
-
-    for (quint8 index = bixStart; index < bixCount; index++) {
-        qDebug("[HIDDEV] BUTTONS: #%02d B_TYPE=0x%04x B_KEY=0x%02x '%c' B_MOD=0x%04x", //
-               index,
-               b->buttons[index].type, /* -> button function */
-               b->buttons[index].key,
-               b->buttons[index].key >= 0x20 && b->buttons[index].key < 0x7f ? b->buttons[index].key : ' ',
-               b->buttons[index].modifier);
-    }
-}
-
-static inline void debugDevInfo(TyonInfo *p)
-{
-    qDebug("[HIDDEV] DEVINFO: SIZE=%d DFU=%d FW=%d", //
-           p->size,
-           p->dfu_version,
-           p->firmware_version);
-    qDebug("[HIDDEV] DEVINFO: XC_MIN=%d XC_MID=%d XC_MAX=%d", //
-           p->xcelerator_min,
-           p->xcelerator_mid,
-           p->xcelerator_max);
-    qDebug("[HIDDEV] DEVINFO: FUNCTION=%d", p->function);
-}
-#endif
 
 // Read ROCCAT Mouse report descriptor
 inline int RTHidDevice::readHidReport(IOHIDDeviceRef device, const int reportId, const CFIndex size)
@@ -780,6 +723,11 @@ inline int RTHidDevice::readHidReport(IOHIDDeviceRef device, const int reportId,
             debugButtons(profile, m_profile.profile_index);
 #endif
             emit profileChanged(profile);
+
+            // all profiles done...
+            if (profile.index == TYON_PROFILE_NUM) {
+                emit deviceFound();
+            }
             break;
         }
         case TYON_REPORT_ID_MACRO: {
@@ -802,6 +750,9 @@ inline int RTHidDevice::readHidReport(IOHIDDeviceRef device, const int reportId,
             qDebug("[HIDDEV] STATE: state=%d", p->state);
             //#endif
             break;
+        }
+        default: {
+            qDebug("[HIDDEV] RID UNHANDLED: rid=%d", reportId);
         }
     }
 
@@ -1240,6 +1191,81 @@ inline int RTHidDevice::readButtonMacro(IOHIDDeviceRef device, uint pix, uint bi
 
     return kIOReturnSuccess;
 }
+#ifdef QT_DEBUG
+static inline void debugSettings(const RTHidDevice::TProfile profile, quint8 currentPix)
+{
+    const TyonProfileSettings *s = &profile.settings;
+
+    qDebug("[HIDDEV] PROFILE: INDEX=%d NAME=%s", //
+           profile.index,
+           qPrintable(profile.name));
+
+    qDebug("[HIDDEV] SETTINGS: SIZE=%d PIX=%d (ACT=%d) CHKS=%d", s->size, s->profile_index, currentPix, s->checksum);
+    qDebug("[HIDDEV] SETTINGS: DPI_LEVs_EN=%d DPI_ACTIVE=%d SENS_X=%d SENS_Y=%d ADV_SENS=%d TFX_POLLRATE=%d", //
+           s->cpi_levels_enabled,
+           s->cpi_active,
+           s->sensitivity_x,
+           s->sensitivity_y,
+           s->advanced_sensitivity,
+           s->talkfx_polling_rate);
+
+    for (qint8 i = 0; i < TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM; i++) {
+        qDebug("[HIDDEV] SETTINGS: DPI-%d DPI-LEVEL=%d ((>>2)*200 = %d)", //
+               i,
+               s->cpi_levels[i],
+               (s->cpi_levels[i] >> 2) * 200);
+    }
+
+    qDebug("[HIDDEV] SETTINGS: LIGHT_EN=%d LIGHT_EFF=0x%02x CLR_FLOW=0x%02x SPEED=%d", //
+           s->lights_enabled,
+           s->light_effect,
+           s->color_flow,
+           s->effect_speed);
+
+    for (qint8 i = 0; i < TYON_LIGHTS_NUM; i++) {
+        qDebug("[HIDDEV] SETTINGS: LIGHT-%d RED=%d GREEN=%d BLUE=%d IDX=%d", //
+               i,
+               s->lights[i].red,
+               s->lights[i].green,
+               s->lights[i].blue,
+               s->lights[i].index);
+    }
+}
+
+static inline void debugButtons(const RTHidDevice::TProfile profile, quint8 currentPix)
+{
+    const TyonProfileButtons *b = &profile.buttons;
+
+    qDebug("[HIDDEV] BUTTONS: SIZE=%d PIX=%d (ACT=%d)", b->size, b->profile_index, currentPix);
+
+    /* physical buttons and with EasyShift combined
+     * 32 buttons (16x2) */
+    const quint8 bixStart = TYON_BUTTON_INDEX_LEFT;
+    const quint8 bixCount = TYON_PROFILE_BUTTON_NUM;
+
+    for (quint8 index = bixStart; index < bixCount; index++) {
+        qDebug("[HIDDEV] BUTTONS: #%02d B_TYPE=0x%04x B_KEY=0x%02x '%c' B_MOD=0x%04x", //
+               index,
+               b->buttons[index].type, /* -> button function */
+               b->buttons[index].key,
+               b->buttons[index].key >= 0x20 && b->buttons[index].key < 0x7f ? b->buttons[index].key : ' ',
+               b->buttons[index].modifier);
+    }
+}
+
+static inline void debugDevInfo(TyonInfo *p)
+{
+    qDebug("[HIDDEV] DEVINFO: SIZE=%d DFU=%d FW=%d", //
+           p->size,
+           p->dfu_version,
+           p->firmware_version);
+    qDebug("[HIDDEV] DEVINFO: XC_MIN=%d XC_MID=%d XC_MAX=%d", //
+           p->xcelerator_min,
+           p->xcelerator_mid,
+           p->xcelerator_max);
+    qDebug("[HIDDEV] DEVINFO: FUNCTION=%d", p->function);
+}
+#endif
 
 #if 0
 gboolean tyon_xcelerator_calibration_start(RoccatDevice *device, GError **error) {
@@ -1436,4 +1462,63 @@ gboolean tyon_distance_control_unit_accept(RoccatDevice *tyon, guint new_dcu, GE
 
     return tyon_control_unit_write(tyon, &control_unit, error);
 }
+#endif
+
+/* Called by Mac OSX multiple times for same single device */
+#if 0
+static inline void deviceMatched(void *context, IOReturn result, void *, IOHIDDeviceRef device)
+{
+    if (result != 0) {
+        qCritical("[HIDDEV] Device matcher IOResult none zero: %d", result);
+        return;
+    }
+
+    IOReturn ret = IOHIDDeviceOpen(device, kIOHIDOptionsTypeSeizeDevice);
+    if (ret != kIOReturnSuccess) {
+        return;
+    }
+
+#ifdef QT_DEBUG
+    qDebug("[HIDDEV] Device %p found. -----------------------------", device);
+#endif
+
+    RTHidDevice *ctx;
+    if ((ctx = dynamic_cast<RTHidDevice *>((QObject *) context))) {
+        //emit ctx->deviceFoundCallback(result, device);
+        ctx->onDeviceFound(device);
+    }
+}
+#endif
+
+#if 0
+    IOHIDManagerRef manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+    if (!manager) {
+        qCritical() << "[HIDDEV] Unable to create IOHIDManager instance.";
+        emit deviceError(EINVAL, "Unable to connect HID manager.");
+        return;
+    }
+
+    // Device-Matching: Only ROCCAT Tyon
+    CFMutableDictionaryRef matchingDict = CFDictionaryCreateMutable( //
+        kCFAllocatorDefault,
+        0,
+        &kCFTypeDictionaryKeyCallBacks,
+        &kCFTypeDictionaryValueCallBacks);
+
+    CFNumberRef vendorId = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &ROCCAT_VENDOR_ID);
+    CFNumberRef productId = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &ROCCAT_TYON_RID);
+
+    CFDictionarySetValue(matchingDict, CFSTR(kIOHIDVendorIDKey), vendorId);
+    CFDictionarySetValue(matchingDict, CFSTR(kIOHIDProductIDKey), productId);
+
+    IOHIDManagerSetDeviceMatching(manager, matchingDict);
+    CFRelease(matchingDict);
+    CFRelease(vendorId);
+    CFRelease(productId);
+
+    IOHIDManagerRegisterDeviceMatchingCallback(manager, deviceMatched, this);
+    IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+    IOHIDManagerOpen(manager, kIOHIDOptionsTypeNone);
+    //CFRunLoopRun(); // wait for completion
+    //return (m_devices.isEmpty() ? ENODEV : kIOReturnSuccess);
 #endif

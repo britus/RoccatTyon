@@ -41,6 +41,7 @@ RTMainWindow::RTMainWindow(QWidget *parent)
     QProcessEnvironment pe = QProcessEnvironment::systemEnvironment();
     QScreen *scn = qApp->primaryScreen();
     QRect r = scn->availableGeometry();
+
     //bool isXWindow;
     //isXWindow |= (pe.contains("DISPLAY") || pe.contains("XDG_SESSION_DESKTOP"));
 
@@ -229,21 +230,10 @@ inline void RTMainWindow::initializeUiElements()
 
 inline void RTMainWindow::connectController()
 {
-    connect(m_ctlr, &RTDeviceController::deviceFound, this, [this]() {
-        ui->pnlLeft->setEnabled(true);
-        ui->tabWidget->setEnabled(true);
-        ui->pbSave->setEnabled(true);
-        ui->pbReset->setEnabled(true);
-    });
-    connect(m_ctlr, &RTDeviceController::deviceError, this, [this](int error, const QString &message) {
-        QMessageBox::warning( //
-            this,
-            qApp->applicationDisplayName(),
-            tr("ERROR %1: %2").arg(error).arg(message));
-        RTProgress::dismiss();
-        qApp->quit();
-    });
     connect(m_ctlr, &RTDeviceController::lookupStarted, this, &RTMainWindow::onLookupStarted);
+    connect(m_ctlr, &RTDeviceController::deviceFound, this, &RTMainWindow::onDeviceFound);
+    connect(m_ctlr, &RTDeviceController::deviceRemoved, this, &RTMainWindow::onDeviceRemoved);
+    connect(m_ctlr, &RTDeviceController::deviceError, this, &RTMainWindow::onDeviceError);
     connect(m_ctlr, &RTDeviceController::deviceInfoChanged, this, &RTMainWindow::onDeviceInfo);
     connect(m_ctlr, &RTDeviceController::profileIndexChanged, this, &RTMainWindow::onProfileIndex);
     connect(m_ctlr, &RTDeviceController::settingsChanged, this, &RTMainWindow::onSettingsChanged);
@@ -556,10 +546,10 @@ static int progress_count = 0;
 void RTMainWindow::onLookupStarted()
 {
     progress_count = 0;
-    RTProgress::present(this);
+    RTProgress::present(tr("Searching ROCCAT device..."), this);
 
     // timeout timer
-    QTimer::singleShot(4000, this, [this]() {
+    QTimer::singleShot(10000, this, [this]() {
         if (!m_ctlr->hasDevice()) {
             QMessageBox::warning( //
                 this,
@@ -571,6 +561,47 @@ void RTMainWindow::onLookupStarted()
         }
     });
     QThread::yieldCurrentThread();
+}
+
+void RTMainWindow::onDeviceFound()
+{
+    ui->pnlLeft->setEnabled(true);
+    ui->tabWidget->setEnabled(true);
+    ui->pbSave->setEnabled(true);
+    ui->pbReset->setEnabled(true);
+}
+
+void RTMainWindow::onDeviceRemoved()
+{
+    ui->pnlLeft->setEnabled(false);
+    ui->tabWidget->setEnabled(false);
+    ui->pbSave->setEnabled(false);
+    ui->pbReset->setEnabled(false);
+    ui->pbClose->setFocus();
+
+    setWindowTitle(qApp->applicationDisplayName());
+    onProfileIndex(0);
+
+    RTProgress::present(tr("Searching ROCCAT device..."), this);
+}
+
+void RTMainWindow::onDeviceError(uint error, const QString &message)
+{
+    qCritical("[APPWIN] ERROR %d: %s", error, qPrintable(message));
+
+    QMessageBox::warning(this,
+                         qApp->applicationDisplayName(), //
+                         tr("ERROR 0x%1: %2")            //
+                             .arg(error, 8, 16, QChar('0'))
+                             .arg(message));
+
+    RTProgress::dismiss();
+    ui->pnlLeft->setEnabled(false);
+    ui->tabWidget->setEnabled(false);
+    ui->pbSave->setEnabled(false);
+    ui->pbReset->setEnabled(true);
+    ui->pbReset->setFocus();
+    onProfileIndex(0);
 }
 
 void RTMainWindow::onDeviceInfo(const TyonInfo &info)

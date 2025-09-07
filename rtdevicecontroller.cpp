@@ -123,6 +123,7 @@ RTDeviceController::RTDeviceController(QObject *parent)
     connect(&m_device, &RTHidDevice::lookupStarted, this, &RTDeviceController::onLookupStarted);
     connect(&m_device, &RTHidDevice::deviceError, this, &RTDeviceController::onDeviceError);
     connect(&m_device, &RTHidDevice::deviceFound, this, &RTDeviceController::onDeviceFound);
+    connect(&m_device, &RTHidDevice::deviceRemoved, this, &RTDeviceController::onDeviceRemoved);
     connect(&m_device, &RTHidDevice::deviceInfo, this, &RTDeviceController::onDeviceInfo);
     connect(&m_device, &RTHidDevice::profileIndexChanged, this, &RTDeviceController::onProfileIndexChanged);
     connect(&m_device, &RTHidDevice::profileChanged, this, &RTDeviceController::onProfileChanged);
@@ -485,10 +486,17 @@ bool RTDeviceController::saveProfilesToDevice()
     return m_device.saveProfilesToDevice();
 }
 
-void RTDeviceController::onDeviceFound(const TyonInfo &info)
+void RTDeviceController::onDeviceFound()
 {
-    m_hasDevice = (info.dfu_version && info.firmware_version);
+    m_hasDevice = m_model.rowCount({}) >= TYON_PROFILE_NUM;
     emit deviceFound();
+}
+
+void RTDeviceController::onDeviceRemoved()
+{
+    m_hasDevice = false;
+    m_model.clearItemData({});
+    emit deviceRemoved();
 }
 
 void RTDeviceController::onLookupStarted()

@@ -9,7 +9,7 @@
 QPointer<RTProgress> RTProgress::instance = nullptr;
 QMutex RTProgress::mutex;
 
-RTProgress::RTProgress(QWidget *parent)
+RTProgress::RTProgress(const QString &message, QWidget *parent)
     : QDialog(parent)
     , progressBar(new QProgressBar(this))
 {
@@ -19,7 +19,7 @@ RTProgress::RTProgress(QWidget *parent)
     auto *layout = new QVBoxLayout(this);
     layout->setAlignment(Qt::AlignCenter);
 
-    QLabel *label = new QLabel("Please wait...", this);
+    QLabel *label = new QLabel((message.isEmpty() ? tr("Please wait...") : message), this);
     label->setAlignment(Qt::AlignCenter);
 
     progressBar->setVisible(false);
@@ -32,27 +32,21 @@ RTProgress::RTProgress(QWidget *parent)
 
     setLayout(layout);
     setFixedSize(300, 120);
-#if 0
-    setStyleSheet("background-color: white; "
-                  "border: 1px solid gray; "
-                  "border-radius: 8px; "
-                  "font-size: 14px;");
-#endif
 }
 
-void RTProgress::present(QWidget *parent)
+void RTProgress::present(const QString &message, QWidget *parent)
 {
     //QMutexLocker locker(&mutex);
 
     if (!instance) {
-        instance = new RTProgress(parent ? parent : QApplication::activeWindow());
+        instance = new RTProgress(message, parent ? parent : QApplication::activeWindow());
     }
 
     // Position in Bildschirmmitte
     QScreen *screen = QGuiApplication::primaryScreen();
     QRect scr = screen->geometry();
     instance->move(scr.center() - instance->rect().center());
-
+    instance->setWindowTitle(message);
     instance->setVisible(true);
     //instance->raise();
     QApplication::processEvents();
