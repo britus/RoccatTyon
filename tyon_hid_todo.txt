@@ -195,3 +195,62 @@ gboolean tyon_distance_control_unit_accept(RoccatDevice *tyon, guint new_dcu, GE
     return tyon_control_unit_write(tyon, &control_unit, error);
 }
 #endif
+
+/* Called by Mac OSX multiple times for same single device */
+#if 0
+static inline void deviceMatched(void *context, IOReturn result, void *, IOHIDDeviceRef device)
+{
+    if (result != 0) {
+        qCritical("[HIDDEV] Device matcher IOResult none zero: %d", result);
+        return;
+    }
+
+    IOReturn ret = IOHIDDeviceOpen(device, kIOHIDOptionsTypeSeizeDevice);
+    if (ret != kIOReturnSuccess) {
+        return;
+    }
+
+#ifdef QT_DEBUG
+    qDebug("[HIDDEV] Device %p found. -----------------------------", device);
+#endif
+
+    RTHidDevice *ctx;
+    if ((ctx = dynamic_cast<RTHidDevice *>((QObject *) context))) {
+        //emit ctx->deviceFoundCallback(result, device);
+        ctx->onDeviceFound(device);
+    }
+}
+#endif
+
+#if 0
+    IOHIDManagerRef manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+    if (!manager) {
+        qCritical() << "[HIDDEV] Unable to create IOHIDManager instance.";
+        emit deviceError(EINVAL, "Unable to connect HID manager.");
+        return;
+    }
+
+    // Device-Matching: Only ROCCAT Tyon
+    CFMutableDictionaryRef matchingDict = CFDictionaryCreateMutable( //
+        kCFAllocatorDefault,
+        0,
+        &kCFTypeDictionaryKeyCallBacks,
+        &kCFTypeDictionaryValueCallBacks);
+
+    CFNumberRef vendorId = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &ROCCAT_VENDOR_ID);
+    CFNumberRef productId = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &ROCCAT_TYON_RID);
+
+    CFDictionarySetValue(matchingDict, CFSTR(kIOHIDVendorIDKey), vendorId);
+    CFDictionarySetValue(matchingDict, CFSTR(kIOHIDProductIDKey), productId);
+
+    IOHIDManagerSetDeviceMatching(manager, matchingDict);
+    CFRelease(matchingDict);
+    CFRelease(vendorId);
+    CFRelease(productId);
+
+    IOHIDManagerRegisterDeviceMatchingCallback(manager, deviceMatched, this);
+    IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+    IOHIDManagerOpen(manager, kIOHIDOptionsTypeNone);
+    //CFRunLoopRun(); // wait for completion
+    //return (m_devices.isEmpty() ? ENODEV : kIOReturnSuccess);
+#endif
