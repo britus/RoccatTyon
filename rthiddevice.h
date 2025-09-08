@@ -246,7 +246,6 @@ private:
     TProfiles m_profiles;
     QMutex m_mutex;
     bool m_isCBComplete;
-    bool m_hasHidApi;
 
 private:
     inline void releaseDevices();

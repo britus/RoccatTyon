@@ -2,7 +2,6 @@
 #include "hid_uid.h"
 #include "rttypes.h"
 #include <IOKit/hid/IOHIDManager.h>
-#include <hidapi.h>
 #include <QCoreApplication>
 #include <QDeadlineTimer>
 #include <QDebug>
@@ -213,7 +212,6 @@ RTHidDevice::RTHidDevice(QObject *parent)
     , m_profiles()
     , m_mutex()
     , m_isCBComplete(false)
-    , m_hasHidApi((hid_init() == 0))
 {
     qRegisterMetaType<IOHIDDeviceRef>();
     initializeProfiles();
@@ -223,7 +221,6 @@ RTHidDevice::~RTHidDevice()
 {
     saveProfiles();
     releaseManager();
-    hid_exit();
 }
 
 void RTHidDevice::lookupDevice()

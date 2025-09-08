@@ -9,7 +9,8 @@ CONFIG += embed_translations
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
-#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+# disables all the APIs deprecated before Qt 6.0.0
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
 
 mac {
     QMAKE_MACOSX_DEPLOYMENT_TARGET = 12.2
@@ -48,20 +49,20 @@ TRANSLATIONS += \
     RoccatTyon_en_US.ts
 
 ### HIDAPI/LIBUSB
-HIDAPI_BUILDER = $$PWD/hidapi.sh
-HIDAPI_SOURCE = $$PWD/hidapi
-HIDAPI_TARGET = $$OUT_PWD/.hidapi
-$${HIDAPI_TARGET}.depends = FORCE # or $${PRETARGET}.CONFIG = phony
-$${HIDAPI_TARGET}.commands = $$HIDAPI_BUILDER $$HIDAPI_SOURCE $$OUT_PWD
+#HIDAPI_BUILDER = $$PWD/hidapi.sh
+#HIDAPI_SOURCE = $$PWD/hidapi
+#HIDAPI_TARGET = $$OUT_PWD/.hidapi
+#$${HIDAPI_TARGET}.depends = FORCE # or $${PRETARGET}.CONFIG = phony
+#$${HIDAPI_TARGET}.commands = $$HIDAPI_BUILDER $$HIDAPI_SOURCE $$OUT_PWD
 
 # build completion tag
-QMAKE_EXTRA_TARGETS += $${HIDAPI_TARGET}
-PRE_TARGETDEPS += $${HIDAPI_TARGET}
+#QMAKE_EXTRA_TARGETS += $${HIDAPI_TARGET}
+#PRE_TARGETDEPS += $${HIDAPI_TARGET}
 
-INCLUDEPATH += /usr/local/include
-INCLUDEPATH += /usr/local/include/hidapi
-QMAKE_LIBDIR += /usr/local/lib
-QMAKE_LIBS += -lhidapi
+#INCLUDEPATH += /usr/local/include
+#INCLUDEPATH += /usr/local/include/hidapi
+#QMAKE_LIBDIR += /usr/local/lib
+#QMAKE_LIBS += -lhidapi
 #QMAKE_LIBS += -lusb-1.0
 
 # Default rules for deployment.
@@ -70,16 +71,3 @@ INSTALLS += target
 
 RESOURCES += \
     rtassets.qrc
-
-DISTFILES += \
-    .gitignore \
-    .gitmodules \
-    hidapi.sh \
-    linux-app-reset-3t-sniff.txt \
-    linux-app-reset-3u-sniff.txt \
-    linux-app-saveall-lightchg-sniff.txt \
-    linux-app-saveall-sniff.txt \
-    linux-app-start-sniff.txt \
-    roccat.md \
-    tyon_hid_todo.txt \
-    writeByHidApi.txt

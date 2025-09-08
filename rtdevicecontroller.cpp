@@ -17,15 +17,16 @@ RTDeviceController::RTDeviceController(QObject *parent)
     initButtonTypes();
     initPhysicalButtons();
 
-    connect(&m_device, &RTHidDevice::lookupStarted, this, &RTDeviceController::onLookupStarted);
-    connect(&m_device, &RTHidDevice::deviceError, this, &RTDeviceController::onDeviceError);
-    connect(&m_device, &RTHidDevice::deviceFound, this, &RTDeviceController::onDeviceFound);
-    connect(&m_device, &RTHidDevice::deviceRemoved, this, &RTDeviceController::onDeviceRemoved);
-    connect(&m_device, &RTHidDevice::deviceInfo, this, &RTDeviceController::onDeviceInfo);
-    connect(&m_device, &RTHidDevice::profileChanged, this, &RTDeviceController::onProfileChanged);
-    connect(&m_device, &RTHidDevice::profileIndexChanged, this, &RTDeviceController::onProfileIndexChanged);
-    connect(&m_device, &RTHidDevice::saveProfilesStarted, this, &RTDeviceController::onSaveProfilesStarted);
-    connect(&m_device, &RTHidDevice::saveProfilesFinished, this, &RTDeviceController::onSaveProfilesFinished);
+    Qt::ConnectionType ct = Qt::QueuedConnection;
+    connect(&m_device, &RTHidDevice::lookupStarted, this, &RTDeviceController::onLookupStarted, ct);
+    connect(&m_device, &RTHidDevice::deviceError, this, &RTDeviceController::onDeviceError, ct);
+    connect(&m_device, &RTHidDevice::deviceFound, this, &RTDeviceController::onDeviceFound, ct);
+    connect(&m_device, &RTHidDevice::deviceRemoved, this, &RTDeviceController::onDeviceRemoved, ct);
+    connect(&m_device, &RTHidDevice::deviceInfo, this, &RTDeviceController::onDeviceInfo, ct);
+    connect(&m_device, &RTHidDevice::profileChanged, this, &RTDeviceController::onProfileChanged, ct);
+    connect(&m_device, &RTHidDevice::profileIndexChanged, this, &RTDeviceController::onProfileIndexChanged, ct);
+    connect(&m_device, &RTHidDevice::saveProfilesStarted, this, &RTDeviceController::onSaveProfilesStarted, ct);
+    connect(&m_device, &RTHidDevice::saveProfilesFinished, this, &RTDeviceController::onSaveProfilesFinished, ct);
 }
 
 inline void RTDeviceController::initPhysicalButtons()
