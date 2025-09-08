@@ -124,8 +124,11 @@ int main(int argc, char *argv[])
     ::setenv("QT_QPA_PLATFORM", "xcb", 0);
 #endif
 
-    /* Set specific QT debug message pattern */
-    //setenv("QT_MESSAGE_PATTERN", "%{time process} %{threadid} %{type} %{category} %{function} %{message}", 0);
+    /* Set specific QT debug message pattern
+     * %{type} %{threadid} %{function}
+     * [T:%{threadid}|F:%{function}]
+     */
+    setenv("QT_MESSAGE_PATTERN", "[T:%{threadid}] %{message}", 0);
 
     QApplication::setAttribute(Qt::AA_NativeWindows, true);
     QApplication::setAttribute(Qt::AA_UseDesktopOpenGL, true);

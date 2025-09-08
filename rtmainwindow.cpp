@@ -76,11 +76,16 @@ RTMainWindow::~RTMainWindow()
 
 inline void RTMainWindow::initializeSettings()
 {
-    QString fileName = QStandardPaths::writableLocation( //
-                           QStandardPaths::ConfigLocation)
-                       + "/settings.conf";
-    fileName = QDir::toNativeSeparators(fileName);
-    m_settings = new QSettings(fileName, QSettings::Format::NativeFormat, this);
+    QString fpath = QStandardPaths::writableLocation( //
+        QStandardPaths::AppConfigLocation);
+
+    QDir d(fpath);
+    if (!d.exists()) {
+        d.mkpath(fpath);
+    }
+
+    fpath = QDir::toNativeSeparators(fpath + "/settings.conf");
+    m_settings = new QSettings(fpath, QSettings::Format::NativeFormat, this);
 }
 
 inline void RTMainWindow::loadSettings(QSettings *settings)

@@ -82,9 +82,10 @@ public:
     /**
      * @brief Load all ROCCAT Tyon profiles from file
      * @param fileName The file name
+     * @param raiseEvents True to raise profile change event
      * @return True if success
      */
-    bool loadProfilesFromFile(const QString &fileName);
+    bool loadProfilesFromFile(const QString &fileName, bool raiseEvents = true);
 
     /**
      * @brief ROCCAT Tyon device to defaults
@@ -251,6 +252,7 @@ private:
     inline void releaseDevices();
     inline void releaseManager();
     inline void initializeProfiles();
+    inline void saveProfiles();
     inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
     inline int hidWriteRoccatCtl(IOHIDDeviceRef device, uint pix, uint req);
     inline int hidCheckWrite(IOHIDDeviceRef device);

@@ -4,6 +4,7 @@
 #include <QLabel>
 #include <QProgressBar>
 #include <QScreen>
+#include <QStyle>
 #include <QVBoxLayout>
 
 QPointer<RTProgress> RTProgress::instance = nullptr;
@@ -44,12 +45,20 @@ void RTProgress::present(const QString &message, QWidget *parent)
     }
 
     // Position in Bildschirmmitte
-    QScreen *screen = QGuiApplication::primaryScreen();
-    QRect scr = screen->geometry();
-    instance->move(scr.center() - instance->rect().center());
+    //QScreen *screen = QGuiApplication::primaryScreen();
+    //QRect scr = screen->geometry();
+    //instance->move(scr.center() - instance->rect().center());
+    QRect r = QStyle::alignedRect( //
+        Qt::LeftToRight,
+        Qt::AlignCenter,
+        instance->size(),
+        parent->geometry());
+    instance->move(r.topLeft());
+    instance->resize(r.size());
     instance->setWindowTitle(message);
     instance->setVisible(true);
     instance->raise();
+
     QApplication::processEvents();
 }
 

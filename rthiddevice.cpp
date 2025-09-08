@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QMutexLocker>
+#include <QStandardPaths>
 #include <QThread>
 #include <QTimer>
 #include <QtGui/qkeysequence.h>
@@ -220,6 +221,7 @@ RTHidDevice::RTHidDevice(QObject *parent)
 
 RTHidDevice::~RTHidDevice()
 {
+    saveProfiles();
     releaseManager();
     hid_exit();
 }
@@ -581,7 +583,7 @@ func_exit:
     if (p) \
     delete p
 
-bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
+bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents)
 {
     QFile f(fileName);
     if (!f.open(QFile::ReadOnly)) {
@@ -809,7 +811,9 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
     m_profiles.clear();
     foreach (const TProfile p, profiles) {
         m_profiles[p.index] = p;
-        emit profileChanged(p);
+        if (raiseEvents) {
+            emit profileChanged(p);
+        }
     }
 
 func_exit:
@@ -1315,10 +1319,32 @@ inline void RTHidDevice::initializeProfiles()
     for (quint8 i = 0; i < TYON_PROFILE_NUM; i++) {
         TProfile profile = {};
         profile.index = i;
-        profile.name = tr("Default_%1").arg(profile.index);
+        profile.name = tr("Default_%1").arg(profile.index + 1);
         profile.changed = false;
         m_profiles[i] = profile;
     }
+
+    QString fpath = QStandardPaths::writableLocation( //
+        QStandardPaths::AppConfigLocation);
+    fpath = QDir::toNativeSeparators(fpath + "/profiles.rtpf");
+
+    if (QFile::exists(fpath)) {
+        loadProfilesFromFile(fpath, false);
+    }
+}
+
+void RTHidDevice::saveProfiles()
+{
+    QString fpath = QStandardPaths::writableLocation( //
+        QStandardPaths::AppConfigLocation);
+    QDir d(fpath);
+    if (!d.exists()) {
+        if (!d.mkpath(fpath)) {
+            return;
+        }
+    }
+    fpath = QDir::toNativeSeparators(fpath + "/profiles.rtpf");
+    saveProfilesToFile(fpath);
 }
 
 inline int RTHidDevice::readDeviceSpecial(IOHIDDeviceRef device)
