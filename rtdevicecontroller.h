@@ -8,10 +8,6 @@
 #include <QPushButton>
 #include <QtCompare>
 
-#ifndef CB_CTLR
-#define CB_CTLR(x) RTViewController::x
-#endif
-
 #ifndef CB_BIND
 #define CB_BIND(o, x) std::bind(x, o, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
 #endif
@@ -21,6 +17,14 @@ class RTDeviceController : public QAbstractItemModel
     Q_OBJECT
 
 public:
+    /**
+     * Callback function to assign ROCCAT Tyon button function
+     */
+    typedef std::function<int(TyonButtonIndex, TyonButtonType, const QKeyCombination &)> TSetButtonCallback;
+
+    /**
+     * Definition of ROCCAT Tyon physical button
+     */
     typedef struct
     {
         QString name;
@@ -28,19 +32,207 @@ public:
         TyonButtonIndex easyshift_index;
     } TPhysicalButton;
 
-    typedef std::function<int( //
-        TyonButtonIndex,
-        TyonButtonType,
-        const QKeyCombination &)>
-        THandlerSetButton;
-
+    /**
+     * This type describe the link of physical button and
+     * its assignment callback function TSetButtonCallback
+     */
     typedef struct
     {
         TyonButtonIndex index;
-        THandlerSetButton handler;
+        TSetButtonCallback handler;
     } TButtonLink;
 
+    /**
+     * @brief Default constructor
+     * @param parent
+     */
     explicit RTDeviceController(QObject *parent = nullptr);
+
+    /**
+     * @brief Find ROCCAT Tyon device
+     */
+    void lookupDevice();
+
+    /**
+     * @brief Check device is present
+     * @return true if present
+     */
+    inline bool hasDevice() const { return m_hasDevice; }
+
+    /**
+     * @brief Assign given mouse button to specific function
+     * @param The native mouse button type
+     * @param The native function to be assigned
+     * @return 0 if success
+     */
+    int assignButton(TyonButtonIndex, TyonButtonType, const QKeyCombination &);
+
+    /**
+     * @brief Link ROCCAT Tyon button descriptor to UI QPushButton
+     * @param rb ROCCAT button descriptor
+     * @param button UI push button object
+     */
+    void setupButton(const RoccatButton &rb, QPushButton *button);
+
+    /**
+     * @brief Translate ROCCAT Tyon shortcut to QT key sequence
+     * @param button ROCCAT button descriptor
+     * @return QKeySequence object
+     */
+    const QKeySequence toKeySequence(const RoccatButton &button) const;
+
+    /**
+     * @brief Return the model index of given profile index
+     * @param ROCCAT Tyon profile index
+     * @return QModelIndex object
+     */
+    inline QModelIndex profileIndex(uint pix) { return index(pix, 0, {}); }
+
+    /**
+     * @brief Return the descriptor map for the UI menu
+     * @return QMap object
+     */
+    inline const QMap<quint8, QString> &buttonTypes() { return m_buttonTypes; }
+
+    /**
+     * @brief Set active ROCCAT Tyon profile index
+     * @param profileIndex 0 - 4
+     */
+    void selectProfile(quint8 profileIndex);
+
+    /**
+     * @brief Convert ROCCAT Tyon sensitivity X value to UI value
+     * @param settings Pointer to ROCCAT Tyon settings structure
+     * @return
+     */
+    qint16 toSensitivityXValue(const TyonProfileSettings *settings) const;
+
+    /**
+     * @brief Convert ROCCAT Tyon sensitivity Y value to UI value
+     * @param settings Pointer to ROCCAT Tyon settings structure
+     * @return
+     */
+    qint16 toSensitivityYValue(const TyonProfileSettings *settings) const;
+
+    /**
+     * @brief Convert ROCCAT Tyon DPI level to UI value
+     * @param settings Pointer to ROCCAT Tyon settings structure
+     * @param index DPI level index
+     * @return DPI value for the UI
+     */
+    quint16 toDpiLevelValue(const TyonProfileSettings *settings, quint8 index) const;
+
+    /**
+     * @brief Set the mouse X sensitivity
+     * @param sensitivity
+     */
+    void setXSensitivity(quint8 sensitivity);
+
+    /**
+     * @brief Set the mouse Y sensitivity
+     * @param sensitivity
+     */
+    void setYSensitivity(quint8 sensitivity);
+
+    /**
+     * @brief Set the advanced sensitivity mode
+     * @param bit ROCCAT Tyon selection bits
+     * @param state True independent / false X/Y same value
+     */
+    void setAdvancedSenitivity(quint8 bit, bool state);
+
+    /**
+     * @brief Set sensor poll rate
+     * @param rate
+     */
+    void setPollRate(quint8 rate);
+
+    /**
+     * @brief Enable / disable DPI slot
+     * @param bit The ROCCAT Tyon DPI slot bit
+     * @param state True enabled / False disabled
+     */
+    void setDpiSlot(quint8 bit, bool state);
+
+    /**
+     * @brief Set active DPI value by slot index
+     * @param index The slot index
+     */
+    void setActiveDpiSlot(quint8 index);
+
+    /**
+     * @brief Set the DPI value by slot index
+     * @param index The slot index
+     * @param index DPI value 200 to 8200
+     */
+    void setDpiLevel(quint8 index, quint16 value);
+
+    /**
+     * @brief Enable ROCCAT Tyon lights
+     * @param flag Bit of the light (top / bottom)
+     * @param state True enable / False disable
+     */
+    void setLightsEnabled(quint8 flag, bool state);
+
+    /**
+     * @brief Set the light effect mode
+     * @param value Light effect mode
+     */
+    void setLightsEffect(quint8 value);
+
+    /**
+     * @brief Set the color flow mode
+     * @param value Color flow mode
+     */
+    void setColorFlow(quint8 value);
+
+    /**
+     * @brief Set the color for the wheel light
+     * @param color TyonRmpLightInfo type
+     */
+    void setLightColorWheel(const TyonRmpLightInfo &color);
+
+    /**
+     * @brief Set the color for the bottom light
+     * @param color TyonRmpLightInfo type
+     */
+    void setLightColorBottom(const TyonRmpLightInfo &color);
+
+    /**
+     * @brief Return the name of the active profile
+     * @return QString
+     */
+    QString profileName() const;
+
+    /**
+     * @brief Load all ROCCAT Tyon profiles from file
+     * @param fileName The file name
+     * @return true if success
+     */
+    bool loadProfilesFromFile(const QString &fileName);
+
+    /**
+     * @brief Save all ROCCAT Tyon profiles to file
+     * @param fileName The file name
+     * @return true if success
+     */
+    bool saveProfilesToFile(const QString &fileName);
+
+    /**
+     * @brief Save all modified ROCCAT Tyon profiles to device
+     * @return true if success
+     */
+    bool saveProfilesToDevice();
+
+    /**
+     * @brief Reset all ROCCAT Tyon profiles to device defaults
+     * @return true if success
+     */
+    bool resetProfiles();
+
+    /* ------------------------------------------------------
+     * QAbstractItemModel interface
+     * ------------------------------------------------------ */
 
     // Header:
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
@@ -61,101 +253,6 @@ public:
     // Add data:
     bool insertRows(int row, int count, const QModelIndex &parent = QModelIndex()) override;
     bool insertColumns(int column, int count, const QModelIndex &parent = QModelIndex()) override;
-
-    /**
-     * @brief Find ROCCAT Tyon device
-     */
-    void lookupDevice();
-
-    /**
-     * @brief buttonTypes
-     * @return
-     */
-    inline bool hasDevice() const { return m_hasDevice; }
-
-    /**
-     * @brief Assign given mouse button to specific function
-     * @param The native mouse button type
-     * @param The native function to be assigned
-     * @return 0 if success
-     */
-    int assignButton(TyonButtonIndex, TyonButtonType, const QKeyCombination &);
-
-    /**
-     * @brief setupButton
-     * @param type
-     * @param button
-     * @return
-     */
-    void setupButton(const RoccatButton &rb, QPushButton *button);
-
-    /**
-     * @brief toKeySequence
-     * @param button
-     * @return
-     */
-    const QKeySequence toKeySequence(const RoccatButton &button) const;
-
-    /**
-     * @brief profileIndex
-     * @param pix
-     * @return QModelIndex
-     */
-    inline QModelIndex profileIndex(uint pix) { return index(pix, 0, {}); }
-
-    /**
-     * @brief buttonTypes
-     * @return
-     */
-    inline const QMap<quint8, QString> &buttonTypes() { return m_buttonTypes; }
-
-    /**
-     * @brief selectProfile
-     * @param profile
-     */
-    void selectProfile(quint8 profileIndex);
-
-    /**
-     * @brief Convert Roccat sensitivity X value to UI value
-     * @param settings
-     * @return
-     */
-    qint16 toSensitivityXValue(const TyonProfileSettings *settings) const;
-
-    /**
-     * @brief Convert Roccat sensitivity Y value to UI value
-     * @param settings
-     * @return
-     */
-    qint16 toSensitivityYValue(const TyonProfileSettings *settings) const;
-
-    /**
-     * @brief Convert Roccat DPI level to UI value
-     * @param settings
-     * @param index
-     * @return
-     */
-    quint16 toDpiLevelValue(const TyonProfileSettings *settings, quint8 index) const;
-
-    void setXSensitivity(quint8 sensitivity);
-    void setYSensitivity(quint8 sensitivity);
-    void setAdvancedSenitivity(quint8 bit, bool state);
-    void setPollRate(quint8 rate);
-    void setDpiSlot(quint8 bit, bool state);
-    void setActiveDpiSlot(quint8 id);
-    void setDpiLevel(quint8 index, quint16 value);
-    void setLightsEnabled(quint8 flag, bool state);
-    void setLightsEffect(quint8 value);
-    void setColorFlow(quint8 value);
-    void setLightColorWheel(const TyonRmpLightInfo &color);
-    void setLightColorBottom(const TyonRmpLightInfo &color);
-
-    QString profileName() const;
-
-    bool loadProfilesFromFile(const QString &fileName);
-    bool saveProfilesToFile(const QString &fileName);
-    bool saveProfilesToDevice();
-    bool resetProfiles();
 
 signals:
     void lookupStarted();

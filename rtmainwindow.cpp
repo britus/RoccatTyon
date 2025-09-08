@@ -577,7 +577,7 @@ inline QAction *RTMainWindow::linkAction(QAction *action, TyonButtonType functio
         //qDebug() << "[APPWIN] triggered():" << function << action;
         //qDebug() << "[APPWIN] triggered():" << pb << pb->text();
 
-        RTDeviceController::THandlerSetButton handler;
+        RTDeviceController::TSetButtonCallback handler;
         if (m_buttons.contains(pb)) {
             const RTDeviceController::TButtonLink bl = m_buttons[pb];
             if ((handler = bl.handler) != nullptr) {
