@@ -13,7 +13,8 @@ RTProgress::RTProgress(const QString &message, QWidget *parent)
     : QDialog(parent)
     , progressBar(new QProgressBar(this))
 {
-    setWindowFlags(Qt::Dialog | Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint | Qt::CustomizeWindowHint);
+    //| Qt::WindowStaysOnTopHint
+    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::CustomizeWindowHint);
     setAttribute(Qt::WA_DeleteOnClose, false);
 
     auto *layout = new QVBoxLayout(this);

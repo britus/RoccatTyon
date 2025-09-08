@@ -119,12 +119,36 @@ inline void RTMainWindow::saveSettings(QSettings *settings)
 
 inline void RTMainWindow::initializeUiElements()
 {
+    const Qt::FindChildOption fco = Qt::FindChildrenRecursively;
+
     ui->cbxDPIActiveSlot->setMaxVisibleItems(15);
-    ui->tableView->setModel(m_ctlr->model());
+    ui->tableView->setModel(m_ctlr);
     ui->pnlLeft->setEnabled(false);
     ui->tabWidget->setEnabled(false);
     ui->pbSave->setEnabled(false);
     ui->pbReset->setEnabled(false);
+
+    QSlider *s;
+    foreach (QSpinBox *c, ui->pnlSensorDpi->findChildren<QSpinBox *>(fco)) {
+        c->setMinimum(TYON_CPI_MIN);
+        c->setMaximum(TYON_CPI_MAX);
+        c->setSingleStep(TYON_CPI_STEP);
+        QString name = QString(c->objectName()).replace("ed", "hs");
+        if ((s = ui->pnlSensorDpi->findChild<QSlider *>(name, fco))) {
+            c->setProperty("link", QVariant::fromValue(s));
+        }
+    }
+
+    QSpinBox *b;
+    foreach (QSlider *c, ui->pnlSensorDpi->findChildren<QSlider *>(fco)) {
+        c->setMinimum(TYON_CPI_MIN);
+        c->setMaximum(TYON_CPI_MAX);
+        c->setSingleStep(TYON_CPI_STEP);
+        QString name = QString(c->objectName()).replace("hs", "ed");
+        if ((b = ui->pnlSensorDpi->findChild<QSpinBox *>(name, fco))) {
+            c->setProperty("link", QVariant::fromValue(b));
+        }
+    }
 
     // Standard
     m_buttons[ui->pbMBStdTopLeft] = {TYON_BUTTON_INDEX_LEFT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
@@ -365,19 +389,47 @@ inline void RTMainWindow::connectUiElements()
             m_ctlr->setActiveDpiSlot(v.toUInt());
         }
     });
-    connect(ui->edDpiSlot1, &QSpinBox::valueChanged, this, [this](int value) { //
-        m_ctlr->setDpiLevel(0, value);
-    });
+
+    quint8 sbIndex = 0;
+    foreach (QSpinBox *c, ui->pnlSensorDpi->findChildren<QSpinBox *>(Qt::FindChildrenRecursively)) {
+        connect(c, &QSpinBox::valueChanged, this, [this, c, sbIndex](int value) { //
+            QSlider *s;
+            QVariant v = c->property("link");
+            if (v.isValid() && (s = v.value<QSlider *>())) {
+                s->setValue(value);
+            }
+            m_ctlr->setDpiLevel(sbIndex, value);
+        });
+        sbIndex++;
+    }
+
+    quint8 hsIndex = 0;
+    foreach (QSlider *c, ui->pnlSensorDpi->findChildren<QSlider *>(Qt::FindChildrenRecursively)) {
+        connect(c, &QSlider::valueChanged, this, [this, c, hsIndex](int value) { //
+            QSpinBox *b;
+            QVariant v = c->property("link");
+            if (v.isValid() && (b = v.value<QSpinBox *>())) {
+                b->setValue(value);
+            }
+            m_ctlr->setDpiLevel(hsIndex, value);
+        });
+        hsIndex++;
+    }
+
     connect(ui->edDpiSlot2, &QSpinBox::valueChanged, this, [this](int value) { //
+        ui->hsDpiSlot2->setValue(value);
         m_ctlr->setDpiLevel(1, value);
     });
     connect(ui->edDpiSlot3, &QSpinBox::valueChanged, this, [this](int value) { //
+        ui->hsDpiSlot3->setValue(value);
         m_ctlr->setDpiLevel(2, value);
     });
     connect(ui->edDpiSlot4, &QSpinBox::valueChanged, this, [this](int value) { //
+        ui->hsDpiSlot4->setValue(value);
         m_ctlr->setDpiLevel(3, value);
     });
     connect(ui->edDpiSlot5, &QSpinBox::valueChanged, this, [this](int value) { //
+        ui->hsDpiSlot5->setValue(value);
         m_ctlr->setDpiLevel(4, value);
     });
 
@@ -577,6 +629,11 @@ inline void RTMainWindow::linkButton(QPushButton *pb, const QMap<QString, QActio
 static int progress_count = 0;
 void RTMainWindow::onLookupStarted()
 {
+    ui->pnlLeft->setEnabled(false);
+    ui->tabWidget->setEnabled(false);
+    ui->pbSave->setEnabled(false);
+    ui->pbReset->setEnabled(false);
+
     progress_count = 0;
     RTProgress::present(tr("Searching ROCCAT device..."), this);
 
@@ -592,6 +649,7 @@ void RTMainWindow::onLookupStarted()
             return;
         }
     });
+
     QThread::yieldCurrentThread();
 }
 
@@ -666,11 +724,15 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
     ui->cbxSenitivityEnableAdv->setChecked(s->advanced_sensitivity & ROCCAT_SENSITIVITY_ADVANCED_ON);
 
     if (ui->cbxSenitivityEnableAdv->isChecked()) {
-        ui->edXSensitivity->setValue(s->sensitivity_x - ROCCAT_SENSITIVITY_CENTER);
-        ui->edYSensitivity->setValue(s->sensitivity_y - ROCCAT_SENSITIVITY_CENTER);
+        ui->edXSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
+        ui->hsXSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
+        ui->edYSensitivity->setValue(m_ctlr->toSensitivityYValue(s));
+        ui->hsYSensitivity->setValue(m_ctlr->toSensitivityYValue(s));
     } else {
-        ui->edXSensitivity->setValue(s->sensitivity_x - ROCCAT_SENSITIVITY_CENTER);
-        ui->edYSensitivity->setValue(s->sensitivity_x - ROCCAT_SENSITIVITY_CENTER);
+        ui->edXSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
+        ui->hsXSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
+        ui->edYSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
+        ui->hsYSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
     }
 
     ui->rbPollRate125->setChecked(s->talkfx_polling_rate == ROCCAT_POLLING_RATE_125);
@@ -691,23 +753,28 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
         }
         switch (i) {
             case 0: {
-                ui->edDpiSlot1->setValue((s->cpi_levels[i] >> 2) * 200);
+                ui->edDpiSlot1->setValue(m_ctlr->toDpiLevelValue(s, i));
+                ui->hsDpiSlot1->setValue(m_ctlr->toDpiLevelValue(s, i));
                 break;
             }
             case 1: {
-                ui->edDpiSlot2->setValue((s->cpi_levels[i] >> 2) * 200);
+                ui->edDpiSlot2->setValue(m_ctlr->toDpiLevelValue(s, i));
+                ui->hsDpiSlot2->setValue(m_ctlr->toDpiLevelValue(s, i));
                 break;
             }
             case 2: {
-                ui->edDpiSlot3->setValue((s->cpi_levels[i] >> 2) * 200);
+                ui->edDpiSlot3->setValue(m_ctlr->toDpiLevelValue(s, i));
+                ui->hsDpiSlot3->setValue(m_ctlr->toDpiLevelValue(s, i));
                 break;
             }
             case 3: {
-                ui->edDpiSlot4->setValue((s->cpi_levels[i] >> 2) * 200);
+                ui->edDpiSlot4->setValue(m_ctlr->toDpiLevelValue(s, i));
+                ui->hsDpiSlot4->setValue(m_ctlr->toDpiLevelValue(s, i));
                 break;
             }
             case 4: {
-                ui->edDpiSlot5->setValue((s->cpi_levels[i] >> 2) * 200);
+                ui->edDpiSlot5->setValue(m_ctlr->toDpiLevelValue(s, i));
+                ui->hsDpiSlot5->setValue(m_ctlr->toDpiLevelValue(s, i));
                 break;
             }
         }
@@ -804,9 +871,13 @@ void RTMainWindow::onButtonsChanged(const TyonProfileButtons &buttons)
 void RTMainWindow::onSaveProfilesStarted()
 {
     RTProgress::present(tr("Please wait..."), this);
+    ui->pnlContent->setEnabled(false);
+    ui->pnlLeft->setEnabled(false);
 }
 
 void RTMainWindow::onSaveProfilesFinished()
 {
+    ui->pnlContent->setEnabled(true);
+    ui->pnlLeft->setEnabled(true);
     RTProgress::dismiss();
 }

@@ -17,7 +17,7 @@
 #define CB_BIND(o, x) std::bind(x, o, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
 #endif
 
-class RTDeviceController : public QObject
+class RTDeviceController : public QAbstractItemModel
 {
     Q_OBJECT
 
@@ -43,6 +43,26 @@ public:
 
     explicit RTDeviceController(QObject *parent = nullptr);
 
+    // Header:
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+    bool setHeaderData(int section, Qt::Orientation orientation, const QVariant &value, int role = Qt::EditRole) override;
+
+    // Basic functionality:
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
+    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
+    QModelIndex parent(const QModelIndex &index) const override;
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+
+    // Editable:
+    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
+    bool clearItemData(const QModelIndex &index) override;
+    Qt::ItemFlags flags(const QModelIndex &index) const override;
+
+    // Add data:
+    bool insertRows(int row, int count, const QModelIndex &parent = QModelIndex()) override;
+    bool insertColumns(int column, int count, const QModelIndex &parent = QModelIndex()) override;
+
     /**
      * @brief Find ROCCAT Tyon device
      */
@@ -60,16 +80,7 @@ public:
      * @param The native function to be assigned
      * @return 0 if success
      */
-    int assignButton( //
-        TyonButtonIndex,
-        TyonButtonType,
-        const QKeyCombination &);
-
-    /**
-     * @brief buttonTypes
-     * @return
-     */
-    inline const QMap<quint8, QString> &buttonTypes() { return m_buttonTypes; }
+    int assignButton(TyonButtonIndex, TyonButtonType, const QKeyCombination &);
 
     /**
      * @brief setupButton
@@ -87,23 +98,45 @@ public:
     const QKeySequence toKeySequence(const RoccatButton &button) const;
 
     /**
-     * @brief model
-     * @return
-     */
-    inline RTProfileModel *model() { return &m_model; }
-
-    /**
      * @brief profileIndex
      * @param pix
      * @return QModelIndex
      */
-    inline QModelIndex profileIndex(uint pix) { return m_model.index(pix, 0, {}); }
+    inline QModelIndex profileIndex(uint pix) { return index(pix, 0, {}); }
+
+    /**
+     * @brief buttonTypes
+     * @return
+     */
+    inline const QMap<quint8, QString> &buttonTypes() { return m_buttonTypes; }
 
     /**
      * @brief selectProfile
      * @param profile
      */
     void selectProfile(quint8 profileIndex);
+
+    /**
+     * @brief Convert Roccat sensitivity X value to UI value
+     * @param settings
+     * @return
+     */
+    qint16 toSensitivityXValue(const TyonProfileSettings *settings) const;
+
+    /**
+     * @brief Convert Roccat sensitivity Y value to UI value
+     * @param settings
+     * @return
+     */
+    qint16 toSensitivityYValue(const TyonProfileSettings *settings) const;
+
+    /**
+     * @brief Convert Roccat DPI level to UI value
+     * @param settings
+     * @param index
+     * @return
+     */
+    quint16 toDpiLevelValue(const TyonProfileSettings *settings, quint8 index) const;
 
     void setXSensitivity(quint8 sensitivity);
     void setYSensitivity(quint8 sensitivity);
@@ -147,13 +180,9 @@ private slots:
     void onProfileChanged(const RTHidDevice::TProfile &profile);
     void onSaveProfilesStarted();
     void onSaveProfilesFinished();
-    void onModelChanged(const QModelIndex &topLeft,     //
-                        const QModelIndex &bottomRight, //
-                        const QList<int> &roles = QList<int>());
 
 private:
     RTHidDevice m_device;
-    RTProfileModel m_model;
     QMap<quint8, QString> m_buttonTypes;
     QMap<quint8, RTDeviceController::TPhysicalButton> m_physButtons;
     bool m_hasDevice;
@@ -164,5 +193,6 @@ private:
     inline void setButtonType(const QString &name, quint8 type);
     inline void setPhysicalButton(quint8 index, TPhysicalButton pb);
 };
+
 Q_DECLARE_METATYPE(RTDeviceController::TPhysicalButton);
 Q_DECLARE_METATYPE(RTDeviceController::TButtonLink);

@@ -1,6 +1,7 @@
 #pragma once
 #include "rttypes.h"
 #include <IOKit/hid/IOHIDManager.h>
+#include <QAbstractItemModel>
 #include <QMap>
 #include <QMutex>
 #include <QObject>
@@ -49,7 +50,7 @@ public:
      * @brief Return a 'idx/profile' map
      * @return A list of profiles
      */
-    inline const TProfiles &profiles() const { return m_profiles; }
+    inline const TProfiles *profiles() const { return &m_profiles; }
 
 #if 0
     /**
@@ -103,10 +104,31 @@ public:
      * @brief assignButton
      * @param type
      * @param func
-     * @param key
-     * @param mods
+     * @param QKeyCombination
      */
-    void assignButton(TyonButtonIndex type, TyonButtonType func, quint8 key, quint8 mods);
+    void assignButton(TyonButtonIndex type, TyonButtonType func, const QKeyCombination &kc);
+    const QKeySequence toKeySequence(const RoccatButton &b) const;
+
+    /**
+     * @brief Convert Roccat sensitivity X value to UI value
+     * @param settings
+     * @return
+     */
+    qint16 toSensitivityXValue(const TyonProfileSettings *settings) const;
+
+    /**
+     * @brief Convert Roccat sensitivity Y value to UI value
+     * @param settings
+     * @return
+     */
+    qint16 toSensitivityYValue(const TyonProfileSettings *settings) const;
+
+    /**
+     * @brief Convert Roccat DPI level to UI value
+     * @param settings
+     * @return
+     */
+    quint16 toDpiLevelValue(const TyonProfileSettings *settings, quint8 index) const;
 
     void setActiveProfile(quint8 profileIndex);
     void setProfileName(const QString &name, quint8 profileIndex);

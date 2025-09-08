@@ -1,4 +1,5 @@
 #include "rthiddevice.h"
+#include "hid_uid.h"
 #include "rttypes.h"
 #include <IOKit/hid/IOHIDManager.h>
 #include <hidapi.h>
@@ -11,6 +12,7 @@
 #include <QMutexLocker>
 #include <QThread>
 #include <QTimer>
+#include <QtGui/qkeysequence.h>
 
 //#undef QT_DEBUG
 
@@ -19,6 +21,110 @@
 #endif
 
 Q_DECLARE_OPAQUE_POINTER(IOHIDDeviceRef)
+
+typedef struct
+{
+    quint8 uid_key;
+    Qt::Key qt_key;
+    Qt::KeyboardModifier modifier;
+} TUidToQtKeyMap;
+
+static TUidToQtKeyMap uid_2_qtkey[] = {
+    {HID_UID_KB_A, Qt::Key_A, Qt::NoModifier},
+    {HID_UID_KB_B, Qt::Key_B, Qt::NoModifier},
+    {HID_UID_KB_C, Qt::Key_C, Qt::NoModifier},
+    {HID_UID_KB_D, Qt::Key_D, Qt::NoModifier},
+    {HID_UID_KB_E, Qt::Key_E, Qt::NoModifier},
+    {HID_UID_KB_F, Qt::Key_F, Qt::NoModifier},
+    {HID_UID_KB_G, Qt::Key_G, Qt::NoModifier},
+    {HID_UID_KB_H, Qt::Key_H, Qt::NoModifier},
+    {HID_UID_KB_I, Qt::Key_I, Qt::NoModifier},
+    {HID_UID_KB_J, Qt::Key_J, Qt::NoModifier},
+    {HID_UID_KB_K, Qt::Key_K, Qt::NoModifier},
+    {HID_UID_KB_L, Qt::Key_L, Qt::NoModifier},
+    {HID_UID_KB_M, Qt::Key_M, Qt::NoModifier},
+    {HID_UID_KB_N, Qt::Key_N, Qt::NoModifier},
+    {HID_UID_KB_O, Qt::Key_O, Qt::NoModifier},
+    {HID_UID_KB_P, Qt::Key_P, Qt::NoModifier},
+    {HID_UID_KB_Q, Qt::Key_Q, Qt::NoModifier},
+    {HID_UID_KB_R, Qt::Key_R, Qt::NoModifier},
+    {HID_UID_KB_S, Qt::Key_S, Qt::NoModifier},
+    {HID_UID_KB_T, Qt::Key_T, Qt::NoModifier},
+    {HID_UID_KB_U, Qt::Key_U, Qt::NoModifier},
+    {HID_UID_KB_V, Qt::Key_V, Qt::NoModifier},
+    {HID_UID_KB_W, Qt::Key_W, Qt::NoModifier},
+    {HID_UID_KB_X, Qt::Key_X, Qt::NoModifier},
+    {HID_UID_KB_Y, Qt::Key_Y, Qt::NoModifier},
+    {HID_UID_KB_Z, Qt::Key_Z, Qt::NoModifier},
+    {HID_UID_KB_1, Qt::Key_1, Qt::NoModifier},
+    {HID_UID_KB_2, Qt::Key_2, Qt::NoModifier},
+    {HID_UID_KB_3, Qt::Key_3, Qt::NoModifier},
+    {HID_UID_KB_4, Qt::Key_4, Qt::NoModifier},
+    {HID_UID_KB_5, Qt::Key_5, Qt::NoModifier},
+    {HID_UID_KB_6, Qt::Key_6, Qt::NoModifier},
+    {HID_UID_KB_7, Qt::Key_7, Qt::NoModifier},
+    {HID_UID_KB_8, Qt::Key_8, Qt::NoModifier},
+    {HID_UID_KB_9, Qt::Key_9, Qt::NoModifier},
+    {HID_UID_KB_0, Qt::Key_0, Qt::NoModifier},
+    {HID_UID_KB_ENTER, Qt::Key_Enter, Qt::NoModifier},
+    {HID_UID_KB_ESCAPE, Qt::Key_Escape, Qt::NoModifier},
+    {HID_UID_KB_BACKSPACE, Qt::Key_Backspace, Qt::NoModifier},
+    {HID_UID_KB_TAB, Qt::Key_Tab, Qt::NoModifier},
+    {HID_UID_KB_SPACE, Qt::Key_Space, Qt::NoModifier},
+    {HID_UID_KB_CAPS_LOCK, Qt::Key_CapsLock, Qt::NoModifier},
+    {HID_UID_KB_F1, Qt::Key_F1, Qt::NoModifier},
+    {HID_UID_KB_F2, Qt::Key_F2, Qt::NoModifier},
+    {HID_UID_KB_F3, Qt::Key_F3, Qt::NoModifier},
+    {HID_UID_KB_F4, Qt::Key_F4, Qt::NoModifier},
+    {HID_UID_KB_F5, Qt::Key_F5, Qt::NoModifier},
+    {HID_UID_KB_F6, Qt::Key_F6, Qt::NoModifier},
+    {HID_UID_KB_F7, Qt::Key_F7, Qt::NoModifier},
+    {HID_UID_KB_F8, Qt::Key_F8, Qt::NoModifier},
+    {HID_UID_KB_F9, Qt::Key_F9, Qt::NoModifier},
+    {HID_UID_KB_F10, Qt::Key_F10, Qt::NoModifier},
+    {HID_UID_KB_F11, Qt::Key_F11, Qt::NoModifier},
+    {HID_UID_KB_F12, Qt::Key_F12, Qt::NoModifier},
+    {HID_UID_KB_PRINT_SCREEN, Qt::Key_Print, Qt::NoModifier},
+    {HID_UID_KB_SCROLL_LOCK, Qt::Key_ScrollLock, Qt::NoModifier},
+    {HID_UID_KB_PAUSE, Qt::Key_Pause, Qt::NoModifier},
+    {HID_UID_KB_INSERT, Qt::Key_Insert, Qt::NoModifier},
+    {HID_UID_KB_HOME, Qt::Key_Home, Qt::NoModifier},
+    {HID_UID_KB_PAGE_UP, Qt::Key_PageUp, Qt::NoModifier},
+    {HID_UID_KB_DELETE, Qt::Key_Delete, Qt::NoModifier},
+    {HID_UID_KB_END, Qt::Key_End, Qt::NoModifier},
+    {HID_UID_KB_PAGE_DOWN, Qt::Key_PageDown, Qt::NoModifier},
+    {HID_UID_KB_RIGHT_ARROW, Qt::Key_Right, Qt::NoModifier},
+    {HID_UID_KB_LEFT_ARROW, Qt::Key_Left, Qt::NoModifier},
+    {HID_UID_KB_DOWN_ARROW, Qt::Key_Down, Qt::NoModifier},
+    {HID_UID_KB_UP_ARROW, Qt::Key_Up, Qt::NoModifier},
+    {HID_UID_KB_APPLICATION, Qt::Key_Open, Qt::NoModifier},
+    {HID_UID_KB_LEFT_CONTROL, Qt::Key_Control, Qt::NoModifier},
+    {HID_UID_KB_LEFT_SHIFT, Qt::Key_Shift, Qt::NoModifier},
+    {HID_UID_KB_LEFT_ALT, Qt::Key_Alt, Qt::NoModifier},
+    {HID_UID_KB_LEFT_GUI, Qt::Key_AltGr, Qt::NoModifier},
+    {HID_UID_KB_RIGHT_CONTROL, Qt::Key_Control, Qt::NoModifier},
+    {HID_UID_KB_RIGHT_SHIFT, Qt::Key_Shift, Qt::NoModifier},
+    {HID_UID_KB_RIGHT_ALT, Qt::Key_Alt, Qt::NoModifier},
+    {HID_UID_KB_RIGHT_GUI, Qt::Key_AltGr, Qt::NoModifier},
+    {HID_UID_KP_NUM_LOCK, Qt::Key_NumLock, Qt::KeypadModifier},
+    {HID_UID_KP_DIV, Qt::Key_division, Qt::KeypadModifier},
+    {HID_UID_KP_MUL, Qt::Key_multiply, Qt::KeypadModifier},
+    {HID_UID_KP_MINUS, Qt::Key_Minus, Qt::KeypadModifier},
+    {HID_UID_KP_PLUS, Qt::Key_Plus, Qt::KeypadModifier},
+    {HID_UID_KP_ENTER, Qt::Key_Enter, Qt::KeypadModifier},
+    {HID_UID_KP_1, Qt::Key_1, Qt::KeypadModifier},
+    {HID_UID_KP_2, Qt::Key_2, Qt::KeypadModifier},
+    {HID_UID_KP_3, Qt::Key_3, Qt::KeypadModifier},
+    {HID_UID_KP_4, Qt::Key_4, Qt::KeypadModifier},
+    {HID_UID_KP_5, Qt::Key_5, Qt::KeypadModifier},
+    {HID_UID_KP_6, Qt::Key_6, Qt::KeypadModifier},
+    {HID_UID_KP_7, Qt::Key_7, Qt::KeypadModifier},
+    {HID_UID_KP_8, Qt::Key_8, Qt::KeypadModifier},
+    {HID_UID_KP_9, Qt::Key_9, Qt::KeypadModifier},
+    {HID_UID_KP_0, Qt::Key_0, Qt::KeypadModifier},
+    {HID_UID_KP_DELETE, Qt::Key_Delete, Qt::KeypadModifier},
+    {0, Qt::Key_unknown, Qt::NoModifier},
+};
 
 // -------------------------------------------------------------
 //
@@ -471,6 +577,10 @@ func_exit:
     return true;
 }
 
+#define SafeDelete(p) \
+    if (p) \
+    delete p
+
 bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
 {
     QFile f(fileName);
@@ -499,8 +609,8 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
         return (mark == value ? p : nullptr);
     };
 
-    TProfile profile = {};
-    TProfiles profileList = {};
+    TProfile *profile = 0;
+    TProfiles profiles = {};
     quint8 *p = (quint8 *) buffer.constData();
     quint8 pfcount = 0;
     quint8 stage = 0;
@@ -513,18 +623,19 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
                     qCritical("[HIDDEV] Invalid data file. Header invalid");
                     goto func_exit;
                 }
-                profile = {};
+                profile = new TProfile();
                 stage++;
                 break;
             }
             case 1: {
-                p = readNext(p, &profile.index, sizeof(profile.index));
-                if (profile.index >= TYON_PROFILE_NUM) {
+                p = readNext(p, &profile->index, sizeof(profile->index));
+                if (profile->index >= TYON_PROFILE_NUM) {
                     qCritical("[HIDDEV] Invalid profile index.");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
 #ifdef QT_DEBUG
-                qDebug("[HIDDEV] %s Read profile: %d", qPrintable(fileName), profile.index);
+                qDebug("[HIDDEV] %s Read profile: %d", qPrintable(fileName), profile->index);
 #endif
                 p = readNext(p, &length, sizeof(quint32));
                 if (length) {
@@ -533,12 +644,13 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
                     for (quint32 i = 0; i < length && i < HIDAPI_MAX_STR; i++) {
                         p = readNext(p, &c, sizeof(quint8));
                         if (c >= 0x20 && c < 0x7f) { // only human readable
-                            profile.name += QChar(c);
+                            profile->name += QChar(c);
                             offset++;
                         }
                     }
                     if (offset != length) {
                         qCritical("[HIDDEV] Invalid profile name.");
+                        SafeDelete(profile);
                         goto func_exit;
                     }
                 }
@@ -548,31 +660,36 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
             case 2: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[1]))) {
                     qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
-                TyonProfileButtons *pb = &profile.buttons;
+                TyonProfileButtons *pb = &profile->buttons;
                 p = readNext(p, &pb->report_id, sizeof(pb->report_id));
                 p = readNext(p, &pb->size, sizeof(pb->size));
                 p = readNext(p, &pb->profile_index, sizeof(pb->profile_index));
                 if (pb->report_id != TYON_REPORT_ID_PROFILE_BUTTONS) {
                     qCritical("[HIDDEV] Invalid button report identifier.");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
                 if (pb->size != sizeof(TyonProfileButtons)) {
                     qCritical("[HIDDEV] Invalid profile data.");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
                 if (pb->profile_index >= TYON_PROFILE_NUM) {
                     qCritical("[HIDDEV] Invalid button profile index.");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
                 p = readNext(p, &length, sizeof(quint8));
                 if (length != TYON_PROFILE_BUTTON_NUM) {
                     qCritical("[HIDDEV] Invalid button count value.");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
                 for (quint8 i = 0; i < TYON_PROFILE_BUTTON_NUM; i++) {
-                    RoccatButton *b = &profile.buttons.buttons[i];
+                    RoccatButton *b = &profile->buttons.buttons[i];
                     p = readNext(p, &b->type, sizeof(b->type));
                     p = readNext(p, &b->key, sizeof(b->key));
                     p = readNext(p, &b->modifier, sizeof(b->modifier));
@@ -583,22 +700,26 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
             case 3: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[2]))) {
                     qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
-                TyonProfileSettings *ps = &profile.settings;
+                TyonProfileSettings *ps = &profile->settings;
                 p = readNext(p, &ps->report_id, sizeof(ps->report_id));
                 p = readNext(p, &ps->size, sizeof(ps->size));
                 p = readNext(p, &ps->profile_index, sizeof(ps->profile_index));
                 if (ps->report_id != TYON_REPORT_ID_PROFILE_SETTINGS) {
                     qCritical("[HIDDEV] Invalid button report identifier.");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
                 if (ps->size != sizeof(TyonProfileSettings)) {
                     qCritical("[HIDDEV] Invalid profile data.");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
                 if (ps->profile_index >= TYON_PROFILE_NUM) {
                     qCritical("[HIDDEV] Invalid button profile index.");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
                 p = readNext(p, &ps->advanced_sensitivity, sizeof(ps->advanced_sensitivity));
@@ -617,12 +738,14 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
             case 4: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[3]))) {
                     qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
-                TyonProfileSettings *ps = &profile.settings;
+                TyonProfileSettings *ps = &profile->settings;
                 p = readNext(p, &length, sizeof(quint8));
                 if (length != TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM) {
                     qCritical("[HIDDEV] Invalid DPI level count value.");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
                 for (quint8 i = 0; i < TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM; i++) {
@@ -634,12 +757,14 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
             case 5: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[4]))) {
                     qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
-                TyonProfileSettings *ps = &profile.settings;
+                TyonProfileSettings *ps = &profile->settings;
                 p = readNext(p, &length, sizeof(quint8));
                 if (length != TYON_LIGHTS_NUM) {
                     qCritical("[HIDDEV] Invalid light count value.");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
                 for (quint8 i = 0; i < TYON_LIGHTS_NUM; i++) {
@@ -655,9 +780,10 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
             case 6: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[5]))) {
                     qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
-                TyonProfileSettings *ps = &profile.settings;
+                TyonProfileSettings *ps = &profile->settings;
                 p = readNext(p, &ps->checksum, sizeof(ps->checksum));
                 stage++;
                 break;
@@ -665,9 +791,13 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
             case 7: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[6]))) {
                     qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    SafeDelete(profile);
                     goto func_exit;
                 }
-                profileList[profile.index] = profile;
+                profile->changed = true;
+                profiles[profile->index] = (*profile);
+                SafeDelete(profile);
+                profile = 0L;
                 pfcount++;
                 stage = 0; // next profile
                 break;
@@ -676,8 +806,9 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
     } // for
 
     // success, update UI
-    foreach (const TProfile p, profileList) {
-        m_profiles[profile.index] = p;
+    m_profiles.clear();
+    foreach (const TProfile p, profiles) {
+        m_profiles[p.index] = p;
         emit profileChanged(p);
     }
 
@@ -686,11 +817,7 @@ func_exit:
     return true;
 }
 
-void RTHidDevice::assignButton( //
-    TyonButtonIndex type,
-    TyonButtonType func,
-    quint8 key,
-    quint8 mods)
+void RTHidDevice::assignButton(TyonButtonIndex type, TyonButtonType func, const QKeyCombination &kc)
 {
     if ((qint8) type > TYON_PROFILE_BUTTON_NUM) {
         return;
@@ -699,35 +826,131 @@ void RTHidDevice::assignButton( //
         return;
     }
 
+#ifdef QT_DEBUG
+    qDebug() << "[HIDDEV] assignButton TYPE:" << type << "FUNC:" << func << "KC:" << kc;
+#endif
+
+    TUidToQtKeyMap *keymap = nullptr;
+    quint8 mods = 0;
+
+    if (func == TYON_BUTTON_TYPE_SHORTCUT) {
+        // Translate QT key modifiers to ROCCAT Tyon modifiers
+        auto toQtMods2Roccat = [](const Qt::KeyboardModifiers &km) -> quint8 {
+            quint8 mods = 0;
+            /* on Mac OSX Meta must be mapped to CTRL */
+            if (km.testFlag(Qt::ShiftModifier))
+                mods |= ROCCAT_BUTTON_MODIFIER_BIT_SHIFT;
+            if (km.testFlag(Qt::ControlModifier))
+                mods |= ROCCAT_BUTTON_MODIFIER_BIT_CTRL;
+            if (km.testFlag(Qt::AltModifier))
+                mods |= ROCCAT_BUTTON_MODIFIER_BIT_ALT;
+            if (km.testFlag(Qt::MetaModifier))
+                mods |= ROCCAT_BUTTON_MODIFIER_BIT_WIN;
+            return mods;
+        };
+
+        bool isKeyPad = kc.keyboardModifiers().testFlag(Qt::KeypadModifier);
+        Qt::KeyboardModifier testMod = (isKeyPad ? Qt::KeypadModifier : Qt::NoModifier);
+        for (TUidToQtKeyMap *p = uid_2_qtkey; p->uid_key && p->qt_key != Qt::Key_unknown; p++) {
+            if (kc.key() == p->qt_key && p->modifier == testMod) {
+                keymap = p;
+                break;
+            }
+        }
+        if (!keymap) {
+            return;
+        }
+
+        mods = toQtMods2Roccat(kc.keyboardModifiers());
+    }
+
     TProfile p = m_profiles[profileIndex()];
     RoccatButton *b = &p.buttons.buttons[type];
-    if (b->type != func || b->modifier != mods || b->key != key) {
-        b->type = func;
-        b->modifier = mods;
-        b->key = key;
-        p.changed = true;
-        m_profiles[profileIndex()] = p;
-        emit profileChanged(p);
+    b->type = func;
+    b->modifier = (keymap != nullptr ? mods : 0);
+    b->key = (keymap != nullptr ? keymap->uid_key : 0);
+    p.changed = true;
+    m_profiles[profileIndex()] = p;
+    emit profileChanged(p);
+}
+
+const QKeySequence RTHidDevice::toKeySequence(const RoccatButton &b) const
+{
+    // Translate ROCCAT Tyon key modifier to QT type
+    auto toQtModifiers = [](quint8 modifier, TUidToQtKeyMap *keymap) -> Qt::KeyboardModifiers {
+        Qt::KeyboardModifiers km = {};
+        if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_SHIFT) {
+            km.setFlag(Qt::ShiftModifier, true);
+        }
+        if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_CTRL) {
+            km.setFlag(Qt::ControlModifier, true);
+        }
+        if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_ALT) {
+            km.setFlag(Qt::AltModifier, true);
+        }
+        if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_WIN) {
+            km.setFlag(Qt::MetaModifier, true);
+        }
+        /* Nummber keypad */
+        if (keymap->modifier & Qt::KeypadModifier) {
+            km.setFlag(Qt::KeypadModifier, true);
+        }
+        return km;
+    };
+
+    TUidToQtKeyMap *keymap = nullptr;
+    for (TUidToQtKeyMap *p = uid_2_qtkey; p->uid_key && p->qt_key != Qt::Key_unknown; p++) {
+        if (b.key == p->uid_key) {
+            keymap = p;
+            break;
+        }
     }
+
+    if (keymap) {
+        const Qt::KeyboardModifiers km = toQtModifiers(b.modifier, keymap);
+        const QKeyCombination kc(km, keymap->qt_key);
+        const QKeySequence ks(kc);
+        return ks;
+    }
+
+    // not found
+    return {};
+}
+
+qint16 RTHidDevice::toSensitivityXValue(const TyonProfileSettings *settings) const
+{
+    return (settings->sensitivity_x - ROCCAT_SENSITIVITY_CENTER);
+}
+
+qint16 RTHidDevice::toSensitivityYValue(const TyonProfileSettings *settings) const
+{
+    return (settings->sensitivity_y - ROCCAT_SENSITIVITY_CENTER);
+}
+
+quint16 RTHidDevice::toDpiLevelValue(const TyonProfileSettings *settings, quint8 index) const
+{
+    if (index > TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM)
+        return 0;
+    return (settings->cpi_levels[index] >> 2) * 200;
 }
 
 void RTHidDevice::setActiveProfile(quint8 pix)
 {
-    if (m_profile.profile_index != pix) {
+    if (m_profile.profile_index != pix && pix < TYON_PROFILE_NUM) {
         m_profile.profile_index = pix;
         emit profileIndexChanged(pix);
         emit profileChanged(m_profiles[pix]);
     }
 }
 
-void RTHidDevice::setProfileName(const QString &name, quint8 profileIndex)
+void RTHidDevice::setProfileName(const QString &name, quint8 pix)
 {
-    if (m_profiles.contains(profileIndex)) {
-        TProfile p = m_profiles[profileIndex];
+    if (m_profiles.contains(pix)) {
+        TProfile p = m_profiles[pix];
         if (p.name != name) {
             p.name = name;
             p.changed = true;
-            m_profiles[profileIndex] = p;
+            m_profiles[pix] = p;
             emit profileChanged(p);
         }
     }

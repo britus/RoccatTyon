@@ -1,5 +1,4 @@
 #include "rtdevicecontroller.h"
-#include "hid_uid.h"
 #include "rttypes.h"
 #include <QDebug>
 #include <QDir>
@@ -8,118 +7,16 @@
 #include <QSettings>
 #include <QStandardPaths>
 
-typedef struct
-{
-    quint8 uid_key;
-    Qt::Key qt_key;
-    Qt::KeyboardModifier modifier;
-} TUidToQtKeyMap;
-
-static TUidToQtKeyMap uid_2_qtkey[] = {
-    {HID_UID_KB_A, Qt::Key_A, Qt::NoModifier},
-    {HID_UID_KB_B, Qt::Key_B, Qt::NoModifier},
-    {HID_UID_KB_C, Qt::Key_C, Qt::NoModifier},
-    {HID_UID_KB_D, Qt::Key_D, Qt::NoModifier},
-    {HID_UID_KB_E, Qt::Key_E, Qt::NoModifier},
-    {HID_UID_KB_F, Qt::Key_F, Qt::NoModifier},
-    {HID_UID_KB_G, Qt::Key_G, Qt::NoModifier},
-    {HID_UID_KB_H, Qt::Key_H, Qt::NoModifier},
-    {HID_UID_KB_I, Qt::Key_I, Qt::NoModifier},
-    {HID_UID_KB_J, Qt::Key_J, Qt::NoModifier},
-    {HID_UID_KB_K, Qt::Key_K, Qt::NoModifier},
-    {HID_UID_KB_L, Qt::Key_L, Qt::NoModifier},
-    {HID_UID_KB_M, Qt::Key_M, Qt::NoModifier},
-    {HID_UID_KB_N, Qt::Key_N, Qt::NoModifier},
-    {HID_UID_KB_O, Qt::Key_O, Qt::NoModifier},
-    {HID_UID_KB_P, Qt::Key_P, Qt::NoModifier},
-    {HID_UID_KB_Q, Qt::Key_Q, Qt::NoModifier},
-    {HID_UID_KB_R, Qt::Key_R, Qt::NoModifier},
-    {HID_UID_KB_S, Qt::Key_S, Qt::NoModifier},
-    {HID_UID_KB_T, Qt::Key_T, Qt::NoModifier},
-    {HID_UID_KB_U, Qt::Key_U, Qt::NoModifier},
-    {HID_UID_KB_V, Qt::Key_V, Qt::NoModifier},
-    {HID_UID_KB_W, Qt::Key_W, Qt::NoModifier},
-    {HID_UID_KB_X, Qt::Key_X, Qt::NoModifier},
-    {HID_UID_KB_Y, Qt::Key_Y, Qt::NoModifier},
-    {HID_UID_KB_Z, Qt::Key_Z, Qt::NoModifier},
-    {HID_UID_KB_1, Qt::Key_1, Qt::NoModifier},
-    {HID_UID_KB_2, Qt::Key_2, Qt::NoModifier},
-    {HID_UID_KB_3, Qt::Key_3, Qt::NoModifier},
-    {HID_UID_KB_4, Qt::Key_4, Qt::NoModifier},
-    {HID_UID_KB_5, Qt::Key_5, Qt::NoModifier},
-    {HID_UID_KB_6, Qt::Key_6, Qt::NoModifier},
-    {HID_UID_KB_7, Qt::Key_7, Qt::NoModifier},
-    {HID_UID_KB_8, Qt::Key_8, Qt::NoModifier},
-    {HID_UID_KB_9, Qt::Key_9, Qt::NoModifier},
-    {HID_UID_KB_0, Qt::Key_0, Qt::NoModifier},
-    {HID_UID_KB_ENTER, Qt::Key_Enter, Qt::NoModifier},
-    {HID_UID_KB_ESCAPE, Qt::Key_Escape, Qt::NoModifier},
-    {HID_UID_KB_BACKSPACE, Qt::Key_Backspace, Qt::NoModifier},
-    {HID_UID_KB_TAB, Qt::Key_Tab, Qt::NoModifier},
-    {HID_UID_KB_SPACE, Qt::Key_Space, Qt::NoModifier},
-    {HID_UID_KB_CAPS_LOCK, Qt::Key_CapsLock, Qt::NoModifier},
-    {HID_UID_KB_F1, Qt::Key_F1, Qt::NoModifier},
-    {HID_UID_KB_F2, Qt::Key_F2, Qt::NoModifier},
-    {HID_UID_KB_F3, Qt::Key_F3, Qt::NoModifier},
-    {HID_UID_KB_F4, Qt::Key_F4, Qt::NoModifier},
-    {HID_UID_KB_F5, Qt::Key_F5, Qt::NoModifier},
-    {HID_UID_KB_F6, Qt::Key_F6, Qt::NoModifier},
-    {HID_UID_KB_F7, Qt::Key_F7, Qt::NoModifier},
-    {HID_UID_KB_F8, Qt::Key_F8, Qt::NoModifier},
-    {HID_UID_KB_F9, Qt::Key_F9, Qt::NoModifier},
-    {HID_UID_KB_F10, Qt::Key_F10, Qt::NoModifier},
-    {HID_UID_KB_F11, Qt::Key_F11, Qt::NoModifier},
-    {HID_UID_KB_F12, Qt::Key_F12, Qt::NoModifier},
-    {HID_UID_KB_PRINT_SCREEN, Qt::Key_Print, Qt::NoModifier},
-    {HID_UID_KB_SCROLL_LOCK, Qt::Key_ScrollLock, Qt::NoModifier},
-    {HID_UID_KB_PAUSE, Qt::Key_Pause, Qt::NoModifier},
-    {HID_UID_KB_INSERT, Qt::Key_Insert, Qt::NoModifier},
-    {HID_UID_KB_HOME, Qt::Key_Home, Qt::NoModifier},
-    {HID_UID_KB_PAGE_UP, Qt::Key_PageUp, Qt::NoModifier},
-    {HID_UID_KB_DELETE, Qt::Key_Delete, Qt::NoModifier},
-    {HID_UID_KB_END, Qt::Key_End, Qt::NoModifier},
-    {HID_UID_KB_PAGE_DOWN, Qt::Key_PageDown, Qt::NoModifier},
-    {HID_UID_KB_RIGHT_ARROW, Qt::Key_Right, Qt::NoModifier},
-    {HID_UID_KB_LEFT_ARROW, Qt::Key_Left, Qt::NoModifier},
-    {HID_UID_KB_DOWN_ARROW, Qt::Key_Down, Qt::NoModifier},
-    {HID_UID_KB_UP_ARROW, Qt::Key_Up, Qt::NoModifier},
-    {HID_UID_KB_APPLICATION, Qt::Key_Open, Qt::NoModifier},
-    {HID_UID_KB_LEFT_CONTROL, Qt::Key_Control, Qt::NoModifier},
-    {HID_UID_KB_LEFT_SHIFT, Qt::Key_Shift, Qt::NoModifier},
-    {HID_UID_KB_LEFT_ALT, Qt::Key_Alt, Qt::NoModifier},
-    {HID_UID_KB_LEFT_GUI, Qt::Key_AltGr, Qt::NoModifier},
-    {HID_UID_KB_RIGHT_CONTROL, Qt::Key_Control, Qt::NoModifier},
-    {HID_UID_KB_RIGHT_SHIFT, Qt::Key_Shift, Qt::NoModifier},
-    {HID_UID_KB_RIGHT_ALT, Qt::Key_Alt, Qt::NoModifier},
-    {HID_UID_KB_RIGHT_GUI, Qt::Key_AltGr, Qt::NoModifier},
-    {HID_UID_KP_NUM_LOCK, Qt::Key_NumLock, Qt::KeypadModifier},
-    {HID_UID_KP_DIV, Qt::Key_division, Qt::KeypadModifier},
-    {HID_UID_KP_MUL, Qt::Key_multiply, Qt::KeypadModifier},
-    {HID_UID_KP_MINUS, Qt::Key_Minus, Qt::KeypadModifier},
-    {HID_UID_KP_PLUS, Qt::Key_Plus, Qt::KeypadModifier},
-    {HID_UID_KP_ENTER, Qt::Key_Enter, Qt::KeypadModifier},
-    {HID_UID_KP_1, Qt::Key_1, Qt::KeypadModifier},
-    {HID_UID_KP_2, Qt::Key_2, Qt::KeypadModifier},
-    {HID_UID_KP_3, Qt::Key_3, Qt::KeypadModifier},
-    {HID_UID_KP_4, Qt::Key_4, Qt::KeypadModifier},
-    {HID_UID_KP_5, Qt::Key_5, Qt::KeypadModifier},
-    {HID_UID_KP_6, Qt::Key_6, Qt::KeypadModifier},
-    {HID_UID_KP_7, Qt::Key_7, Qt::KeypadModifier},
-    {HID_UID_KP_8, Qt::Key_8, Qt::KeypadModifier},
-    {HID_UID_KP_9, Qt::Key_9, Qt::KeypadModifier},
-    {HID_UID_KP_0, Qt::Key_0, Qt::KeypadModifier},
-    {HID_UID_KP_DELETE, Qt::Key_Delete, Qt::KeypadModifier},
-    {0, Qt::Key_unknown, Qt::NoModifier},
-};
-
 RTDeviceController::RTDeviceController(QObject *parent)
-    : QObject(parent)
+    : QAbstractItemModel(parent)
     , m_device(this)
-    , m_model(m_device.profiles())
     , m_buttonTypes()
     , m_physButtons()
     , m_hasDevice(false)
 {
+    initButtonTypes();
+    initPhysicalButtons();
+
     connect(&m_device, &RTHidDevice::lookupStarted, this, &RTDeviceController::onLookupStarted);
     connect(&m_device, &RTHidDevice::deviceError, this, &RTDeviceController::onDeviceError);
     connect(&m_device, &RTHidDevice::deviceFound, this, &RTDeviceController::onDeviceFound);
@@ -129,61 +26,6 @@ RTDeviceController::RTDeviceController(QObject *parent)
     connect(&m_device, &RTHidDevice::profileIndexChanged, this, &RTDeviceController::onProfileIndexChanged);
     connect(&m_device, &RTHidDevice::saveProfilesStarted, this, &RTDeviceController::onSaveProfilesStarted);
     connect(&m_device, &RTHidDevice::saveProfilesFinished, this, &RTDeviceController::onSaveProfilesFinished);
-    // --
-    connect(&m_device, &RTHidDevice::profileChanged, &m_model, &RTProfileModel::onProfileChanged);
-    connect(&m_model, &RTProfileModel::dataChanged, this, &RTDeviceController::onModelChanged);
-
-    initButtonTypes();
-    initPhysicalButtons();
-}
-
-void RTDeviceController::lookupDevice()
-{
-    m_device.lookupDevice();
-}
-
-int RTDeviceController::assignButton( //
-    TyonButtonIndex type,
-    TyonButtonType function,
-    const QKeyCombination &kc)
-{
-    qDebug() << "[ROCCAT] assignButton TYPE:" << type << "FUNC:" << function << "KC:" << kc;
-
-    if (function != TYON_BUTTON_TYPE_SHORTCUT) {
-        m_device.assignButton(type, function, 0, 0);
-    } else {
-        // Translate QT key modifiers to ROCCAT Tyon modifiers
-        auto toQtMods2Roccat = [](const Qt::KeyboardModifiers &km) -> quint8 {
-            quint8 mods = 0;
-            /* on Mac OSX Meta must be mapped to CTRL */
-            if (km.testFlag(Qt::ShiftModifier))
-                mods |= ROCCAT_BUTTON_MODIFIER_BIT_SHIFT;
-            if (km.testFlag(Qt::ControlModifier))
-                mods |= ROCCAT_BUTTON_MODIFIER_BIT_CTRL;
-            if (km.testFlag(Qt::AltModifier))
-                mods |= ROCCAT_BUTTON_MODIFIER_BIT_ALT;
-            if (km.testFlag(Qt::MetaModifier))
-                mods |= ROCCAT_BUTTON_MODIFIER_BIT_WIN;
-            return mods;
-        };
-
-        TUidToQtKeyMap *keymap = nullptr;
-        bool isKeyPad = kc.keyboardModifiers().testFlag(Qt::KeypadModifier);
-        Qt::KeyboardModifier testMod = (isKeyPad ? Qt::KeypadModifier : Qt::NoModifier);
-        for (TUidToQtKeyMap *p = uid_2_qtkey; p->uid_key && p->qt_key != Qt::Key_unknown; p++) {
-            if (kc.key() == p->qt_key && p->modifier == testMod) {
-                keymap = p;
-                break;
-            }
-        }
-        if (!keymap) {
-            return EINVAL;
-        }
-
-        quint8 mods = toQtMods2Roccat(kc.keyboardModifiers());
-        m_device.assignButton(type, function, keymap->uid_key, mods);
-    }
-    return 0;
 }
 
 inline void RTDeviceController::initPhysicalButtons()
@@ -333,6 +175,17 @@ inline void RTDeviceController::setPhysicalButton(quint8 index, TPhysicalButton 
     m_physButtons[index] = pb;
 }
 
+void RTDeviceController::lookupDevice()
+{
+    m_device.lookupDevice();
+}
+
+int RTDeviceController::assignButton(TyonButtonIndex bi, TyonButtonType bt, const QKeyCombination &kc)
+{
+    m_device.assignButton(bi, bt, kc);
+    return 0;
+}
+
 void RTDeviceController::setupButton(const RoccatButton &rb, QPushButton *button)
 {
     QKeySequence ks;
@@ -367,51 +220,29 @@ void RTDeviceController::setupButton(const RoccatButton &rb, QPushButton *button
 
 const QKeySequence RTDeviceController::toKeySequence(const RoccatButton &b) const
 {
-    // Translate ROCCAT Tyon key modifier to QT type
-    auto toQtModifiers = [](quint8 modifier, TUidToQtKeyMap *keymap) -> Qt::KeyboardModifiers {
-        Qt::KeyboardModifiers km = {};
-        if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_SHIFT) {
-            km.setFlag(Qt::ShiftModifier, true);
-        }
-        if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_CTRL) {
-            km.setFlag(Qt::ControlModifier, true);
-        }
-        if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_ALT) {
-            km.setFlag(Qt::AltModifier, true);
-        }
-        if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_WIN) {
-            km.setFlag(Qt::MetaModifier, true);
-        }
-        /* Nummber keypad */
-        if (keymap->modifier & Qt::KeypadModifier) {
-            km.setFlag(Qt::KeypadModifier, true);
-        }
-        return km;
-    };
-
-    TUidToQtKeyMap *keymap = nullptr;
-    for (TUidToQtKeyMap *p = uid_2_qtkey; p->uid_key && p->qt_key != Qt::Key_unknown; p++) {
-        if (b.key == p->uid_key) {
-            keymap = p;
-            break;
-        }
-    }
-
-    if (keymap) {
-        const Qt::KeyboardModifiers km = toQtModifiers(b.modifier, keymap);
-        const QKeyCombination kc(km, keymap->qt_key);
-        const QKeySequence ks(kc);
-        return ks;
-    }
-
-    // not found
-    return {};
+    return m_device.toKeySequence(b);
 }
 
 void RTDeviceController::selectProfile(quint8 profileIndex)
 {
     m_device.setActiveProfile(profileIndex);
 }
+
+qint16 RTDeviceController::toSensitivityXValue(const TyonProfileSettings *settings) const
+{
+    return m_device.toSensitivityXValue(settings);
+}
+
+qint16 RTDeviceController::toSensitivityYValue(const TyonProfileSettings *settings) const
+{
+    return m_device.toSensitivityYValue(settings);
+}
+
+quint16 RTDeviceController::toDpiLevelValue(const TyonProfileSettings *settings, quint8 index) const
+{
+    return m_device.toDpiLevelValue(settings, index);
+}
+
 void RTDeviceController::setXSensitivity(quint8 sensitivity)
 {
     m_device.setXSensitivity(sensitivity);
@@ -499,14 +330,13 @@ bool RTDeviceController::saveProfilesToDevice()
 
 void RTDeviceController::onDeviceFound()
 {
-    m_hasDevice = m_model.rowCount({}) >= TYON_PROFILE_NUM;
+    m_hasDevice = true;
     emit deviceFound();
 }
 
 void RTDeviceController::onDeviceRemoved()
 {
     m_hasDevice = false;
-    m_model.clearItemData({});
     emit deviceRemoved();
 }
 
@@ -550,13 +380,110 @@ void RTDeviceController::onProfileChanged(const RTHidDevice::TProfile &profile)
     }
 }
 
-void RTDeviceController::onModelChanged(const QModelIndex &topLeft, //
-                                        const QModelIndex &,        //
-                                        const QList<int> &)
-
+QVariant RTDeviceController::headerData(int section, Qt::Orientation orientation, int role) const
 {
-    QVariant v = m_model.data(topLeft, Qt::DisplayRole);
-    if (!v.isNull() && v.isValid() && !v.toString().isEmpty()) {
-        m_device.setProfileName(v.toString(), topLeft.row());
+    if (orientation == Qt::Orientation::Horizontal && role == Qt::DisplayRole) {
+        switch (section) {
+            case 0: {
+                return QVariant(tr("Profiles"));
+            }
+        }
     }
+    return QVariant();
+}
+
+bool RTDeviceController::setHeaderData(int section, Qt::Orientation orientation, const QVariant &value, int role)
+{
+    if (value != headerData(section, orientation, role)) {
+        emit headerDataChanged(orientation, section, section);
+        return true;
+    }
+    return false;
+}
+
+QModelIndex RTDeviceController::index(int row, int column, const QModelIndex &) const
+{
+    return createIndex(row, column);
+}
+
+QModelIndex RTDeviceController::parent(const QModelIndex &) const
+{
+    return QModelIndex();
+}
+
+int RTDeviceController::rowCount(const QModelIndex &) const
+{
+    return m_device.profiles()->count();
+}
+
+int RTDeviceController::columnCount(const QModelIndex &) const
+{
+    return 1;
+}
+
+QVariant RTDeviceController::data(const QModelIndex &index, int role) const
+{
+    if (!index.isValid() || index.row() >= m_device.profiles()->count()) {
+        return QVariant();
+    }
+
+    if (!m_device.profiles()->contains(index.row())) {
+        return QVariant();
+    }
+
+    RTHidDevice::TProfile p = m_device.profiles()->value(index.row());
+
+    switch (role) {
+        case Qt::DisplayRole: {
+            switch (index.column()) {
+                case 0: {
+                    return p.name;
+                }
+            }
+            break;
+        }
+        case Qt::UserRole: {
+            return QVariant::fromValue(p);
+        }
+    }
+    return QVariant();
+}
+
+bool RTDeviceController::clearItemData(const QModelIndex &index)
+{
+    return QAbstractItemModel::clearItemData(index);
+}
+
+bool RTDeviceController::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+    if (index.isValid()) {
+        const QVariant v = data(index, role);
+        if (!v.isNull() && v.isValid() && v != value) {
+            m_device.setProfileName(value.toString(), index.row());
+            emit dataChanged(index, index, {role});
+            return true;
+        }
+    }
+    return false;
+}
+
+Qt::ItemFlags RTDeviceController::flags(const QModelIndex &index) const
+{
+    if (!index.isValid())
+        return Qt::NoItemFlags;
+    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
+}
+
+bool RTDeviceController::insertRows(int row, int count, const QModelIndex &parent)
+{
+    beginInsertRows(parent, row, row + count - 1);
+    endInsertRows();
+    return true;
+}
+
+bool RTDeviceController::insertColumns(int column, int count, const QModelIndex &parent)
+{
+    beginInsertColumns(parent, column, column + count - 1);
+    endInsertColumns();
+    return true;
 }
