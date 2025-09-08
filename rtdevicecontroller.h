@@ -1,6 +1,5 @@
 #pragma once
 #include "rthiddevice.h"
-#include "rtprofilemodel.h"
 #include "rttypes.h"
 #include <QKeyCombination>
 #include <QKeySequence>
