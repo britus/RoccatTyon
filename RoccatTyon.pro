@@ -25,7 +25,6 @@ SOURCES += \
     rtdevicecontroller.cpp \
     rthiddevice.cpp \
     rtmainwindow.cpp \
-    rtprofilemodel.cpp \
     rtprogress.cpp \
     rtshortcutdialog.cpp
 
@@ -36,7 +35,6 @@ HEADERS += \
     rthiddevice.h \
     rthiddevicedbg.hpp \
     rtmainwindow.h \
-    rtprofilemodel.h \
     rtprogress.h \
     rtshortcutdialog.h \
     rttypes.h
