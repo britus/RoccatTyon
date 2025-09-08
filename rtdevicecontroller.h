@@ -12,6 +12,9 @@
 #define CB_BIND(o, x) std::bind(x, o, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
 #endif
 
+/**
+ * @brief The RTDeviceController class is a proxy between device and UI
+ */
 class RTDeviceController : public QAbstractItemModel
 {
     Q_OBJECT
@@ -44,7 +47,7 @@ public:
 
     /**
      * @brief Default constructor
-     * @param parent
+     * @param parent NULL or QObject
      */
     explicit RTDeviceController(QObject *parent = nullptr);
 
