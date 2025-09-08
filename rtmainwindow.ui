@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>896</width>
-    <height>684</height>
+    <width>890</width>
+    <height>640</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -63,7 +63,13 @@
        <item>
         <widget class="QTableView" name="tableView">
          <property name="editTriggers">
-          <set>QAbstractItemView::EditTrigger::DoubleClicked|QAbstractItemView::EditTrigger::EditKeyPressed</set>
+          <set>QAbstractItemView::EditTrigger::DoubleClicked</set>
+         </property>
+         <property name="showDropIndicator" stdset="0">
+          <bool>false</bool>
+         </property>
+         <property name="alternatingRowColors">
+          <bool>true</bool>
          </property>
          <property name="selectionMode">
           <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
@@ -223,6 +229,9 @@
                 <property name="sizeAdjustPolicy">
                  <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustToContentsOnFirstShow</enum>
                 </property>
+                <property name="widgetResizable">
+                 <bool>false</bool>
+                </property>
                 <property name="alignment">
                  <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
                 </property>
@@ -231,7 +240,7 @@
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>582</width>
+                   <width>592</width>
                    <height>562</height>
                   </rect>
                  </property>
@@ -649,6 +658,9 @@
               </property>
               <item>
                <widget class="QScrollArea" name="saSensorCtrl">
+                <property name="widgetResizable">
+                 <bool>false</bool>
+                </property>
                 <property name="alignment">
                  <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
                 </property>
@@ -657,8 +669,8 @@
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>597</width>
-                   <height>509</height>
+                   <width>607</width>
+                   <height>461</height>
                   </rect>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_12">
@@ -708,6 +720,9 @@
                          <widget class="QLabel" name="label_3">
                           <property name="text">
                            <string>Active DPI slot:</string>
+                          </property>
+                          <property name="buddy">
+                           <cstring>cbxDPIActiveSlot</cstring>
                           </property>
                          </widget>
                         </item>
@@ -923,13 +938,16 @@
               </property>
               <item>
                <widget class="QScrollArea" name="saLights">
+                <property name="widgetResizable">
+                 <bool>false</bool>
+                </property>
                 <widget class="QWidget" name="sacLights">
                  <property name="geometry">
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>597</width>
-                   <height>509</height>
+                   <width>607</width>
+                   <height>461</height>
                   </rect>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -1178,13 +1196,16 @@
               </property>
               <item>
                <widget class="QScrollArea" name="saMButtons">
+                <property name="widgetResizable">
+                 <bool>false</bool>
+                </property>
                 <widget class="QWidget" name="sacMButtons">
                  <property name="geometry">
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>597</width>
-                   <height>509</height>
+                   <width>607</width>
+                   <height>461</height>
                   </rect>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -1222,8 +1243,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>581</width>
-                       <height>365</height>
+                       <width>580</width>
+                       <height>350</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2145,9 +2166,9 @@
               </item>
              </layout>
             </widget>
-            <widget class="QWidget" name="tbFirmware">
+            <widget class="QWidget" name="tbHardware">
              <attribute name="title">
-              <string>Firmware</string>
+              <string>Hardware</string>
              </attribute>
              <layout class="QVBoxLayout" name="verticalLayout_4">
               <item>
@@ -2231,7 +2252,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>896</width>
+     <width>890</width>
      <height>33</height>
     </rect>
    </property>
@@ -2724,396 +2745,12 @@
    <slot>close()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>819</x>
-     <y>620</y>
+     <x>865</x>
+     <y>594</y>
     </hint>
     <hint type="destinationlabel">
      <x>186</x>
      <y>650</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>hsDpiSlot1</sender>
-   <signal>sliderMoved(int)</signal>
-   <receiver>edDpiSlot1</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>349</x>
-     <y>156</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>799</x>
-     <y>160</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>hsDpiSlot2</sender>
-   <signal>sliderMoved(int)</signal>
-   <receiver>edDpiSlot2</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>421</x>
-     <y>264</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>793</x>
-     <y>263</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>hsDpiSlot3</sender>
-   <signal>sliderMoved(int)</signal>
-   <receiver>edDpiSlot3</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>324</x>
-     <y>363</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>799</x>
-     <y>369</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>hsDpiSlot4</sender>
-   <signal>sliderMoved(int)</signal>
-   <receiver>edDpiSlot4</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>392</x>
-     <y>468</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>796</x>
-     <y>475</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>hsDpiSlot5</sender>
-   <signal>sliderMoved(int)</signal>
-   <receiver>edDpiSlot5</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>304</x>
-     <y>581</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>799</x>
-     <y>585</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>edDpiSlot5</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>hsDpiSlot5</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>794</x>
-     <y>573</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>616</x>
-     <y>580</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>edDpiSlot4</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>hsDpiSlot4</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>788</x>
-     <y>471</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>628</x>
-     <y>476</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>edDpiSlot3</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>hsDpiSlot3</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>797</x>
-     <y>368</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>656</x>
-     <y>374</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>edDpiSlot2</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>hsDpiSlot2</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>788</x>
-     <y>256</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>610</x>
-     <y>266</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>edDpiSlot1</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>hsDpiSlot1</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>801</x>
-     <y>156</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>628</x>
-     <y>166</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cbxDpiSlot1</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>hsDpiSlot1</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>320</x>
-     <y>130</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>393</x>
-     <y>154</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cbxDpiSlot1</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>edDpiSlot1</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>330</x>
-     <y>122</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>800</x>
-     <y>154</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cbxDpiSlot2</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>hsDpiSlot2</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>320</x>
-     <y>230</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>359</x>
-     <y>261</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cbxDpiSlot2</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>edDpiSlot2</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>326</x>
-     <y>236</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>792</x>
-     <y>267</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cbxDpiSlot3</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>hsDpiSlot3</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>305</x>
-     <y>339</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>328</x>
-     <y>367</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cbxDpiSlot3</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>edDpiSlot3</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>465</x>
-     <y>337</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>796</x>
-     <y>370</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cbxDpiSlot4</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>hsDpiSlot4</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>312</x>
-     <y>442</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>373</x>
-     <y>477</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cbxDpiSlot4</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>edDpiSlot4</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>301</x>
-     <y>443</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>799</x>
-     <y>466</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cbxDpiSlot5</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>hsDpiSlot5</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>310</x>
-     <y>552</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>331</x>
-     <y>575</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cbxDpiSlot5</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>edDpiSlot5</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>304</x>
-     <y>551</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>800</x>
-     <y>577</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>hsXSensitivity</sender>
-   <signal>sliderMoved(int)</signal>
-   <receiver>edXSensitivity</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>372</x>
-     <y>239</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>826</x>
-     <y>242</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>hsYSensitivity</sender>
-   <signal>sliderMoved(int)</signal>
-   <receiver>edYSensitivity</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>486</x>
-     <y>276</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>823</x>
-     <y>278</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>edYSensitivity</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>hsYSensitivity</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>817</x>
-     <y>286</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>581</x>
-     <y>279</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>edXSensitivity</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>hsXSensitivity</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>817</x>
-     <y>249</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>675</x>
-     <y>244</y>
     </hint>
    </hints>
   </connection>
@@ -3124,12 +2761,12 @@
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>337</x>
-     <y>124</y>
+     <x>379</x>
+     <y>138</y>
     </hint>
     <hint type="destinationlabel">
-     <x>315</x>
-     <y>222</y>
+     <x>366</x>
+     <y>240</y>
     </hint>
    </hints>
   </connection>
@@ -3140,12 +2777,12 @@
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>400</x>
-     <y>125</y>
+     <x>379</x>
+     <y>138</y>
     </hint>
     <hint type="destinationlabel">
-     <x>371</x>
-     <y>318</y>
+     <x>366</x>
+     <y>337</y>
     </hint>
    </hints>
   </connection>

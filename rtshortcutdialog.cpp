@@ -20,6 +20,7 @@ RTShortcutDialog::RTShortcutDialog(QWidget *parent)
         pb->setEnabled(false);
     }
 
+    ui->edKeyShortcut->setEnabled(true);
     ui->edKeyShortcut->setFocus();
 }
 
@@ -34,13 +35,13 @@ inline void RTShortcutDialog::update(Qt::KeyboardModifier km, bool state)
     mods = m_data.keyCombo.keyboardModifiers();
     mods.setFlag(km, state);
     m_data.keyCombo = QKeyCombination(mods, m_data.keyCombo.key());
-    //qDebug() << m_data.keyCombo;
+    qDebug() << "[SCTDLG]" << m_data.keyCombo;
 }
 
-inline void RTShortcutDialog::update(Qt::KeyboardModifiers mods, Qt::Key key)
+inline void RTShortcutDialog::update(Qt::KeyboardModifiers km, Qt::Key key)
 {
-    m_data.keyCombo = QKeyCombination(mods, key);
-    //qDebug() << m_data.keyCombo;
+    m_data.keyCombo = QKeyCombination(km, key);
+    qDebug() << "[SCTDLG]" << m_data.keyCombo;
 }
 
 void RTShortcutDialog::on_cbxKeyShift_toggled(bool checked)
@@ -70,9 +71,9 @@ void RTShortcutDialog::on_cbxKeyMeta_toggled(bool checked)
 
 void RTShortcutDialog::on_edKeyShortcut_editingFinished()
 {
+    QPushButton *pb;
     QKeySequence ks = ui->edKeyShortcut->keySequence();
     if (!ks.isEmpty() && ks[0].key() != Qt::Key_unknown) {
-        QPushButton *pb;
         /* use key modifiers from checkboxes */
         int mods = m_data.keyCombo.keyboardModifiers().toInt();
         /* if nothing selected, try from key sequece edit field */
@@ -98,13 +99,16 @@ void RTShortcutDialog::on_edKeyShortcut_editingFinished()
         }
     } else {
         m_data.keyCombo = QKeyCombination();
+        if ((pb = ui->buttonBox->button(QDialogButtonBox::Ok))) {
+            pb->setEnabled(false);
+        }
     }
 }
 
 void RTShortcutDialog::on_edKeyShortcut_keySequenceChanged(const QKeySequence &)
 {
-    QPushButton *pb;
-    if ((pb = ui->buttonBox->button(QDialogButtonBox::Ok))) {
-        pb->setEnabled(false);
-    }
+    //QPushButton *pb;
+    //if ((pb = ui->buttonBox->button(QDialogButtonBox::Ok))) {
+    //    pb->setEnabled(false);
+    //}
 }

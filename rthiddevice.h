@@ -17,6 +17,7 @@ public:
     {
         QString name;
         quint8 index;
+        bool changed;
         TyonProfileSettings settings;
         TyonProfileButtons buttons;
     } TProfile;
@@ -89,6 +90,7 @@ public:
      * @param fileName
      * @return
      */
+    void extracted(quint32 &mark);
     bool loadProfilesFromFile(const QString &fileName);
 
     /**
@@ -114,7 +116,7 @@ public:
     void setPollRate(quint8 rate);
     void setDpiSlot(quint8 bit, bool state);
     void setActiveDpiSlot(quint8 id);
-    void setDpiLevel(quint8 index, quint8 value);
+    void setDpiLevel(quint8 index, quint16 value);
     void setLightsEnabled(quint8 flag, bool state);
     void setLightsEffect(quint8 value);
     void setColorFlow(quint8 value);
@@ -154,10 +156,13 @@ private:
 private:
     inline void releaseDevices();
     inline void releaseManager();
+    inline void initializeProfiles();
     inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
-    inline int hidSetRoccatControl(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req);
+    inline int hidWriteRoccatCtl(IOHIDDeviceRef device, uint pix, uint req);
     inline int hidCheckWrite(IOHIDDeviceRef device);
     inline int hidSetReportRaw(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
+    inline int hidWriteSync(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length);
+    inline int hidWriteAsync(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length);
     inline int parsePayload(int reportId, const quint8 *buffer, CFIndex length);
     inline int setDeviceState(bool state, IOHIDDeviceRef device = nullptr);
     inline int selectProfileSettings(IOHIDDeviceRef device, uint pix);

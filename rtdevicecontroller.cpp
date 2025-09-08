@@ -147,7 +147,7 @@ int RTDeviceController::assignButton( //
     TyonButtonType function,
     const QKeyCombination &kc)
 {
-    qDebug() << "[ROCCAT] assignButton:" << type << function << kc;
+    qDebug() << "[ROCCAT] assignButton TYPE:" << type << "FUNC:" << function << "KC:" << kc;
 
     if (function != TYON_BUTTON_TYPE_SHORTCUT) {
         m_device.assignButton(type, function, 0, 0);
@@ -162,7 +162,7 @@ int RTDeviceController::assignButton( //
                 mods |= ROCCAT_BUTTON_MODIFIER_BIT_CTRL;
             if (km.testFlag(Qt::AltModifier))
                 mods |= ROCCAT_BUTTON_MODIFIER_BIT_ALT;
-            if (km.testFlag(Qt::GroupSwitchModifier))
+            if (km.testFlag(Qt::MetaModifier))
                 mods |= ROCCAT_BUTTON_MODIFIER_BIT_WIN;
             return mods;
         };
@@ -349,7 +349,16 @@ void RTDeviceController::setupButton(const RoccatButton &rb, QPushButton *button
             ks = toKeySequence(rb);
             if (!ks.isEmpty()) {
                 button->setProperty("shortcut", QVariant::fromValue(ks));
+#ifndef Q_OS_MACOS
                 button->setText(ks.toString());
+#else
+                if (ks[0].keyboardModifiers().testFlag(Qt::MetaModifier)) {
+                    QString s = ks.toString().replace("Meta", "Cmd");
+                    button->setText(s);
+                } else {
+                    button->setText(ks.toString());
+                }
+#endif
             }
             break;
         }
@@ -364,7 +373,6 @@ const QKeySequence RTDeviceController::toKeySequence(const RoccatButton &b) cons
         if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_SHIFT) {
             km.setFlag(Qt::ShiftModifier, true);
         }
-        /* on Mac OSX Ctrl must be mapped to QT 'META' */
         if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_CTRL) {
             km.setFlag(Qt::ControlModifier, true);
         }
@@ -372,7 +380,7 @@ const QKeySequence RTDeviceController::toKeySequence(const RoccatButton &b) cons
             km.setFlag(Qt::AltModifier, true);
         }
         if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_WIN) {
-            km.setFlag(Qt::GroupSwitchModifier, true);
+            km.setFlag(Qt::MetaModifier, true);
         }
         /* Nummber keypad */
         if (keymap->modifier & Qt::KeypadModifier) {
@@ -434,7 +442,7 @@ void RTDeviceController::setActiveDpiSlot(quint8 id)
     m_device.setActiveDpiSlot(id);
 }
 
-void RTDeviceController::setDpiLevel(quint8 index, quint8 value)
+void RTDeviceController::setDpiLevel(quint8 index, quint16 value)
 {
     m_device.setDpiLevel(index, value);
 }

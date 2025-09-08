@@ -109,18 +109,13 @@ RTHidDevice::RTHidDevice(QObject *parent)
     , m_hasHidApi((hid_init() == 0))
 {
     qRegisterMetaType<IOHIDDeviceRef>();
-    for (quint8 i = 0; i < TYON_PROFILE_NUM; i++) {
-        TProfile profile;
-        profile.index = i;
-        profile.name = tr("Default_%1").arg(profile.index);
-        m_profiles[i] = profile;
-    }
+    initializeProfiles();
 }
 
 RTHidDevice::~RTHidDevice()
 {
-    hid_exit();
     releaseManager();
+    hid_exit();
 }
 
 void RTHidDevice::lookupDevice()
@@ -176,7 +171,7 @@ void RTHidDevice::lookupDevice()
     IOHIDManagerSetDeviceMatchingMultiple(m_manager, filter);
     CFRelease(filter);
 
-    // Register for device attached and removed callbacks
+    // Register for device attached and removed callbacks and schedule in runloop
     IOHIDManagerRegisterDeviceMatchingCallback(m_manager, _deviceAttachedCallback, this);
     IOHIDManagerRegisterDeviceRemovalCallback(m_manager, _deviceRemovedCallback, this);
     IOHIDManagerScheduleWithRunLoop(m_manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
@@ -190,43 +185,39 @@ void RTHidDevice::lookupDevice()
         return;
     }
 
-    //#ifndef QT_DEBUG
-    // Run event loop in separate thread
-    std::thread([]() { CFRunLoopRun(); }).detach();
-    //#endif
-
     emit lookupStarted();
 }
 
 bool RTHidDevice::resetProfiles()
 {
     TyonInfo info = {};
-    const quint8 *buffer = (const quint8 *) &info;
     info.report_id = TYON_REPORT_ID_INFO;
     info.size = sizeof(TyonInfo);
     info.function = TYON_INFO_FUNCTION_RESET;
+    quint8 *buffer = (quint8 *) &info;
 
     m_profiles.clear();
     m_profile = {};
     m_info = {};
 
-    // Run event loop in separate thread
-    IOReturn ret;
+    initializeProfiles();
+
+    IOReturn ret = kIOReturnSuccess;
     foreach (IOHIDDeviceRef device, m_devices) {
         if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
-            return ret;
+            goto func_exit;
         }
-        if (hidSetReportRaw(device, buffer, info.size) == kIOReturnSuccess) {
-            break;
+        if ((ret = hidSetReportRaw(device, buffer, info.size)) != kIOReturnSuccess) {
+            goto func_exit;
         }
     }
 
-    QThread::yieldCurrentThread();
-
+func_exit:
+    QThread::msleep(1000);
     releaseManager();
     lookupDevice();
 
-    return true;
+    return ret == kIOReturnSuccess;
 }
 
 bool RTHidDevice::saveProfilesToDevice()
@@ -287,8 +278,10 @@ bool RTHidDevice::saveProfilesToDevice()
                 goto thread_exit;
             }
             foreach (const TProfile p, m_profiles) {
-                if ((ret = writeProfile(device, p)) != kIOReturnSuccess) {
-                    goto thread_exit;
+                if (p.changed) {
+                    if ((ret = writeProfile(device, p)) != kIOReturnSuccess) {
+                        goto thread_exit;
+                    }
                 }
             }
         }
@@ -310,26 +303,18 @@ bool RTHidDevice::saveProfilesToDevice()
         Qt::QueuedConnection);
     t->start(QThread::LowPriority);
 
-#if 0
-    QTimer::singleShot(200, this, [this, writeIndex, writeProfile]() {
-        IOReturn ret;
-        foreach (IOHIDDeviceRef device, m_devices) {
-            if ((ret = writeIndex(device)) != kIOReturnSuccess) {
-                return false;
-            }
-            foreach (const TProfile p, m_profiles) {
-                if ((ret = writeProfile(device, p)) != kIOReturnSuccess) {
-                    return false;
-                }
-            }
-        }
-
-        releaseManager();
-        lookupDevice();
-    });
-#endif
     return true;
 }
+
+static const quint32 FILE_BLOCK_MARKER[] = {
+    0xbe250566, // 0
+    0xba000000, // 1
+    0xbb000001, // 2
+    0xbb000002, // 3
+    0xbb000003, // 4
+    0xbb000004, // 5
+    0xbe660525, // 6
+};
 
 bool RTHidDevice::saveProfilesToFile(const QString &fileName)
 {
@@ -337,46 +322,150 @@ bool RTHidDevice::saveProfilesToFile(const QString &fileName)
     if (!f.open(QFile::Truncate | QFile::WriteOnly)) {
         return false;
     }
+    quint32 length;
 
-    QDataStream s(&f);
-    s << 0xbe250566;
+    auto write = [](QFile *f, const void *p, const qsizetype size) -> IOReturn {
+        if (f->write((char *) p, size) != size) {
+            return kIOReturnIOError;
+        }
+        return kIOReturnSuccess;
+    };
+
     foreach (const TProfile p, m_profiles) {
-        s << p.index;
-        s << p.name;
-        s << 0xba000000;
-        s << p.buttons.profile_index;
+        if (write(&f, &FILE_BLOCK_MARKER[0], sizeof(quint32))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.index, sizeof(p.index))) {
+            goto error_exit;
+        }
+        length = p.name.length();
+        if (write(&f, &length, sizeof(quint32))) {
+            goto error_exit;
+        }
+        if (write(&f, p.name.toLocal8Bit().constData(), length)) {
+            goto error_exit;
+        }
+        if (write(&f, &FILE_BLOCK_MARKER[1], sizeof(quint32))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.buttons.report_id, sizeof(p.buttons.report_id))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.buttons.size, sizeof(p.buttons.size))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.buttons.profile_index, sizeof(p.buttons.profile_index))) {
+            goto error_exit;
+        }
+        length = TYON_PROFILE_BUTTON_NUM;
+        if (write(&f, &length, sizeof(quint8))) {
+            goto error_exit;
+        }
         for (quint8 i = 0; i < TYON_PROFILE_BUTTON_NUM; i++) {
-            s << p.buttons.buttons[i].type;
-            s << p.buttons.buttons[i].key;
-            s << p.buttons.buttons[i].modifier;
+            if (write(&f, &p.buttons.buttons[i].type, sizeof(p.buttons.buttons[i].type))) {
+                goto error_exit;
+            }
+            if (write(&f, &p.buttons.buttons[i].key, sizeof(p.buttons.buttons[i].key))) {
+                goto error_exit;
+            }
+            if (write(&f, &p.buttons.buttons[i].modifier, sizeof(p.buttons.buttons[i].modifier))) {
+                goto error_exit;
+            }
         }
-        s << 0xbb000001;
-        s << p.settings.advanced_sensitivity;
-        s << p.settings.sensitivity_x;
-        s << p.settings.sensitivity_y;
-        s << p.settings.cpi_levels_enabled;
-        s << p.settings.cpi_active;
-        s << p.settings.talkfx_polling_rate;
-        s << p.settings.lights_enabled;
-        s << p.settings.color_flow;
-        s << p.settings.light_effect;
-        s << p.settings.effect_speed;
-        s << 0xbb000002;
+        if (write(&f, &FILE_BLOCK_MARKER[2], sizeof(quint32))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.report_id, sizeof(p.settings.report_id))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.size, sizeof(p.settings.size))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.profile_index, sizeof(p.settings.profile_index))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.advanced_sensitivity, sizeof(p.settings.advanced_sensitivity))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.sensitivity_x, sizeof(p.settings.sensitivity_x))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.sensitivity_y, sizeof(p.settings.sensitivity_y))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.cpi_levels_enabled, sizeof(p.settings.cpi_levels_enabled))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.cpi_active, sizeof(p.settings.cpi_active))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.talkfx_polling_rate, sizeof(p.settings.talkfx_polling_rate))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.lights_enabled, sizeof(p.settings.lights_enabled))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.color_flow, sizeof(p.settings.color_flow))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.light_effect, sizeof(p.settings.light_effect))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.effect_speed, sizeof(p.settings.effect_speed))) {
+            goto error_exit;
+        }
+        if (write(&f, &FILE_BLOCK_MARKER[3], sizeof(quint32))) {
+            goto error_exit;
+        }
+        length = TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM;
+        if (write(&f, &length, sizeof(quint8))) {
+            goto error_exit;
+        }
         for (quint8 i = 0; i < TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM; i++) {
-            s << p.settings.cpi_levels[i];
+            if (write(&f, &p.settings.cpi_levels[i], sizeof(p.settings.cpi_levels[i]))) {
+                goto error_exit;
+            }
         }
-        s << 0xbb000003;
+        if (write(&f, &FILE_BLOCK_MARKER[4], sizeof(quint32))) {
+            goto error_exit;
+        }
+        length = TYON_LIGHTS_NUM;
+        if (write(&f, &length, sizeof(quint8))) {
+            goto error_exit;
+        }
         for (quint8 i = 0; i < TYON_LIGHTS_NUM; i++) {
-            s << p.settings.lights[i].index;
-            s << p.settings.lights[i].red;
-            s << p.settings.lights[i].blue;
-            s << p.settings.lights[i].green;
-            s << p.settings.lights[i].unused;
+            if (write(&f, &p.settings.lights[i].index, sizeof(p.settings.lights[i].index))) {
+                goto error_exit;
+            }
+            if (write(&f, &p.settings.lights[i].red, sizeof(p.settings.lights[i].red))) {
+                goto error_exit;
+            }
+            if (write(&f, &p.settings.lights[i].green, sizeof(p.settings.lights[i].green))) {
+                goto error_exit;
+            }
+            if (write(&f, &p.settings.lights[i].blue, sizeof(p.settings.lights[i].blue))) {
+                goto error_exit;
+            }
+            if (write(&f, &p.settings.lights[i].unused, sizeof(p.settings.lights[i].unused))) {
+                goto error_exit;
+            }
         }
-        s << p.settings.checksum;
+        if (write(&f, &FILE_BLOCK_MARKER[5], sizeof(quint32))) {
+            goto error_exit;
+        }
+        if (write(&f, &p.settings.checksum, sizeof(p.settings.checksum))) {
+            goto error_exit;
+        }
+        if (write(&f, &FILE_BLOCK_MARKER[6], sizeof(quint32))) {
+            goto error_exit;
+        }
     }
-    s << 0xbe660525;
+    goto func_exit;
 
+error_exit:
+    qCritical("[HIDEV] Unable to write file: %s", qPrintable(fileName));
+
+func_exit:
     f.flush();
     f.close();
     return true;
@@ -388,7 +477,211 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName)
     if (!f.open(QFile::ReadOnly)) {
         return false;
     }
-    // TODO: read from encrypted file
+
+    qApp->processEvents();
+    QThread::yieldCurrentThread();
+
+    const QByteArray buffer = f.readAll();
+    if (buffer.length() < (qsizetype) sizeof(TProfile)) {
+        f.close();
+        return false;
+    }
+
+    auto readNext = [](quint8 *p, void *value, qsizetype size) -> quint8 * {
+        memcpy(value, p, size);
+        p = (p + size);
+        return p;
+    };
+
+    auto readMarker = [readNext](quint8 *p, quint32 value) -> quint8 * {
+        quint32 mark = 0;
+        p = readNext(p, &mark, sizeof(mark));
+        return (mark == value ? p : nullptr);
+    };
+
+    TProfile profile = {};
+    TProfiles profileList = {};
+    quint8 *p = (quint8 *) buffer.constData();
+    quint8 pfcount = 0;
+    quint8 stage = 0;
+    quint32 length;
+
+    for (int i = 0; i < buffer.length() && pfcount < TYON_PROFILE_NUM; i++) {
+        switch (stage) {
+            case 0: {
+                if (!(p = readMarker(p, FILE_BLOCK_MARKER[0]))) {
+                    qCritical("[HIDDEV] Invalid data file. Header invalid");
+                    goto func_exit;
+                }
+                profile = {};
+                stage++;
+                break;
+            }
+            case 1: {
+                p = readNext(p, &profile.index, sizeof(profile.index));
+                if (profile.index >= TYON_PROFILE_NUM) {
+                    qCritical("[HIDDEV] Invalid profile index.");
+                    goto func_exit;
+                }
+#ifdef QT_DEBUG
+                qDebug("[HIDDEV] %s Read profile: %d", qPrintable(fileName), profile.index);
+#endif
+                p = readNext(p, &length, sizeof(quint32));
+                if (length) {
+                    quint8 c;
+                    quint32 offset = 0;
+                    for (quint32 i = 0; i < length && i < HIDAPI_MAX_STR; i++) {
+                        p = readNext(p, &c, sizeof(quint8));
+                        if (c >= 0x20 && c < 0x7f) { // only human readable
+                            profile.name += QChar(c);
+                            offset++;
+                        }
+                    }
+                    if (offset != length) {
+                        qCritical("[HIDDEV] Invalid profile name.");
+                        goto func_exit;
+                    }
+                }
+                stage++;
+                break;
+            }
+            case 2: {
+                if (!(p = readMarker(p, FILE_BLOCK_MARKER[1]))) {
+                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    goto func_exit;
+                }
+                TyonProfileButtons *pb = &profile.buttons;
+                p = readNext(p, &pb->report_id, sizeof(pb->report_id));
+                p = readNext(p, &pb->size, sizeof(pb->size));
+                p = readNext(p, &pb->profile_index, sizeof(pb->profile_index));
+                if (pb->report_id != TYON_REPORT_ID_PROFILE_BUTTONS) {
+                    qCritical("[HIDDEV] Invalid button report identifier.");
+                    goto func_exit;
+                }
+                if (pb->size != sizeof(TyonProfileButtons)) {
+                    qCritical("[HIDDEV] Invalid profile data.");
+                    goto func_exit;
+                }
+                if (pb->profile_index >= TYON_PROFILE_NUM) {
+                    qCritical("[HIDDEV] Invalid button profile index.");
+                    goto func_exit;
+                }
+                p = readNext(p, &length, sizeof(quint8));
+                if (length != TYON_PROFILE_BUTTON_NUM) {
+                    qCritical("[HIDDEV] Invalid button count value.");
+                    goto func_exit;
+                }
+                for (quint8 i = 0; i < TYON_PROFILE_BUTTON_NUM; i++) {
+                    RoccatButton *b = &profile.buttons.buttons[i];
+                    p = readNext(p, &b->type, sizeof(b->type));
+                    p = readNext(p, &b->key, sizeof(b->key));
+                    p = readNext(p, &b->modifier, sizeof(b->modifier));
+                }
+                stage++;
+                break;
+            }
+            case 3: {
+                if (!(p = readMarker(p, FILE_BLOCK_MARKER[2]))) {
+                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    goto func_exit;
+                }
+                TyonProfileSettings *ps = &profile.settings;
+                p = readNext(p, &ps->report_id, sizeof(ps->report_id));
+                p = readNext(p, &ps->size, sizeof(ps->size));
+                p = readNext(p, &ps->profile_index, sizeof(ps->profile_index));
+                if (ps->report_id != TYON_REPORT_ID_PROFILE_SETTINGS) {
+                    qCritical("[HIDDEV] Invalid button report identifier.");
+                    goto func_exit;
+                }
+                if (ps->size != sizeof(TyonProfileSettings)) {
+                    qCritical("[HIDDEV] Invalid profile data.");
+                    goto func_exit;
+                }
+                if (ps->profile_index >= TYON_PROFILE_NUM) {
+                    qCritical("[HIDDEV] Invalid button profile index.");
+                    goto func_exit;
+                }
+                p = readNext(p, &ps->advanced_sensitivity, sizeof(ps->advanced_sensitivity));
+                p = readNext(p, &ps->sensitivity_x, sizeof(ps->sensitivity_x));
+                p = readNext(p, &ps->sensitivity_y, sizeof(ps->sensitivity_y));
+                p = readNext(p, &ps->cpi_levels_enabled, sizeof(ps->cpi_levels_enabled));
+                p = readNext(p, &ps->cpi_active, sizeof(ps->cpi_active));
+                p = readNext(p, &ps->talkfx_polling_rate, sizeof(ps->talkfx_polling_rate));
+                p = readNext(p, &ps->lights_enabled, sizeof(ps->lights_enabled));
+                p = readNext(p, &ps->color_flow, sizeof(ps->color_flow));
+                p = readNext(p, &ps->light_effect, sizeof(ps->light_effect));
+                p = readNext(p, &ps->effect_speed, sizeof(ps->effect_speed));
+                stage++;
+                break;
+            }
+            case 4: {
+                if (!(p = readMarker(p, FILE_BLOCK_MARKER[3]))) {
+                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    goto func_exit;
+                }
+                TyonProfileSettings *ps = &profile.settings;
+                p = readNext(p, &length, sizeof(quint8));
+                if (length != TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM) {
+                    qCritical("[HIDDEV] Invalid DPI level count value.");
+                    goto func_exit;
+                }
+                for (quint8 i = 0; i < TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM; i++) {
+                    p = readNext(p, &ps->cpi_levels[i], sizeof(ps->cpi_levels[i]));
+                }
+                stage++;
+                break;
+            }
+            case 5: {
+                if (!(p = readMarker(p, FILE_BLOCK_MARKER[4]))) {
+                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    goto func_exit;
+                }
+                TyonProfileSettings *ps = &profile.settings;
+                p = readNext(p, &length, sizeof(quint8));
+                if (length != TYON_LIGHTS_NUM) {
+                    qCritical("[HIDDEV] Invalid light count value.");
+                    goto func_exit;
+                }
+                for (quint8 i = 0; i < TYON_LIGHTS_NUM; i++) {
+                    p = readNext(p, &ps->lights[i].index, sizeof(ps->lights[i].index));
+                    p = readNext(p, &ps->lights[i].red, sizeof(ps->lights[i].red));
+                    p = readNext(p, &ps->lights[i].green, sizeof(ps->lights[i].green));
+                    p = readNext(p, &ps->lights[i].blue, sizeof(ps->lights[i].blue));
+                    p = readNext(p, &ps->lights[i].unused, sizeof(ps->lights[i].unused));
+                }
+                stage++;
+                break;
+            }
+            case 6: {
+                if (!(p = readMarker(p, FILE_BLOCK_MARKER[5]))) {
+                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    goto func_exit;
+                }
+                TyonProfileSettings *ps = &profile.settings;
+                p = readNext(p, &ps->checksum, sizeof(ps->checksum));
+                stage++;
+                break;
+            }
+            case 7: {
+                if (!(p = readMarker(p, FILE_BLOCK_MARKER[6]))) {
+                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    goto func_exit;
+                }
+                profileList[profile.index] = profile;
+                pfcount++;
+                stage = 0; // next profile
+                break;
+            }
+        }
+    } // for
+
+    // success, update UI
+    foreach (const TProfile p, profileList) {
+        m_profiles[profile.index] = p;
+        emit profileChanged(p);
+    }
+
+func_exit:
     f.close();
     return true;
 }
@@ -412,23 +705,18 @@ void RTHidDevice::assignButton( //
         b->type = func;
         b->modifier = mods;
         b->key = key;
+        p.changed = true;
         m_profiles[profileIndex()] = p;
         emit profileChanged(p);
     }
 }
 
-void RTHidDevice::setActiveProfile(quint8 profileIndex)
+void RTHidDevice::setActiveProfile(quint8 pix)
 {
-    if (m_profile.profile_index != profileIndex) {
-        m_profile.profile_index = profileIndex;
-        emit profileIndexChanged(profileIndex);
-        if (!m_profiles.contains(profileIndex)) {
-            m_profiles[profileIndex].index = 0;
-            m_profiles[profileIndex].name = tr("Profile %1").arg(0);
-            m_profiles[profileIndex].buttons = {};
-            m_profiles[profileIndex].settings = {};
-        }
-        emit profileChanged(m_profiles[profileIndex]);
+    if (m_profile.profile_index != pix) {
+        m_profile.profile_index = pix;
+        emit profileIndexChanged(pix);
+        emit profileChanged(m_profiles[pix]);
     }
 }
 
@@ -438,6 +726,7 @@ void RTHidDevice::setProfileName(const QString &name, quint8 profileIndex)
         TProfile p = m_profiles[profileIndex];
         if (p.name != name) {
             p.name = name;
+            p.changed = true;
             m_profiles[profileIndex] = p;
             emit profileChanged(p);
         }
@@ -450,6 +739,7 @@ void RTHidDevice::setXSensitivity(quint8 sensitivity)
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.sensitivity_x != sensitivity) {
             p.settings.sensitivity_x = sensitivity;
+            p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
         }
@@ -462,6 +752,7 @@ void RTHidDevice::setYSensitivity(quint8 sensitivity)
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.sensitivity_y != sensitivity) {
             p.settings.sensitivity_y = sensitivity;
+            p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
         }
@@ -477,6 +768,7 @@ void RTHidDevice::setAdvancedSenitivity(quint8 bit, bool state)
         } else {
             p.settings.advanced_sensitivity &= ~bit;
         }
+        p.changed = true;
         m_profiles[profileIndex()] = p;
         emit profileChanged(p);
     }
@@ -488,6 +780,7 @@ void RTHidDevice::setPollRate(quint8 rate)
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.talkfx_polling_rate != rate) {
             p.settings.talkfx_polling_rate = rate;
+            p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
         }
@@ -503,6 +796,7 @@ void RTHidDevice::setDpiSlot(quint8 bit, bool state)
         } else {
             p.settings.cpi_levels_enabled &= ~bit;
         }
+        p.changed = true;
         m_profiles[profileIndex()] = p;
         emit profileChanged(p);
     }
@@ -514,18 +808,21 @@ void RTHidDevice::setActiveDpiSlot(quint8 id)
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.cpi_active != id) {
             p.settings.cpi_active = id;
+            p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
         }
     }
 }
 
-void RTHidDevice::setDpiLevel(quint8 index, quint8 value)
+void RTHidDevice::setDpiLevel(quint8 index, quint16 value)
 {
     if (m_profiles.contains(profileIndex())) {
         TProfile p = m_profiles[profileIndex()];
-        if (p.settings.cpi_levels[index] != value) {
-            p.settings.cpi_levels[index] = value;
+        quint8 level = ((value / 200) << 2);
+        if (p.settings.cpi_levels[index] != level) {
+            p.settings.cpi_levels[index] = level;
+            p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
         }
@@ -541,6 +838,7 @@ void RTHidDevice::setLightsEnabled(quint8 bit, bool state)
         } else {
             p.settings.lights_enabled &= ~bit;
         }
+        p.changed = true;
         m_profiles[profileIndex()] = p;
         emit profileChanged(p);
     }
@@ -552,6 +850,7 @@ void RTHidDevice::setLightsEffect(quint8 value)
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.light_effect != value) {
             p.settings.light_effect = value;
+            p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
         }
@@ -564,6 +863,7 @@ void RTHidDevice::setColorFlow(quint8 value)
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.color_flow != value) {
             p.settings.color_flow = value;
+            p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
         }
@@ -582,6 +882,7 @@ void RTHidDevice::setLightColorWheel(const TyonRmpLightInfo &color)
             p.settings.lights[0].red = color.red;
             p.settings.lights[0].green = color.green;
             p.settings.lights[0].blue = color.blue;
+            p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
         }
@@ -600,6 +901,7 @@ void RTHidDevice::setLightColorBottom(const TyonRmpLightInfo &color)
             p.settings.lights[1].red = color.red;
             p.settings.lights[1].green = color.green;
             p.settings.lights[1].blue = color.blue;
+            p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
         }
@@ -680,6 +982,26 @@ void RTHidDevice::onDeviceRemoved(IOHIDDeviceRef device)
     emit deviceRemoved();
 }
 
+void RTHidDevice::onSetReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data)
+{
+    QMutexLocker lock(&m_mutex);
+
+#ifdef QT_DEBUG
+    if (length > 0) {
+        qDebug("[HIDDEV] status=%d RID=0x%02x SIZE=%ld", status, rid, length);
+        qDebug("[HIDDEV] data=%s", qPrintable(data.toHex(' ')));
+    }
+#else
+    Q_UNUSED(status)
+    Q_UNUSED(rid)
+    Q_UNUSED(index)
+    Q_UNUSED(length)
+    Q_UNUSED(data)
+#endif
+
+    m_isCBComplete = true;
+}
+
 inline int RTHidDevice::readProfile(IOHIDDeviceRef device, quint8 pix)
 {
     IOReturn ret;
@@ -720,6 +1042,11 @@ inline int RTHidDevice::readProfile(IOHIDDeviceRef device, quint8 pix)
     }
 #endif
 
+    // reset change flag
+    TProfile p = m_profiles[pix];
+    p.changed = false;
+    m_profiles[pix] = p;
+
     return kIOReturnSuccess;
 }
 
@@ -734,10 +1061,8 @@ inline int RTHidDevice::setDeviceState(bool state, IOHIDDeviceRef device)
     device_state.report_id = TYON_REPORT_ID_DEVICE_STATE;
     device_state.size = sizeof(TyonDeviceState);
     device_state.state = (state ? 0x01 : 0x00);
+
     const quint8 *buf = (const quint8 *) &device_state;
-    if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
-        return ret;
-    }
     return hidSetReportRaw(device, buf, device_state.size);
 }
 
@@ -759,6 +1084,17 @@ inline void RTHidDevice::releaseManager()
     if (m_manager) {
         IOHIDManagerClose(m_manager, kIOHIDOptionsTypeNone);
         CFRelease(m_manager);
+    }
+}
+
+inline void RTHidDevice::initializeProfiles()
+{
+    for (quint8 i = 0; i < TYON_PROFILE_NUM; i++) {
+        TProfile profile = {};
+        profile.index = i;
+        profile.name = tr("Default_%1").arg(profile.index);
+        profile.changed = false;
+        m_profiles[i] = profile;
     }
 }
 
@@ -826,12 +1162,12 @@ inline int RTHidDevice::readButtonMacro(IOHIDDeviceRef device, uint pix, uint bi
 {
     IOReturn ret;
 
-    if (pix > TYON_PROFILE_NUM) {
+    if (pix >= TYON_PROFILE_NUM) {
         qCritical("[HIDDEV] Invalid profile index parameter.");
         return EINVAL;
     }
 
-    if (bix > TYON_PROFILE_BUTTON_NUM) {
+    if (bix >= TYON_PROFILE_BUTTON_NUM) {
         qCritical("[HIDDEV] Invalid button index parameter.");
         return EINVAL;
     }
@@ -860,94 +1196,57 @@ inline int RTHidDevice::readButtonMacro(IOHIDDeviceRef device, uint pix, uint bi
 
 inline int RTHidDevice::selectProfileSettings(IOHIDDeviceRef device, uint pix)
 {
-    IOReturn ret;
-
-    if (pix > TYON_PROFILE_NUM) {
+    if (pix >= TYON_PROFILE_NUM) {
         qCritical("[HIDDEV] Invalid profile index: %d", pix);
         return EINVAL;
     }
 
-    /* roccat_select:
-     *  endpoint: TYON_INTERFACE_MOUSE,
-     *  report_id: TYON_REPORT_ID_CONTROL,
-     *  profile_index: TYON_CONTROL_DATA_INDEX_NONE | profile_index,
-     *  request: TYON_CONTROL_REQUEST_PROFILE_SETTINGS,
-     */
-    const quint8 HEP = TYON_INTERFACE_MOUSE;
-    const quint8 RID = TYON_REPORT_ID_CONTROL;
-    const quint8 DIX = (TYON_CONTROL_DATA_INDEX_NONE | pix);
-    const quint8 REQ = TYON_CONTROL_REQUEST_PROFILE_SETTINGS;
+    const quint8 _req = TYON_CONTROL_REQUEST_PROFILE_SETTINGS;
+    const quint8 _dix = (TYON_CONTROL_DATA_INDEX_NONE | pix);
 
 #ifdef QT_DEBUG
-    qDebug("[HIDDEV] Select profile settings. DIX=0x%02x PIX=%d REQ=0x%02x", DIX, pix, REQ);
+    qDebug("[HIDDEV] Select profile settings. PIX=%d DIX=0x%02x REQ=0x%02x", pix, _dix, _req);
 #endif
 
-    if ((ret = hidSetRoccatControl(device, HEP, RID, DIX, REQ)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to select profile %d. ret=0x%08x", pix, ret);
-        return ret;
-    }
-
-    return kIOReturnSuccess;
+    return hidWriteRoccatCtl(device, _dix, _req);
 }
 
 inline int RTHidDevice::selectProfileButtons(IOHIDDeviceRef device, uint pix)
 {
-    IOReturn ret;
-
-    if (pix > TYON_PROFILE_NUM) {
+    if (pix >= TYON_PROFILE_NUM) {
         qCritical("[HIDDEV] Invalid profile index: %d", pix);
         return EINVAL;
     }
 
-    /* roccat_select:
-     *  endpoint: TYON_INTERFACE_MOUSE,
-     *  report_id: TYON_REPORT_ID_CONTROL,
-     *  profile_index: TYON_CONTROL_DATA_INDEX_NONE | profile_index,
-     *  request: TYON_CONTROL_REQUEST_PROFILE_BUTTONS,
-     */
-    const quint8 HEP = TYON_INTERFACE_MOUSE;
-    const quint8 RID = TYON_REPORT_ID_CONTROL;
-    const quint8 DIX = (TYON_CONTROL_DATA_INDEX_NONE | pix);
-    const quint8 REQ = TYON_CONTROL_REQUEST_PROFILE_BUTTONS;
+    const quint8 _req = TYON_CONTROL_REQUEST_PROFILE_BUTTONS;
+    const quint8 _dix = (TYON_CONTROL_DATA_INDEX_NONE | pix);
 
 #ifdef QT_DEBUG
-    qDebug("[HIDDEV] Select profile buttons. DIX=0x%02x PIX=%d REQ=0x%02x", DIX, pix, REQ);
+    qDebug("[HIDDEV] Select profile buttons. PIX=%d DIX=0x%02x REQ=0x%02x", pix, _dix, _req);
 #endif
 
-    if ((ret = hidSetRoccatControl(device, HEP, RID, DIX, REQ)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to select profile %d. ret=0x%08x", pix, ret);
-        return ret;
-    }
-
-    return kIOReturnSuccess;
+    return hidWriteRoccatCtl(device, _dix, _req);
 }
 
 inline int RTHidDevice::selectMacro(IOHIDDeviceRef device, uint pix, uint dix, uint bix)
 {
-    IOReturn ret;
-
-    /* roccat_select(
-     *  device: device,
-     *  endpoint: TYON_INTERFACE_MOUSE,
-     *  report_id: TYON_REPORT_ID_CONTROL,
-     *  profile_index: (TYON_CONTROL_DATA_INDEX_MACRO_1 or _2) | profile_index,
-     *  request: bix,
-     */
-    const quint8 HEP = TYON_INTERFACE_MOUSE;
-    const quint8 RID = TYON_REPORT_ID_CONTROL;
-    const quint8 DIX = (dix | pix);
-    const quint8 REQ = bix;
-
-#ifdef QT_DEBUG
-    qDebug("[HIDDEV] Select macro. DIX=0x%02x PIX=%d REQ=0x%02x", DIX, pix, REQ);
-#endif
-
-    if ((ret = hidSetRoccatControl(device, HEP, RID, DIX, REQ)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to select macro %d. ret=0x%08x", REQ, ret);
-        return ret;
+    if (pix >= TYON_PROFILE_NUM) {
+        qCritical("[HIDDEV] Invalid profile index: %d", pix);
+        return EINVAL;
+    }
+    if (bix >= TYON_PROFILE_BUTTON_NUM) {
+        qCritical("[HIDDEV] Invalid macro index: %d", pix);
+        return EINVAL;
     }
 
-    return kIOReturnSuccess;
+    const quint8 _dix = (dix | pix);
+    const quint8 _req = bix;
+
+#ifdef QT_DEBUG
+    qDebug("[HIDDEV] Select macro. PIX=%d DIX=0x%02x REQ=0x%02x", pix, _dix, _req);
+#endif
+
+    return hidWriteRoccatCtl(device, _dix, _req);
 }
 
 // Read ROCCAT Mouse report descriptor
@@ -1069,87 +1368,6 @@ inline int RTHidDevice::hidGetReportById(IOHIDDeviceRef device, int rid, CFIndex
     return ret;
 }
 
-void RTHidDevice::onSetReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data)
-{
-    QMutexLocker lock(&m_mutex);
-
-#ifdef QT_DEBUG
-    if (length > 0) {
-        qDebug("[HIDDEV] status=%d RID=0x%02x SIZE=%ld", status, rid, length);
-        qDebug("[HIDDEV] data=%s", qPrintable(data.toHex(' ')));
-    }
-#else
-    Q_UNUSED(status)
-    Q_UNUSED(rid)
-    Q_UNUSED(index)
-    Q_UNUSED(length)
-    Q_UNUSED(data)
-#endif
-
-    m_isCBComplete = true;
-}
-
-inline int RTHidDevice::hidSetRoccatControl(IOHIDDeviceRef device, uint ep, uint rid, uint pix, uint req)
-{
-    /* ROCCAT control message */
-    RoccatControl control;
-    control.report_id = rid;
-    control.request = req;
-    control.value = pix;
-
-    m_isCBComplete = false;
-    const IOHIDReportType hrt = toMacOSReportType(ep);
-    const CFIndex length = sizeof(RoccatControl);
-    const uint8_t *buffer = (const uint8_t *) &control;
-    IOReturn ret = kIOReturnSuccess;
-
-#ifdef QT_DEBUG
-    QByteArray d((char *) buffer, length);
-    qDebug("[HIDDEV] SetRoccatControl(%p): [RID:0x%04x LEN:%lld] pl=%s", device, control.report_id, d.length(), qPrintable(d.toHex(' ')));
-#endif
-
-#if 1
-    const CFTimeInterval timeout = 2.0f;
-    ret = IOHIDDeviceSetReportWithCallback( //
-        device,
-        hrt,
-        rid,
-        buffer,
-        length,
-        timeout,         // Timeout in Sekunden
-        _reportCallback, // Callback-Funktion
-        this             // context
-    );
-
-    if (ret != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to send report 0x%02x with request 0x%04x", rid, req);
-        return ret;
-    }
-
-    auto checkComplete = [this]() -> bool {
-        QMutexLocker lock(&m_mutex);
-        return m_isCBComplete;
-    };
-
-    QDeadlineTimer dt(500, Qt::PreciseTimer);
-    do {
-        if (checkComplete()) {
-            break;
-        }
-        qApp->processEvents();
-    } while (!dt.hasExpired());
-
-    if (dt.hasExpired()) {
-        qCritical("[HIDDEV] Timeout while waiting for HID device %p.", device);
-        return EIO;
-    }
-#else
-    ret = IOHIDDeviceSetReport(device, hrt, rid, buffer, sizeof(RoccatControl));
-#endif
-
-    return ret;
-}
-
 inline int RTHidDevice::hidCheckWrite(IOHIDDeviceRef device)
 {
     const IOHIDReportType hrt = toMacOSReportType(TYON_INTERFACE_MOUSE);
@@ -1174,7 +1392,7 @@ inline int RTHidDevice::hidCheckWrite(IOHIDDeviceRef device)
 
 #ifdef QT_DEBUG
         QByteArray d((char *) buffer, length);
-        qDebug("[HIDDEV] hidCheckWrite(%p): [RID:0x%04x LEN:%lld] pl=%s", device, rid, d.length(), qPrintable(d.toHex(' ')));
+        qDebug("[HIDDEV] hidCheckWrite(%p): [RID:0x%02x LEN:%lld] pl=%s", device, rid, d.length(), qPrintable(d.toHex(' ')));
 #endif
 
         switch (buffer->value) {
@@ -1209,25 +1427,65 @@ func_exit:
     return ret;
 }
 
+inline int RTHidDevice::hidWriteRoccatCtl(IOHIDDeviceRef device, uint pix, uint req)
+{
+    /* ROCCAT control message */
+    RoccatControl control;
+    control.report_id = TYON_REPORT_ID_CONTROL;
+    control.value = pix;
+    control.request = req;
+    return hidSetReportRaw(device, (const quint8 *) &control, sizeof(RoccatControl));
+}
+
 inline int RTHidDevice::hidSetReportRaw(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length)
 {
-    IOReturn ret;
-
     const IOHIDReportType hrt = toMacOSReportType(TYON_INTERFACE_MOUSE);
     const quint8 rid = buffer[0]; // required!
 
 #ifdef QT_DEBUG
     QByteArray d((char *) buffer, length);
-    qDebug("[HIDDEV] hidSetReportRaw(%p): [RID:0x%04x LEN:%lld] pl=%s", device, rid, d.length(), qPrintable(d.toHex(' ')));
+    qDebug("[HIDDEV] hidSetReportRaw(%p): [RID:0x%02x LEN:%ld] pl=%s", device, rid, length, qPrintable(d.toHex(' ')));
 #endif
 
-    m_isCBComplete = false;
-    ret = IOHIDDeviceSetReport(device, hrt, rid, buffer, length);
+    return hidWriteAsync(device, hrt, rid, buffer, length);
+}
+
+inline int RTHidDevice::hidWriteSync(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length)
+{
+    IOReturn ret = IOHIDDeviceSetReport(device, hrt, rid, buffer, length);
     if (ret != kIOReturnSuccess) {
         qCritical("[HIDDEV] Unable to write HID raw message. ret=0x%08x", ret);
         return ret;
     }
-
     QThread::msleep(250);
-    return kIOReturnSuccess;
+    return ret;
+}
+
+inline int RTHidDevice::hidWriteAsync(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length)
+{
+    const CFTimeInterval timeout = 4.0f;
+
+    m_isCBComplete = false;
+
+    IOReturn ret = IOHIDDeviceSetReportWithCallback(device, hrt, rid, buffer, length, timeout, _reportCallback, this);
+    if (ret != kIOReturnSuccess) {
+        qCritical("[HIDDEV] Unable to write HID report 0x%02lx.", rid);
+        return ret;
+    }
+
+    auto checkComplete = [this]() -> bool {
+        QMutexLocker lock(&m_mutex);
+        return m_isCBComplete;
+    };
+
+    QDeadlineTimer dt(timeout * 1000, Qt::PreciseTimer);
+    while (!checkComplete() && !dt.hasExpired()) {
+        qApp->processEvents();
+    }
+    if (dt.hasExpired()) {
+        qCritical("[HIDDEV] Timeout while waiting for HID device %p.", device);
+        return kIOReturnTimeout;
+    }
+
+    return ret;
 }

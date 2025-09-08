@@ -28,12 +28,11 @@ private slots:
     void on_cbxKeyAlt_toggled(bool checked);
     void on_cbxKeyMeta_toggled(bool checked);
     void on_cbxKeyPad_toggled(bool checked);
-
     void on_edKeyShortcut_keySequenceChanged(const QKeySequence &keySequence);
 
 private:
     Ui::RTShortcutDialog *ui;
     TDialogData m_data;
     inline void update(Qt::KeyboardModifier km, bool state);
-    inline void update(Qt::KeyboardModifiers mods, Qt::Key key);
+    inline void update(Qt::KeyboardModifiers km, Qt::Key key);
 };

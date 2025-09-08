@@ -302,12 +302,14 @@ inline void RTMainWindow::connectUiElements()
 
     // synchronize X/Y sensitivity if advanced disabled
     connect(ui->hsXSensitivity, &QSlider::valueChanged, this, [this](int position) { //
+        ui->edXSensitivity->setValue(position);
         if (!ui->cbxSenitivityEnableAdv->isChecked()) {
             ui->edYSensitivity->setValue(position); // trigers slider too
         }
         m_ctlr->setXSensitivity(position + ROCCAT_SENSITIVITY_CENTER);
     });
     connect(ui->hsYSensitivity, &QSlider::valueChanged, this, [this](int position) { //
+        ui->edYSensitivity->setValue(position);
         if (!ui->cbxSenitivityEnableAdv->isChecked()) {
             ui->edXSensitivity->setValue(position); // trigers slider too
         }
@@ -332,18 +334,28 @@ inline void RTMainWindow::connectUiElements()
     });
 
     connect(ui->cbxDpiSlot1, &QCheckBox::clicked, this, [this](bool checked) { //
+        ui->edDpiSlot1->setEnabled(checked);
+        ui->hsDpiSlot1->setEnabled(checked);
         m_ctlr->setDpiSlot(0x01, checked);
     });
     connect(ui->cbxDpiSlot2, &QCheckBox::clicked, this, [this](bool checked) { //
+        ui->edDpiSlot2->setEnabled(checked);
+        ui->hsDpiSlot2->setEnabled(checked);
         m_ctlr->setDpiSlot(0x02, checked);
     });
     connect(ui->cbxDpiSlot3, &QCheckBox::clicked, this, [this](bool checked) { //
+        ui->edDpiSlot3->setEnabled(checked);
+        ui->hsDpiSlot3->setEnabled(checked);
         m_ctlr->setDpiSlot(0x04, checked);
     });
     connect(ui->cbxDpiSlot4, &QCheckBox::clicked, this, [this](bool checked) { //
+        ui->edDpiSlot4->setEnabled(checked);
+        ui->hsDpiSlot4->setEnabled(checked);
         m_ctlr->setDpiSlot(0x08, checked);
     });
     connect(ui->cbxDpiSlot5, &QCheckBox::clicked, this, [this](bool checked) { //
+        ui->edDpiSlot5->setEnabled(checked);
+        ui->hsDpiSlot5->setEnabled(checked);
         m_ctlr->setDpiSlot(0x10, checked);
     });
 
@@ -354,19 +366,19 @@ inline void RTMainWindow::connectUiElements()
         }
     });
     connect(ui->edDpiSlot1, &QSpinBox::valueChanged, this, [this](int value) { //
-        m_ctlr->setDpiLevel(0, ((value / 200) << 2));
+        m_ctlr->setDpiLevel(0, value);
     });
     connect(ui->edDpiSlot2, &QSpinBox::valueChanged, this, [this](int value) { //
-        m_ctlr->setDpiLevel(1, ((value / 200) << 2));
+        m_ctlr->setDpiLevel(1, value);
     });
     connect(ui->edDpiSlot3, &QSpinBox::valueChanged, this, [this](int value) { //
-        m_ctlr->setDpiLevel(2, ((value / 200) << 2));
+        m_ctlr->setDpiLevel(2, value);
     });
     connect(ui->edDpiSlot4, &QSpinBox::valueChanged, this, [this](int value) { //
-        m_ctlr->setDpiLevel(3, ((value / 200) << 2));
+        m_ctlr->setDpiLevel(3, value);
     });
     connect(ui->edDpiSlot5, &QSpinBox::valueChanged, this, [this](int value) { //
-        m_ctlr->setDpiLevel(4, ((value / 200) << 2));
+        m_ctlr->setDpiLevel(4, value);
     });
 
     connect(ui->rbLightsOff, &QRadioButton::clicked, this, [this](bool) { //

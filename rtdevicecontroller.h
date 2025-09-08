@@ -111,7 +111,7 @@ public:
     void setPollRate(quint8 rate);
     void setDpiSlot(quint8 bit, bool state);
     void setActiveDpiSlot(quint8 id);
-    void setDpiLevel(quint8 index, quint8 value);
+    void setDpiLevel(quint8 index, quint16 value);
     void setLightsEnabled(quint8 flag, bool state);
     void setLightsEffect(quint8 value);
     void setColorFlow(quint8 value);

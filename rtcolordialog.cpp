@@ -3,7 +3,10 @@
 #include <rttypes.h>
 #include <QPushButton>
 
-//  index, state, red, green, blue, null, checksum;
+// Roccat color index table with UI RGB colors.
+// This is a fixed pallet from the MCU of the device.
+// Columns: index, state, red, green, blue, null, checksum
+// Index is used by the device as reference.
 static TyonRmpLightInfo const roccat_colors[TYON_RMP_LIGHT_INFO_COLORS_NUM] = {
     {0x00, TYON_RMP_LIGHT_INFO_STATE_ON, 0x05, 0x90, 0xfe, 0x00, 0x94},
     {0x01, TYON_RMP_LIGHT_INFO_STATE_ON, 0x00, 0x71, 0xff, 0x00, 0x72},
