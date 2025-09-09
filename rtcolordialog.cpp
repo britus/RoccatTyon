@@ -15,7 +15,7 @@ RTColorDialog::RTColorDialog(const RTHidDevice::TDeviceColors &colors, QWidget *
     //pbColor01
     QPushButton *pb;
     for (quint8 i = 0; i < TYON_LIGHT_INFO_COLORS_NUM; i++) {
-        const TyonLight tl = colors[i].deviceColor;
+        const TyonLight tl = colors[i].deviceColors;
         QString name = tr("pbColor%1").arg(i + 1, 2, 10, QChar('0'));
         if ((pb = ui->pnlColors->findChild<QPushButton *>(name))) {
             pb->setProperty("tli", QVariant::fromValue(tl));

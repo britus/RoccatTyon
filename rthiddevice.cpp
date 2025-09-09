@@ -1121,14 +1121,14 @@ static inline quint8 colorIndex(quint8 index, quint8 flags)
         //if (index < TYON_LIGHT_INFO_COLORS_NUM) {
         //    index += TYON_LIGHT_INFO_COLORS_NUM;
         //}
-        index = (0x10 | index);
+        //index = (0x10 | index);
         qDebug("[HIDDEV] colorIndex(): Custom color index=%d", index);
     } else {
         // restore color index into default color table
         //if (index >= TYON_LIGHT_INFO_COLORS_NUM) {
         //    index -= TYON_LIGHT_INFO_COLORS_NUM;
         //}
-        index &= ~0x10;
+        //index &= ~0x10;
         qDebug("[HIDDEV] colorIndex(): Standad color index=%d", index);
     }
     return index;
@@ -1143,20 +1143,6 @@ void RTHidDevice::setLightsEnabled(quint8 bit, bool state)
         } else {
             p.settings.lights_enabled &= ~bit;
         }
-
-        // update light color index
-        if (bit & TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR) {
-            quint8 index;
-
-            index = p.settings.lights[TYON_LIGHT_WHEEL].index;
-            index = colorIndex(index, (state ? bit : 0));
-            p.settings.lights[TYON_LIGHT_WHEEL].index = index;
-
-            index = p.settings.lights[TYON_LIGHT_BOTTOM].index;
-            index = colorIndex(index, (state ? bit : 0));
-            p.settings.lights[TYON_LIGHT_BOTTOM].index = index;
-        }
-
         p.changed = true;
         m_profiles[profileIndex()] = p;
         emit profileChanged(p);
@@ -1169,36 +1155,27 @@ TyonLight RTHidDevice::toDeviceColor(TyonLightType target, const QColor &color) 
         qWarning("[HIDDEV] toDeviceColor(): Invalid light index. 0 or 1 expected.");
         return {};
     }
-
-    TyonLight orig = m_profiles[profileIndex()].settings.lights[target];
-    quint16 flags = m_profiles[profileIndex()].settings.lights_enabled;
-    quint8 index = colorIndex(orig.index, flags);
-
+    const TProfile p = m_profiles[profileIndex()];
+    const TyonLight tl = p.settings.lights[target];
     TyonLight info = {};
-    info.index = index;
-    info.red = color.red() / ROCCAT_BYTE_TO_COLOR_FACTOR;
-    info.green = color.green() / ROCCAT_BYTE_TO_COLOR_FACTOR;
-    info.blue = color.blue() / ROCCAT_BYTE_TO_COLOR_FACTOR;
+    info.index = tl.index;
+    info.unused = tl.unused;
+    info.red = color.red();
+    info.green = color.green();
+    info.blue = color.blue();
     return info;
 }
 
-QColor RTHidDevice::toScreenColor(const TyonLight &light, bool isCustomColor) const
+QColor RTHidDevice::toScreenColor(const TyonLight &light, bool isCustom) const
 {
-    if (isCustomColor) {
-        qDebug("[HIDDEV] toScreenColor(): Custom color, using RGB...");
-        return QColor::fromRgb( //
-            light.red * ROCCAT_BYTE_TO_COLOR_FACTOR,
-            light.green * ROCCAT_BYTE_TO_COLOR_FACTOR,
-            light.blue * ROCCAT_BYTE_TO_COLOR_FACTOR);
+    if (isCustom) {
+        return QColor::fromRgb(light.red, light.green, light.blue);
     }
-
-    // use standard color index
-    quint8 index = colorIndex(light.index, 0);
-    if (index >= m_colors.count()) {
-        qWarning("[HIDDEV] toScreenColor(): Invalid color index: %d", index);
+    if (light.index >= m_colors.count()) {
+        qWarning("[HIDDEV] toScreenColor(): Invalid color index: %d", light.index);
         return Qt::red;
     }
-    const TyonLight tci = m_colors.value(index).deviceColor;
+    const TyonLight tci = m_colors.value(light.index).deviceColors;
     return QColor::fromRgb(tci.red, tci.green, tci.blue);
 }
 
@@ -1214,13 +1191,13 @@ void RTHidDevice::setLightColor(TyonLightType target, const TyonLight &color)
         if (p.settings.lights[target].red != color.red        //
             || p.settings.lights[target].green != color.green //
             || p.settings.lights[target].blue != color.blue   //
-            || p.settings.lights[target].index != color.index) {
-            // get standard or custom color index
-            quint8 flags = m_profiles[profileIndex()].settings.lights_enabled;
-            p.settings.lights[target].index = colorIndex(color.index, flags);
+            || p.settings.lights[target].index != color.index //
+            || p.settings.lights[target].unused != color.unused) {
+            p.settings.lights[target].index = color.index;
             p.settings.lights[target].red = color.red;
             p.settings.lights[target].green = color.green;
             p.settings.lights[target].blue = color.blue;
+            p.settings.lights[target].unused = color.unused;
             p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
@@ -1410,7 +1387,7 @@ inline void RTHidDevice::releaseManager()
 inline void RTHidDevice::initializeColorMapping()
 {
     for (quint8 i = 0; i < TYON_LIGHT_INFO_COLORS_NUM; i++) {
-        m_colors[i].deviceColor = roccat_colors[i];
+        m_colors[i].deviceColors = roccat_colors[i];
     }
 }
 

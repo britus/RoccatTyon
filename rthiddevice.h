@@ -32,7 +32,7 @@ public:
 
     typedef struct
     {
-        TyonLight deviceColor;
+        TyonLight deviceColors;
     } TColorItem;
 
     /**
