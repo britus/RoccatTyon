@@ -653,12 +653,12 @@ void RTMainWindow::onLookupStarted()
     // timeout timer
     QTimer::singleShot(15000, this, [this]() {
         if (!m_ctlr->hasDevice()) {
+            RTProgress::dismiss();
             QMessageBox::warning( //
                 this,
                 qApp->applicationDisplayName(),
                 tr("Unable to find ROCCAT Tyon device."));
-            RTProgress::dismiss();
-            QTimer::singleShot(100, this, []() { qApp->quit(); });
+            disableUserInterface();
             return;
         }
     });
