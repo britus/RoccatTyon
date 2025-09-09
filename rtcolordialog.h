@@ -1,5 +1,6 @@
 #pragma once
 
+#include "rthiddevice.h"
 #include "rttypes.h"
 #include <QDialog>
 
@@ -12,11 +13,11 @@ class RTColorDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit RTColorDialog(QWidget *parent = nullptr);
+    explicit RTColorDialog(const RTHidDevice::TDeviceColors &colors, QWidget *parent = nullptr);
     ~RTColorDialog();
-    inline const TyonRmpLightInfo &selectedColor() const { return m_selected; }
+    inline const TyonLight &selectedColor() const { return m_selected; }
 
 private:
     Ui::RTColorDialog *ui;
-    TyonRmpLightInfo m_selected;
+    TyonLight m_selected;
 };

@@ -190,16 +190,11 @@ public:
     void setColorFlow(quint8 value);
 
     /**
-     * @brief Set the color for the wheel light
-     * @param color TyonRmpLightInfo type
+     * @brief Set the color for the wheel or bottom light
+     * @param target 0=Wheel or 1=Bottom
+     * @param light Tyon light info type
      */
-    void setLightColorWheel(const TyonRmpLightInfo &color);
-
-    /**
-     * @brief Set the color for the bottom light
-     * @param color TyonRmpLightInfo type
-     */
-    void setLightColorBottom(const TyonRmpLightInfo &color);
+    void setLightColor(TyonLightType target, const TyonLight &light);
 
     /**
      * @brief Return the name of the active profile
@@ -232,6 +227,28 @@ public:
      * @return true if success
      */
     bool resetProfiles();
+
+    /**
+     * @brief Translte QT color to ROCCAT Tyon light info
+     * @param color QT color object
+     * @param target ROCCAT Tyon light 0=Wheel 1=Bottom
+     * @return TyonColorInfo structure
+     */
+    TyonLight toDeviceColor(TyonLightType target, const QColor &color) const;
+
+    /**
+     * @brief Translte ROCCAT Tyon light to UI color
+     * @param light ROCCAT Tyon light info structure
+     * @param isCustomColor True for custom color
+     * @return QColor object
+     */
+    QColor toScreenColor(const TyonLight &light, bool isCustomColor = false) const;
+
+    /**
+     * @brief Return ROCCAT Tyon light color table
+     * @return A mapping of color index to RGB
+     */
+    inline const RTHidDevice::TDeviceColors &deviceColors() const { return m_device.deviceColors(); }
 
     /* ------------------------------------------------------
      * QAbstractItemModel interface

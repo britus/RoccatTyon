@@ -294,14 +294,9 @@ void RTDeviceController::setColorFlow(quint8 value)
     m_device.setColorFlow(value);
 }
 
-void RTDeviceController::setLightColorWheel(const TyonRmpLightInfo &color)
+void RTDeviceController::setLightColor(TyonLightType target, const TyonLight &light)
 {
-    m_device.setLightColorWheel(color);
-}
-
-void RTDeviceController::setLightColorBottom(const TyonRmpLightInfo &color)
-{
-    m_device.setLightColorBottom(color);
+    m_device.setLightColor(target, light);
 }
 
 QString RTDeviceController::profileName() const
@@ -327,6 +322,16 @@ bool RTDeviceController::resetProfiles()
 bool RTDeviceController::saveProfilesToDevice()
 {
     return m_device.saveProfilesToDevice();
+}
+
+TyonLight RTDeviceController::toDeviceColor(TyonLightType target, const QColor &color) const
+{
+    return m_device.toDeviceColor(target, color);
+}
+
+QColor RTDeviceController::toScreenColor(const TyonLight &light, bool isCustomColor) const
+{
+    return m_device.toScreenColor(light, isCustomColor);
 }
 
 void RTDeviceController::onDeviceFound()
@@ -443,6 +448,7 @@ QVariant RTDeviceController::data(const QModelIndex &index, int role) const
             }
             break;
         }
+        case Qt::EditRole: //editting
         case Qt::UserRole: {
             return QVariant::fromValue(p);
         }

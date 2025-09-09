@@ -2,6 +2,7 @@
 #include "rttypes.h"
 #include <IOKit/hid/IOHIDManager.h>
 #include <QAbstractItemModel>
+#include <QColor>
 #include <QMap>
 #include <QMutex>
 #include <QObject>
@@ -29,10 +30,20 @@ public:
         TyonProfileButtons buttons;
     } TProfile;
 
+    typedef struct
+    {
+        TyonLight deviceColor;
+    } TColorItem;
+
     /**
      * ROCCAT Tyon profiles by profile index
      */
     typedef QMap<quint8, TProfile> TProfiles;
+
+    /**
+     * @brief ROCCAT Tyon color index to RGB mapping
+     */
+    typedef QMap<quint8, TColorItem> TDeviceColors;
 
     /**
      * @brief Default constructor
@@ -207,16 +218,33 @@ public:
     void setColorFlow(quint8 value);
 
     /**
-     * @brief Set the color for the wheel light
-     * @param color TyonRmpLightInfo type
+     * @brief Translte QT color to ROCCAT Tyon light info
+     * @param color QT color object
+     * @param target ROCCAT Tyon light 0=Wheel 1=Bottom
+     * @return TyonColorInfo structure
      */
-    void setLightColorWheel(const TyonRmpLightInfo &color);
+    TyonLight toDeviceColor(TyonLightType target, const QColor &color) const;
 
     /**
-     * @brief Set the color for the bottom light
-     * @param color TyonRmpLightInfo type
+     * @brief Translte ROCCAT Tyon light to UI color
+     * @param light ROCCAT Tyon light info structure
+     * @param isCustomColor True for custom color
+     * @return QColor object
      */
-    void setLightColorBottom(const TyonRmpLightInfo &color);
+    QColor toScreenColor(const TyonLight &light, bool isCustomColor = false) const;
+
+    /**
+     * @brief Return ROCCAT Tyon light color table
+     * @return A mapping of color index to RGB
+     */
+    inline const TDeviceColors &deviceColors() const { return m_colors; }
+
+    /**
+     * @brief Set the color for the wheel or bottom light
+     * @param target 0=Wheel or 1=Bottom
+     * @param light Tyon light info type
+     */
+    void setLightColor(TyonLightType target, const TyonLight &light);
 
 signals:
     void lookupStarted();
@@ -241,6 +269,7 @@ public slots:
 private:
     IOHIDManagerRef m_manager;
     QList<IOHIDDeviceRef> m_devices;
+    TDeviceColors m_colors;
     TyonInfo m_info;
     TyonProfile m_profile;
     TProfiles m_profiles;
@@ -251,6 +280,7 @@ private:
     inline void releaseDevices();
     inline void releaseManager();
     inline void initializeProfiles();
+    inline void initializeColorMapping();
     inline void saveProfiles();
     inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
     inline int hidWriteRoccatCtl(IOHIDDeviceRef device, uint pix, uint req);
@@ -279,4 +309,13 @@ private:
     inline int readDevice1A(IOHIDDeviceRef device);
 };
 
+Q_DECLARE_METATYPE(TyonInfo);
+Q_DECLARE_METATYPE(TyonLight);
+Q_DECLARE_METATYPE(TyonProfileSettings);
+Q_DECLARE_METATYPE(TyonProfileButtons);
+Q_DECLARE_METATYPE(TyonButtonIndex);
+Q_DECLARE_METATYPE(TyonButtonType);
 Q_DECLARE_METATYPE(RTHidDevice::TProfile);
+Q_DECLARE_METATYPE(RTHidDevice::TProfiles);
+Q_DECLARE_METATYPE(RTHidDevice::TColorItem);
+Q_DECLARE_METATYPE(RTHidDevice::TDeviceColors);

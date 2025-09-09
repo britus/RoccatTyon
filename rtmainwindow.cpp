@@ -30,19 +30,22 @@
 #include <QThread>
 #include <QTimer>
 
-Q_DECLARE_METATYPE(TyonRmpLightInfo);
-
 RTMainWindow::RTMainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::RTMainWindow)
     , m_ctlr(new RTDeviceController(this))
     , m_buttons()
     , m_settings(nullptr)
+    , m_rtpfFileName(QStringLiteral("Tyon-Profiles.rtpf"))
 {
-    qRegisterMetaType<TyonRmpLightInfo>();
+    qRegisterMetaType<TyonLight>();
 
     // --
     ui->setupUi(this);
+
+#ifndef QT_DEBUG
+    ui->rbLightCustomColor->setEnabled(false);
+#endif
 
     QProcessEnvironment pe = QProcessEnvironment::systemEnvironment();
     QScreen *scn = qApp->primaryScreen();
@@ -95,6 +98,8 @@ inline void RTMainWindow::loadSettings(QSettings *settings)
     uint value;
     m_settings->beginGroup("ui");
 
+    m_rtpfFileName = m_settings->value("exportName", m_rtpfFileName).toString();
+
     value = m_settings->value("tabWidget").toUInt();
     ui->tabWidget->setCurrentIndex(value);
 
@@ -115,6 +120,7 @@ inline void RTMainWindow::saveSettings(QSettings *settings)
     if (!settings)
         return;
     m_settings->beginGroup("ui");
+    m_settings->setValue("exportName", m_rtpfFileName);
     m_settings->setValue("window", this->geometry());
     m_settings->setValue("tabWidget", ui->tabWidget->currentIndex());
     m_settings->setValue("btnWidget", ui->tbxMButtons->currentIndex());
@@ -487,39 +493,40 @@ inline void RTMainWindow::connectUiElements()
         m_ctlr->setLightsEnabled(TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_WHEEL, checked);
     });
     connect(ui->pbLightColorWheel, &QPushButton::clicked, this, [this]() { //
-        TyonRmpLightInfo color;
-        if (selectColor(color)) {
-            m_ctlr->setLightColorWheel(color);
+        TyonLight color;
+        if (selectColor(TYON_LIGHT_WHEEL, color)) {
+            m_ctlr->setLightColor(TYON_LIGHT_WHEEL, color);
         }
     });
     connect(ui->cbxLightBottom, &QCheckBox::clicked, this, [this](bool checked) { //
         m_ctlr->setLightsEnabled(TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_BOTTOM, checked);
     });
     connect(ui->pbLightColorBottom, &QPushButton::clicked, this, [this]() { //
-        TyonRmpLightInfo color;
-        if (selectColor(color)) {
-            m_ctlr->setLightColorBottom(color);
+        TyonLight color;
+        if (selectColor(TYON_LIGHT_BOTTOM, color)) {
+            m_ctlr->setLightColor(TYON_LIGHT_BOTTOM, color);
         }
     });
 }
 
-inline bool RTMainWindow::selectColor(TyonRmpLightInfo &color)
+inline bool RTMainWindow::selectColor(TyonLightType target, TyonLight &color)
 {
-#if 0
-    QColorDialog d(this);
-    d.setTabletTracking(this->hasTabletTracking());
-    if (d.exec() == QColorDialog::Accepted) {
-        color = d.selectedColor();
-        return true;
+    if (ui->rbLightCustomColor->isChecked()) {
+        QColorDialog d(this);
+        d.setOption(QColorDialog::ColorDialogOption::DontUseNativeDialog);
+        d.setTabletTracking(this->hasTabletTracking());
+        if (d.exec() == QColorDialog::Accepted) {
+            color = m_ctlr->toDeviceColor(target, d.selectedColor());
+            return true;
+        }
+    } else {
+        // show ROCCAT Tyon colors
+        RTColorDialog d(m_ctlr->deviceColors(), this);
+        if (d.exec() == RTColorDialog::Accepted) {
+            color = d.selectedColor();
+            return true;
+        }
     }
-#endif
-
-    RTColorDialog d(this);
-    if (d.exec() == RTColorDialog::Accepted) {
-        color = d.selectedColor();
-        return true;
-    }
-
     return false;
 }
 
@@ -527,7 +534,7 @@ inline bool RTMainWindow::selectFile(QString &file, bool isOpen)
 {
     QString path = QStandardPaths::writableLocation( //
         QStandardPaths::DocumentsLocation);
-    file = QDir::toNativeSeparators(path + "/" + m_ctlr->profileName());
+    file = QDir::toNativeSeparators(path + "/" + m_rtpfFileName);
 
     QFileDialog d(this);
     connect(&d, &QFileDialog::fileSelected, this, [](const QString &file) { //
@@ -816,21 +823,22 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
     ui->rbColorDirDown->setChecked(s->color_flow == TYON_PROFILE_SETTINGS_COLOR_FLOW_DOWN);
 
     for (qint8 i = 0; i < TYON_LIGHTS_NUM; i++) {
+        QColor color = m_ctlr->toScreenColor(s->lights[i], ui->rbLightCustomColor->isChecked());
         switch (i) {
             case 0: {
                 ui->pbLightColorWheel->setStyleSheet(        //
                     tr("background-color: rgb(%1, %2, %3);") //
-                        .arg(s->lights[i].red)               //
-                        .arg(s->lights[i].green)
-                        .arg(s->lights[i].blue));
+                        .arg(color.red())                    //
+                        .arg(color.green())
+                        .arg(color.blue()));
                 break;
             }
             case 1: {
                 ui->pbLightColorBottom->setStyleSheet(       //
                     tr("background-color: rgb(%1, %2, %3);") //
-                        .arg(s->lights[i].red)               //
-                        .arg(s->lights[i].green)
-                        .arg(s->lights[i].blue));
+                        .arg(color.red())                    //
+                        .arg(color.green())
+                        .arg(color.blue()));
                 break;
             }
         }

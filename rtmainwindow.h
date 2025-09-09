@@ -47,6 +47,8 @@ private:
     quint8 m_activeProfile;
     /* UI settings */
     QSettings *m_settings;
+    /* last export file name */
+    QString m_rtpfFileName;
 
 private:
     inline void initializeUiElements();
@@ -58,6 +60,6 @@ private:
     inline void saveSettings(QSettings *settings);
     inline void linkButton(QPushButton *pb, const QMap<QString, QActionGroup *> &actions);
     inline QAction *linkAction(QAction *action, TyonButtonType function);
-    inline bool selectColor(TyonRmpLightInfo &color);
+    inline bool selectColor(TyonLightType target, TyonLight &color);
     inline bool selectFile(QString &file, bool isOpen = true);
 };

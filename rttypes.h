@@ -240,6 +240,11 @@ struct _TyonProfile
 } __attribute__((packed));
 typedef struct _TyonProfile TyonProfile;
 
+typedef enum {
+    TYON_LIGHT_WHEEL = 0,
+    TYON_LIGHT_BOTTOM,
+} TyonLightType;
+
 struct _TyonProfileSettings
 {
     quint8 report_id;            /* TYON_REPORT_ID_PROFILE_SETTINGS */
@@ -339,10 +344,10 @@ typedef struct _TyonProfileButtons TyonProfileButtons;
 
 struct _RoccatLight
 {
-    quint8 index;
-    quint8 red;
-    quint8 green;
-    quint8 blue;
+    quint8 index; // color selector on device
+    quint8 red;   // custom color (TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR)
+    quint8 green; // custom color
+    quint8 blue;  // custom color
 } __attribute__((packed));
 typedef struct _RoccatLight RoccatLight;
 
@@ -531,26 +536,5 @@ struct _TyonDeviceState
 typedef struct _TyonDeviceState TyonDeviceState;
 
 enum {
-    TYON_RMP_LIGHT_INFO_COLORS_NUM = 16,
-};
-
-typedef enum {
-    TYON_RMP_LIGHT_INFO_STATE_ON = 1,
-    TYON_RMP_LIGHT_INFO_STATE_OFF = 2,
-} TyonRmpLightInfoState;
-
-struct _TyonRmpLightInfo
-{
-    quint8 index;
-    quint8 state;
-    quint8 red;
-    quint8 green;
-    quint8 blue;
-    quint8 null;
-    quint8 checksum;
-} __attribute__((packed));
-typedef struct _TyonRmpLightInfo TyonRmpLightInfo;
-
-enum {
-    GDK_ROCCAT_BYTE_TO_COLOR_FACTOR = 257,
+    TYON_LIGHT_INFO_COLORS_NUM = 16,
 };
