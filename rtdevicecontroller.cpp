@@ -12,7 +12,6 @@ RTDeviceController::RTDeviceController(QObject *parent)
     , m_device(this)
     , m_buttonTypes()
     , m_physButtons()
-    , m_hasDevice(false)
 {
     initButtonTypes();
     initPhysicalButtons();
@@ -178,7 +177,6 @@ inline void RTDeviceController::setPhysicalButton(quint8 index, TPhysicalButton 
 
 void RTDeviceController::lookupDevice()
 {
-    m_hasDevice = false;
     m_device.lookupDevice();
 }
 
@@ -302,7 +300,7 @@ void RTDeviceController::setLightColor(TyonLightType target, const TyonLight &li
 
 QString RTDeviceController::profileName() const
 {
-    m_device.profileName();
+    return m_device.profileName();
 }
 
 void RTDeviceController::loadProfilesFromFile(const QString &fileName)
@@ -335,22 +333,19 @@ QColor RTDeviceController::toScreenColor(const TyonLight &light, bool isCustomCo
     return m_device.toScreenColor(light, isCustomColor);
 }
 
+void RTDeviceController::onLookupStarted()
+{
+    emit lookupStarted();
+}
+
 void RTDeviceController::onDeviceFound()
 {
-    m_hasDevice = true;
     emit deviceFound();
 }
 
 void RTDeviceController::onDeviceRemoved()
 {
-    m_hasDevice = false;
     emit deviceRemoved();
-}
-
-void RTDeviceController::onLookupStarted()
-{
-    m_hasDevice = false;
-    emit lookupStarted();
 }
 
 void RTDeviceController::onDeviceError(int error, const QString &message)

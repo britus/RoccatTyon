@@ -43,10 +43,6 @@ RTMainWindow::RTMainWindow(QWidget *parent)
     // --
     ui->setupUi(this);
 
-#ifndef QT_DEBUG
-    ui->rbLightCustomColor->setEnabled(false);
-#endif
-
     QProcessEnvironment pe = QProcessEnvironment::systemEnvironment();
     QScreen *scn = qApp->primaryScreen();
     QRect r = scn->availableGeometry();
@@ -271,16 +267,17 @@ inline void RTMainWindow::initializeUiElements()
 
 inline void RTMainWindow::connectController()
 {
-    connect(m_ctlr, &RTDeviceController::lookupStarted, this, &RTMainWindow::onLookupStarted);
-    connect(m_ctlr, &RTDeviceController::deviceFound, this, &RTMainWindow::onDeviceFound);
-    connect(m_ctlr, &RTDeviceController::deviceRemoved, this, &RTMainWindow::onDeviceRemoved);
-    connect(m_ctlr, &RTDeviceController::deviceError, this, &RTMainWindow::onDeviceError);
-    connect(m_ctlr, &RTDeviceController::deviceInfoChanged, this, &RTMainWindow::onDeviceInfo);
+    Qt::ConnectionType ct = Qt::QueuedConnection;
+    connect(m_ctlr, &RTDeviceController::lookupStarted, this, &RTMainWindow::onLookupStarted, ct);
+    connect(m_ctlr, &RTDeviceController::deviceFound, this, &RTMainWindow::onDeviceFound, ct);
+    connect(m_ctlr, &RTDeviceController::deviceRemoved, this, &RTMainWindow::onDeviceRemoved, ct);
+    connect(m_ctlr, &RTDeviceController::deviceError, this, &RTMainWindow::onDeviceError, ct);
+    connect(m_ctlr, &RTDeviceController::deviceInfoChanged, this, &RTMainWindow::onDeviceInfo, ct);
     connect(m_ctlr, &RTDeviceController::profileIndexChanged, this, &RTMainWindow::onProfileIndex);
-    connect(m_ctlr, &RTDeviceController::settingsChanged, this, &RTMainWindow::onSettingsChanged);
-    connect(m_ctlr, &RTDeviceController::buttonsChanged, this, &RTMainWindow::onButtonsChanged);
-    connect(m_ctlr, &RTDeviceController::deviceWorkerStarted, this, &RTMainWindow::onDeviceWorkerStarted);
-    connect(m_ctlr, &RTDeviceController::deviceWorkerFinished, this, &RTMainWindow::onDeviceWorkerFinished);
+    connect(m_ctlr, &RTDeviceController::settingsChanged, this, &RTMainWindow::onSettingsChanged, ct);
+    connect(m_ctlr, &RTDeviceController::buttonsChanged, this, &RTMainWindow::onButtonsChanged, ct);
+    connect(m_ctlr, &RTDeviceController::deviceWorkerStarted, this, &RTMainWindow::onDeviceWorkerStarted, ct);
+    connect(m_ctlr, &RTDeviceController::deviceWorkerFinished, this, &RTMainWindow::onDeviceWorkerFinished, ct);
 }
 
 inline void RTMainWindow::connectActions()
@@ -677,6 +674,7 @@ void RTMainWindow::onLookupStarted()
 
 void RTMainWindow::onDeviceFound()
 {
+    ui->pnlContent->setEnabled(true);
     ui->pnlLeft->setEnabled(true);
     ui->tabWidget->setEnabled(true);
     ui->pbSave->setEnabled(true);
@@ -899,7 +897,7 @@ void RTMainWindow::onDeviceWorkerStarted()
 
 void RTMainWindow::onDeviceWorkerFinished()
 {
+    RTProgress::dismiss();
     ui->pnlContent->setEnabled(true);
     ui->pnlLeft->setEnabled(true);
-    RTProgress::dismiss();
 }

@@ -41,7 +41,7 @@
 	<key>CFBundleIconFile</key>
 	<string>RoccatTyon.icns</string>
 	<key>CFBundleIdentifier</key>
-	<string>org.eof.tools.RoccatTyon</string>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -82,7 +82,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2025 by EoF Software Labs</string>
 	<key>NSPrefPaneIconFile</key>
-	<string>RoccatTyon.icns</string>
+	<string>RoccatTyon.png</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>

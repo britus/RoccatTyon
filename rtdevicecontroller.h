@@ -55,7 +55,7 @@ public:
      * @brief Check device is present
      * @return true if present
      */
-    inline bool hasDevice() const { return m_hasDevice; }
+    inline bool hasDevice() const { return m_device.hasDevice(); }
 
     /**
      * @brief Assign given mouse button to specific function
@@ -302,7 +302,6 @@ private:
     RTHidDevice m_device;
     QMap<quint8, QString> m_buttonTypes;
     QMap<quint8, RTDeviceController::TPhysicalButton> m_physButtons;
-    bool m_hasDevice;
 
 private:
     inline void initButtonTypes();

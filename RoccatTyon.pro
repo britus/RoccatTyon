@@ -13,12 +13,56 @@ CONFIG += embed_translations
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
 
 mac {
-    QMAKE_MACOSX_DEPLOYMENT_TARGET = 12.2
+    lessThan(QT_MAJOR_VERSION, 6) {
+        QT += macextras
+    }
+
+    CONFIG += app_bundle
+    CONFIG += embed_libraries
+    CONFIG += embed_translations
+
     QMAKE_CFLAGS += -mmacosx-version-min=12.2
     QMAKE_CXXFLAGS += -mmacosx-version-min=12.2
     QMAKE_CXXFLAGS += -fno-omit-frame-pointer
     QMAKE_CXXFLAGS += -funwind-tables
     QMAKE_INFO_PLIST = $$PWD/Info.plist
+
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 13.5
+
+    # Important for the App with embedded frameworks and libs
+    QMAKE_RPATHDIR += @executable_path/../Frameworks
+    QMAKE_RPATHDIR += @executable_path/../PlugIns
+    QMAKE_RPATHDIR += @executable_path/../lib
+
+    LICENSE.files = $$PWD/LICENSE
+    LICENSE.path = Contents/Resources
+    QMAKE_BUNDLE_DATA += LICENSE
+
+    privacy.files = $$PWD/privacy.txt
+    privacy.path = Contents/Resources
+    QMAKE_BUNDLE_DATA += privacy
+
+    icons.files = \
+        $$PWD/assets/png/icon_128x128.png \
+        $$PWD/assets/png/icon_128x128@2x.png \
+        $$PWD/assets/png/icon_16x16.png \
+        $$PWD/assets/png/icon_16x16@2x.png \
+        $$PWD/assets/png/icon_256x256.png \
+        $$PWD/assets/png/icon_256x256@2x.png \
+        $$PWD/assets/png/icon_32x32.png \
+        $$PWD/assets/png/icon_32x32@2x.png \
+        $$PWD/assets/png/icon_512x512.png \
+        $$PWD/assets/png/icon_512x512@2x.png \
+        $$PWD/assets/png/RoccatTyon.png \
+        $$PWD/assets/icns/RoccatTyon_1024x1024.icns \
+        $$PWD/assets/icns/RoccatTyon_128x128.icns \
+        $$PWD/assets/icns/RoccatTyon_16x16.icns \
+        $$PWD/assets/icns/RoccatTyon_256x256.icns \
+        $$PWD/assets/icns/RoccatTyon_32x32.icns \
+        $$PWD/assets/icns/RoccatTyon_512x512.icns \
+        $$PWD/assets/icns/RoccatTyon_64x64.icns
+        icons.path = Contents/Resources/
+    QMAKE_BUNDLE_DATA += icons
 }
 
 SOURCES += \

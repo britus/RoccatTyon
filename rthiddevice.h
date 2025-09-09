@@ -55,6 +55,12 @@ public:
     ~RTHidDevice();
 
     /**
+     * @brief Return true if devices found
+     * @return True or False
+     */
+    inline bool hasDevice() const { return !m_devices.isEmpty(); }
+
+    /**
      * @brief Return active profile index
      * @return Profile index
      */
@@ -283,8 +289,10 @@ private:
     TyonInfo m_info;
     TyonProfile m_profile;
     TProfiles m_profiles;
-    QMutex m_mutex;
+    QMutex m_waitMutex;
+    QMutex m_accessMutex;
     bool m_isCBComplete;
+    quint8 m_requestedProfile;
 
 private:
     inline void releaseDevices();
@@ -297,9 +305,9 @@ private:
     inline int hidWriteRoccatCtl(IOHIDDeviceRef device, uint pix, uint req);
     inline int hidCheckWrite(IOHIDDeviceRef device);
     inline int hidSetReportRaw(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
-    inline int hidWriteSync(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length);
+    inline int hidWriteReport(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length);
     inline int hidWriteAsync(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length);
-    inline int parsePayload(int reportId, const quint8 *buffer, CFIndex length);
+    inline int hidParseResponse(int reportId, const quint8 *buffer, CFIndex length);
     inline int setDeviceState(bool state, IOHIDDeviceRef device = nullptr);
     inline int selectProfileSettings(IOHIDDeviceRef device, uint pix);
     inline int selectProfileButtons(IOHIDDeviceRef device, uint pix);

@@ -123,6 +123,9 @@ int main(int argc, char *argv[])
 #ifdef Q_OS_LINUX
     ::setenv("QT_QPA_PLATFORM", "xcb", 0);
 #endif
+#ifdef Q_OS_MACOS
+    ::setenv("QT_QPA_PLATFORM", "cocoa", 0);
+#endif
 
     /* Set specific QT debug message pattern
      * %{type} %{threadid} %{function}
