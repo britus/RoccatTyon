@@ -18,6 +18,7 @@ mac {
     QMAKE_CXXFLAGS += -mmacosx-version-min=12.2
     QMAKE_CXXFLAGS += -fno-omit-frame-pointer
     QMAKE_CXXFLAGS += -funwind-tables
+    QMAKE_INFO_PLIST = $$PWD/Info.plist
 }
 
 SOURCES += \
@@ -71,3 +72,9 @@ INSTALLS += target
 
 RESOURCES += \
     rtassets.qrc
+
+DISTFILES += \
+    LICENSE \
+    README.md \
+    deploy.sh \
+    make.sh

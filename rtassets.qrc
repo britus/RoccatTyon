@@ -2,6 +2,25 @@
     <qresource prefix="/images">
         <file>assets/roccat-tyon-10.png</file>
         <file>assets/roccat-tyon-8.png</file>
+        <file>assets/RoccatTyon.icns</file>
+        <file>assets/png/RoccatTyon.png</file>
+        <file>assets/icns/RoccatTyon_16x16.icns</file>
+        <file>assets/icns/RoccatTyon_32x32.icns</file>
+        <file>assets/icns/RoccatTyon_64x64.icns</file>
+        <file>assets/icns/RoccatTyon_128x128.icns</file>
+        <file>assets/icns/RoccatTyon_256x256.icns</file>
+        <file>assets/icns/RoccatTyon_512x512.icns</file>
+        <file>assets/icns/RoccatTyon_1024x1024.icns</file>
+        <file>assets/png/icon_16x16.png</file>
+        <file>assets/png/icon_16x16@2x.png</file>
+        <file>assets/png/icon_32x32.png</file>
+        <file>assets/png/icon_32x32@2x.png</file>
+        <file>assets/png/icon_128x128.png</file>
+        <file>assets/png/icon_128x128@2x.png</file>
+        <file>assets/png/icon_256x256.png</file>
+        <file>assets/png/icon_256x256@2x.png</file>
+        <file>assets/png/icon_512x512.png</file>
+        <file>assets/png/icon_512x512@2x.png</file>
     </qresource>
     <qresource prefix="/styles">
         <file>assets/appstyle.css</file>
