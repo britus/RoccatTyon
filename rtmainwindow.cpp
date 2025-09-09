@@ -299,7 +299,6 @@ inline void RTMainWindow::connectActions()
         const QString msg = tr("Warning!\nAny changes will be lost.\n\n" //
                                "Do you want to reset ROCCAT Tyon?\n");
         if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
-            RTProgress::present(tr("Please wait..."), this);
             m_ctlr->resetProfiles();
         }
     });
@@ -645,16 +644,14 @@ inline void RTMainWindow::linkButton(QPushButton *pb, const QMap<QString, QActio
     });
 }
 
-static int progress_count = 0;
 void RTMainWindow::onLookupStarted()
 {
+    RTProgress::present(tr("Searching ROCCAT Tyon..."), this);
+
     ui->pnlLeft->setEnabled(false);
     ui->tabWidget->setEnabled(false);
     ui->pbSave->setEnabled(false);
     ui->pbReset->setEnabled(false);
-
-    progress_count = 0;
-    RTProgress::present(tr("Searching ROCCAT Tyon..."), this);
 
     // timeout timer
     QTimer::singleShot(10000, this, [this]() {
