@@ -30,8 +30,8 @@ private slots:
     void onProfileIndex(const quint8 pix);
     void onSettingsChanged(const TyonProfileSettings &settings);
     void onButtonsChanged(const TyonProfileButtons &buttons);
-    void onSaveProfilesStarted();
-    void onSaveProfilesFinished();
+    void onDeviceWorkerStarted();
+    void onDeviceWorkerFinished();
 
 private:
     Ui::RTMainWindow *ui;

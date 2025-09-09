@@ -25,8 +25,8 @@ RTDeviceController::RTDeviceController(QObject *parent)
     connect(&m_device, &RTHidDevice::deviceInfo, this, &RTDeviceController::onDeviceInfo, ct);
     connect(&m_device, &RTHidDevice::profileChanged, this, &RTDeviceController::onProfileChanged, ct);
     connect(&m_device, &RTHidDevice::profileIndexChanged, this, &RTDeviceController::onProfileIndexChanged, ct);
-    connect(&m_device, &RTHidDevice::saveProfilesStarted, this, &RTDeviceController::onSaveProfilesStarted, ct);
-    connect(&m_device, &RTHidDevice::saveProfilesFinished, this, &RTDeviceController::onSaveProfilesFinished, ct);
+    connect(&m_device, &RTHidDevice::deviceWorkerStarted, this, &RTDeviceController::onDeviceWorkerStarted, ct);
+    connect(&m_device, &RTHidDevice::deviceWorkerFinished, this, &RTDeviceController::onDeviceWorkerFinished, ct);
 }
 
 inline void RTDeviceController::initPhysicalButtons()
@@ -361,14 +361,14 @@ void RTDeviceController::onDeviceInfo(const TyonInfo &info)
     emit deviceInfoChanged(info);
 }
 
-void RTDeviceController::onSaveProfilesStarted()
+void RTDeviceController::onDeviceWorkerStarted()
 {
-    emit saveProfilesStarted();
+    emit deviceWorkerStarted();
 }
 
-void RTDeviceController::onSaveProfilesFinished()
+void RTDeviceController::onDeviceWorkerFinished()
 {
-    emit saveProfilesFinished();
+    emit deviceWorkerFinished();
 }
 
 void RTDeviceController::onProfileIndexChanged(const quint8 pix)

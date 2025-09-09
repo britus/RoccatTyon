@@ -283,8 +283,8 @@ signals:
     void profileIndexChanged(quint8 index);
     void settingsChanged(const TyonProfileSettings &settings);
     void buttonsChanged(const TyonProfileButtons &buttons);
-    void saveProfilesStarted();
-    void saveProfilesFinished();
+    void deviceWorkerStarted();
+    void deviceWorkerFinished();
 
 private slots:
     void onLookupStarted();
@@ -294,8 +294,8 @@ private slots:
     void onDeviceInfo(const TyonInfo &info);
     void onProfileIndexChanged(const quint8 pix);
     void onProfileChanged(const RTHidDevice::TProfile &profile);
-    void onSaveProfilesStarted();
-    void onSaveProfilesFinished();
+    void onDeviceWorkerStarted();
+    void onDeviceWorkerFinished();
 
 private:
     RTHidDevice m_device;

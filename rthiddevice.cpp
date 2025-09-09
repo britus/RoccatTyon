@@ -258,7 +258,7 @@ void RTHidDevice::lookupDevice()
 {
     m_manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
     if (!m_manager) {
-        qCritical("[HIDDEV] Failed to create HID manager.");
+        raiseError(kIOReturnIOError, "Failed to create HID manager.");
         return;
     }
 
@@ -315,7 +315,7 @@ void RTHidDevice::lookupDevice()
     // Open HID manager
     IOReturn result = IOHIDManagerOpen(m_manager, kIOHIDOptionsTypeNone);
     if (result != kIOReturnSuccess && result != -536870174) {
-        qCritical("Failed to open HID manager: %d", result);
+        raiseError(result, "Failed to open HID manager.");
         CFRelease(m_manager);
         m_manager = nullptr;
         return;
@@ -358,7 +358,7 @@ func_exit:
 
 bool RTHidDevice::saveProfilesToDevice()
 {
-    emit saveProfilesStarted();
+    emit deviceWorkerStarted();
 
     auto writeIndex = [this](IOHIDDeviceRef device) -> IOReturn {
         IOReturn ret = kIOReturnSuccess;
@@ -432,7 +432,7 @@ bool RTHidDevice::saveProfilesToDevice()
         &QThread::destroyed,
         this,
         [this]() {
-            emit saveProfilesFinished();
+            emit deviceWorkerFinished();
             releaseManager();
             lookupDevice();
         },
@@ -452,13 +452,13 @@ static const quint32 FILE_BLOCK_MARKER[] = {
     0xbe660525, // 6
 };
 
-bool RTHidDevice::saveProfilesToFile(const QString &fileName)
+void RTHidDevice::onSaveFile(const QString &fileName)
 {
     QFile f(fileName);
     if (!f.open(QFile::Truncate | QFile::WriteOnly)) {
-        return false;
+        emit deviceError(EIO, tr("Unable to save file: %1").arg(fileName));
+        return;
     }
-    quint32 length;
 
     auto write = [](QFile *f, const void *p, const qsizetype size) -> IOReturn {
         if (f->write((char *) p, size) != size) {
@@ -467,6 +467,7 @@ bool RTHidDevice::saveProfilesToFile(const QString &fileName)
         return kIOReturnSuccess;
     };
 
+    quint32 length;
     foreach (const TProfile p, m_profiles) {
         if (write(&f, &FILE_BLOCK_MARKER[0], sizeof(quint32))) {
             goto error_exit;
@@ -596,14 +597,40 @@ bool RTHidDevice::saveProfilesToFile(const QString &fileName)
             goto error_exit;
         }
     }
+
+    // success
     goto func_exit;
 
 error_exit:
-    qCritical("[HIDEV] Unable to write file: %s", qPrintable(fileName));
+    emit deviceError(EIO, tr("Unable to write file: %1").arg(fileName));
 
 func_exit:
     f.flush();
     f.close();
+}
+
+bool RTHidDevice::saveProfilesToFile(const QString &fileName, bool sync)
+{
+    if (sync) {
+        onSaveFile(fileName);
+        return true;
+    }
+
+    emit deviceWorkerStarted();
+
+    QThread *t = new QThread();
+    connect(t, &QThread::started, this, [this, t, fileName]() { //
+        onSaveFile(fileName);
+        t->exit(0);
+    });
+    connect(t, &QThread::finished, this, [t]() { //
+        t->deleteLater();
+    });
+    connect(t, &QThread::destroyed, this, [this](QObject *) { //
+        emit deviceWorkerFinished();
+    });
+    t->start(QThread::IdlePriority);
+
     return true;
 }
 
@@ -611,20 +638,19 @@ func_exit:
     if (p) \
     delete p
 
-bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents)
+void RTHidDevice::onLoadFile(const QString &fileName, bool raiseEvents)
 {
     QFile f(fileName);
     if (!f.open(QFile::ReadOnly)) {
-        return false;
+        emit deviceError(EIO, tr("Unable to load file: %1").arg(fileName));
+        return;
     }
-
-    qApp->processEvents();
-    QThread::yieldCurrentThread();
 
     const QByteArray buffer = f.readAll();
     if (buffer.length() < (qsizetype) sizeof(TProfile)) {
+        emit deviceError(EIO, tr("Invalid profiles file: %1").arg(fileName));
         f.close();
-        return false;
+        return;
     }
 
     auto readNext = [](quint8 *p, void *value, qsizetype size) -> quint8 * {
@@ -650,7 +676,7 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
         switch (stage) {
             case 0: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[0]))) {
-                    qCritical("[HIDDEV] Invalid data file. Header invalid");
+                    emit deviceError(EIO, "Invalid data file. Header invalid");
                     goto func_exit;
                 }
                 profile = new TProfile();
@@ -660,7 +686,7 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
             case 1: {
                 p = readNext(p, &profile->index, sizeof(profile->index));
                 if (profile->index >= TYON_PROFILE_NUM) {
-                    qCritical("[HIDDEV] Invalid profile index.");
+                    emit deviceError(EIO, "Invalid profile index.");
                     SafeDelete(profile);
                     goto func_exit;
                 }
@@ -679,7 +705,7 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
                         }
                     }
                     if (offset != length) {
-                        qCritical("[HIDDEV] Invalid profile name.");
+                        emit deviceError(EIO, "Invalid profile name.");
                         SafeDelete(profile);
                         goto func_exit;
                     }
@@ -689,7 +715,7 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
             }
             case 2: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[1]))) {
-                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    emit deviceError(EIO, "Invalid data file. Stage marker invalid");
                     SafeDelete(profile);
                     goto func_exit;
                 }
@@ -698,23 +724,23 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
                 p = readNext(p, &pb->size, sizeof(pb->size));
                 p = readNext(p, &pb->profile_index, sizeof(pb->profile_index));
                 if (pb->report_id != TYON_REPORT_ID_PROFILE_BUTTONS) {
-                    qCritical("[HIDDEV] Invalid button report identifier.");
+                    emit deviceError(EIO, "Invalid button report identifier.");
                     SafeDelete(profile);
                     goto func_exit;
                 }
                 if (pb->size != sizeof(TyonProfileButtons)) {
-                    qCritical("[HIDDEV] Invalid profile data.");
+                    emit deviceError(EIO, "Invalid profile data.");
                     SafeDelete(profile);
                     goto func_exit;
                 }
                 if (pb->profile_index >= TYON_PROFILE_NUM) {
-                    qCritical("[HIDDEV] Invalid button profile index.");
+                    emit deviceError(EIO, "Invalid button profile index.");
                     SafeDelete(profile);
                     goto func_exit;
                 }
                 p = readNext(p, &length, sizeof(quint8));
                 if (length != TYON_PROFILE_BUTTON_NUM) {
-                    qCritical("[HIDDEV] Invalid button count value.");
+                    emit deviceError(EIO, "Invalid button count value.");
                     SafeDelete(profile);
                     goto func_exit;
                 }
@@ -729,7 +755,7 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
             }
             case 3: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[2]))) {
-                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    emit deviceError(EIO, "Invalid data file. Stage marker invalid");
                     SafeDelete(profile);
                     goto func_exit;
                 }
@@ -738,17 +764,17 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
                 p = readNext(p, &ps->size, sizeof(ps->size));
                 p = readNext(p, &ps->profile_index, sizeof(ps->profile_index));
                 if (ps->report_id != TYON_REPORT_ID_PROFILE_SETTINGS) {
-                    qCritical("[HIDDEV] Invalid button report identifier.");
+                    emit deviceError(EIO, "Invalid button report identifier.");
                     SafeDelete(profile);
                     goto func_exit;
                 }
                 if (ps->size != sizeof(TyonProfileSettings)) {
-                    qCritical("[HIDDEV] Invalid profile data.");
+                    emit deviceError(EIO, "Invalid profile data.");
                     SafeDelete(profile);
                     goto func_exit;
                 }
                 if (ps->profile_index >= TYON_PROFILE_NUM) {
-                    qCritical("[HIDDEV] Invalid button profile index.");
+                    emit deviceError(EIO, "Invalid button profile index.");
                     SafeDelete(profile);
                     goto func_exit;
                 }
@@ -767,14 +793,14 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
             }
             case 4: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[3]))) {
-                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    emit deviceError(EIO, "Invalid data file. Stage marker invalid");
                     SafeDelete(profile);
                     goto func_exit;
                 }
                 TyonProfileSettings *ps = &profile->settings;
                 p = readNext(p, &length, sizeof(quint8));
                 if (length != TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM) {
-                    qCritical("[HIDDEV] Invalid DPI level count value.");
+                    emit deviceError(EIO, "Invalid DPI level count value.");
                     SafeDelete(profile);
                     goto func_exit;
                 }
@@ -786,14 +812,14 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
             }
             case 5: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[4]))) {
-                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    emit deviceError(EIO, "Invalid data file. Stage marker invalid");
                     SafeDelete(profile);
                     goto func_exit;
                 }
                 TyonProfileSettings *ps = &profile->settings;
                 p = readNext(p, &length, sizeof(quint8));
                 if (length != TYON_LIGHTS_NUM) {
-                    qCritical("[HIDDEV] Invalid light count value.");
+                    emit deviceError(EIO, "Invalid light count value.");
                     SafeDelete(profile);
                     goto func_exit;
                 }
@@ -809,7 +835,7 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
             }
             case 6: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[5]))) {
-                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    emit deviceError(EIO, "Invalid data file. Stage marker invalid");
                     SafeDelete(profile);
                     goto func_exit;
                 }
@@ -820,7 +846,7 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
             }
             case 7: {
                 if (!(p = readMarker(p, FILE_BLOCK_MARKER[6]))) {
-                    qCritical("[HIDDEV] Invalid data file. Stage marker invalid");
+                    emit deviceError(EIO, "Invalid data file. Stage marker invalid");
                     SafeDelete(profile);
                     goto func_exit;
                 }
@@ -846,6 +872,23 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
 
 func_exit:
     f.close();
+}
+
+bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents)
+{
+    emit deviceWorkerStarted();
+    QThread *t = new QThread();
+    connect(t, &QThread::started, this, [this, t, fileName, raiseEvents]() { //
+        onLoadFile(fileName, raiseEvents);
+        t->exit(0);
+    });
+    connect(t, &QThread::finished, this, [t]() { //
+        t->deleteLater();
+    });
+    connect(t, &QThread::destroyed, this, [this](QObject *) { //
+        emit deviceWorkerFinished();
+    });
+    t->start(QThread::IdlePriority);
     return true;
 }
 
@@ -1210,26 +1253,26 @@ void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
     }
 
     if ((ret = setDeviceState(true, device)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to set device state.");
+        emit deviceError(ret, "Unable to set device state.");
         goto error_exit;
     }
 
     /* read firmware release */
     if ((ret = readDeviceInfo(device)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to read device info.");
+        emit deviceError(ret, "Unable to read device info.");
         goto error_exit;
     }
 
     /* read current profile number */
     if ((ret = readActiveProfile(device)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to read device profile.");
+        emit deviceError(ret, "Unable to read device profile.");
         goto error_exit;
     }
 
     /* read profile slots */
     for (quint8 pix = 0; pix < TYON_PROFILE_NUM; pix++) {
         if ((ret = readProfile(device, pix)) != kIOReturnSuccess) {
-            qCritical("[HIDDEV] Unable to read device profile #%d", pix);
+            emit deviceError(ret, "Unable to read device profile.");
             goto error_exit;
         }
     }
@@ -1280,25 +1323,25 @@ inline int RTHidDevice::readProfile(IOHIDDeviceRef device, quint8 pix)
 
     /* select profile settings store */
     if ((ret = selectProfileSettings(device, pix)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to select profile %d. ret=0x%08x", pix, ret);
+        emit deviceError(ret, "Unable to select profile.");
         return ret;
     }
 
     /* read profile settings */
     if ((ret = readProfileSettings(device)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to read profile settings. ret=0x%08x", ret);
+        emit deviceError(ret, "Unable to read profile settings.");
         return ret;
     }
 
     /* select profile buttons store */
     if ((ret = selectProfileButtons(device, pix)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to select profile %d. ret=0x%08x", pix, ret);
+        emit deviceError(ret, "Unable to select profile buttons.");
         return ret;
     }
 
     /* read profile buttons */
     if ((ret = readProfileButtons(device)) != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to read profile buttons. ret=0x%08x", ret);
+        emit deviceError(ret, "Unable to read profile buttons.");
         return ret;
     }
 
@@ -1307,7 +1350,7 @@ inline int RTHidDevice::readProfile(IOHIDDeviceRef device, quint8 pix)
     for (quint8 bix = 0; bix < TYON_PROFILE_BUTTON_NUM; bix++) {
         if ((ret = readButtonMacro(device, pix, bix)) != kIOReturnSuccess) {
             if (ret != ENODATA) { // optional macros
-                qCritical("[HIDDEV] Unable to read profile macro #%d. ret=0x%08x", bix, ret);
+                emit deviceError(ret, "Unable to read profile macro.");
                 return ret;
             }
         }
@@ -1359,6 +1402,13 @@ inline void RTHidDevice::releaseManager()
     }
 }
 
+inline int RTHidDevice::raiseError(int error, const QString &message)
+{
+    qCritical("[HIDDEV] Error 0x%08x: %s", error, qPrintable(message));
+    emit deviceError(error, message);
+    return error;
+}
+
 inline void RTHidDevice::initializeColorMapping()
 {
     for (quint8 i = 0; i < TYON_LIGHT_INFO_COLORS_NUM; i++) {
@@ -1395,8 +1445,9 @@ void RTHidDevice::saveProfiles()
             return;
         }
     }
-    fpath = QDir::toNativeSeparators(fpath + "/profiles.rtpf");
-    saveProfilesToFile(fpath);
+    saveProfilesToFile( //
+        QDir::toNativeSeparators(fpath + "/profiles.rtpf"),
+        true);
 }
 
 inline int RTHidDevice::readDeviceSpecial(IOHIDDeviceRef device)
@@ -1464,13 +1515,11 @@ inline int RTHidDevice::readButtonMacro(IOHIDDeviceRef device, uint pix, uint bi
     IOReturn ret;
 
     if (pix >= TYON_PROFILE_NUM) {
-        qCritical("[HIDDEV] Invalid profile index parameter.");
-        return EINVAL;
+        return raiseError(kIOReturnBadArgument, "Invalid profile index parameter.");
     }
 
     if (bix >= TYON_PROFILE_BUTTON_NUM) {
-        qCritical("[HIDDEV] Invalid button index parameter.");
-        return EINVAL;
+        return raiseError(kIOReturnBadArgument, "Invalid button index parameter.");
     }
 
     const TyonControlDataIndex dix1 = TYON_CONTROL_DATA_INDEX_MACRO_1;
@@ -1498,8 +1547,7 @@ inline int RTHidDevice::readButtonMacro(IOHIDDeviceRef device, uint pix, uint bi
 inline int RTHidDevice::selectProfileSettings(IOHIDDeviceRef device, uint pix)
 {
     if (pix >= TYON_PROFILE_NUM) {
-        qCritical("[HIDDEV] Invalid profile index: %d", pix);
-        return EINVAL;
+        return raiseError(kIOReturnBadArgument, "Invalid profile index.");
     }
 
     const quint8 _req = TYON_CONTROL_REQUEST_PROFILE_SETTINGS;
@@ -1515,8 +1563,7 @@ inline int RTHidDevice::selectProfileSettings(IOHIDDeviceRef device, uint pix)
 inline int RTHidDevice::selectProfileButtons(IOHIDDeviceRef device, uint pix)
 {
     if (pix >= TYON_PROFILE_NUM) {
-        qCritical("[HIDDEV] Invalid profile index: %d", pix);
-        return EINVAL;
+        return raiseError(kIOReturnBadArgument, "Invalid profile index.");
     }
 
     const quint8 _req = TYON_CONTROL_REQUEST_PROFILE_BUTTONS;
@@ -1532,12 +1579,10 @@ inline int RTHidDevice::selectProfileButtons(IOHIDDeviceRef device, uint pix)
 inline int RTHidDevice::selectMacro(IOHIDDeviceRef device, uint pix, uint dix, uint bix)
 {
     if (pix >= TYON_PROFILE_NUM) {
-        qCritical("[HIDDEV] Invalid profile index: %d", pix);
-        return EINVAL;
+        return raiseError(kIOReturnBadArgument, "Invalid profile index.");
     }
     if (bix >= TYON_PROFILE_BUTTON_NUM) {
-        qCritical("[HIDDEV] Invalid macro index: %d", pix);
-        return EINVAL;
+        return raiseError(kIOReturnBadArgument, "Invalid macro index.");
     }
 
     const quint8 _dix = (dix | pix);
@@ -1638,8 +1683,7 @@ inline int RTHidDevice::parsePayload(int rid, const quint8 *buffer, CFIndex leng
 inline int RTHidDevice::hidGetReportById(IOHIDDeviceRef device, int rid, CFIndex size)
 {
     if (!size || !rid) {
-        qCritical() << "[HIDDEV] Invalid parameters.";
-        return EINVAL;
+        return raiseError(kIOReturnBadArgument, "Invalid parameters.");
     }
 
     IOReturn ret;
@@ -1649,14 +1693,13 @@ inline int RTHidDevice::hidGetReportById(IOHIDDeviceRef device, int rid, CFIndex
 
     ret = IOHIDDeviceGetReport(device, kIOHIDReportTypeFeature, rid, buffer, &length);
     if (ret != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to read HID device.");
         free(buffer);
-        return EIO;
+        return raiseError(ret, "Unable to read HID device.");
     }
     if (length == 0) {
-        qWarning("[HIDDEV] Unexpected data length of HID report 0x%02x.", rid);
         free(buffer);
-        return EIO;
+        qWarning("[HIDDEV] Unexpected data length of HID report 0x%02x.", rid);
+        return kIOReturnIOError;
     }
 
 #ifdef QT_DEBUG
@@ -1683,7 +1726,7 @@ inline int RTHidDevice::hidCheckWrite(IOHIDDeviceRef device)
     while (ret == kIOReturnSuccess) {
         ret = IOHIDDeviceGetReport(device, hrt, rid, (quint8 *) buffer, &length);
         if (ret != kIOReturnSuccess) {
-            qCritical("[HIDDEV] Unable to read HID device.");
+            raiseError(ret, "Unable to read HID device.");
             goto func_exit;
         }
         if (length == 0) {
@@ -1755,8 +1798,7 @@ inline int RTHidDevice::hidWriteSync(IOHIDDeviceRef device, IOHIDReportType hrt,
 {
     IOReturn ret = IOHIDDeviceSetReport(device, hrt, rid, buffer, length);
     if (ret != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to write HID raw message. ret=0x%08x", ret);
-        return ret;
+        return raiseError(ret, "Unable to write HID raw message.");
     }
     QThread::msleep(250);
     return ret;
@@ -1770,8 +1812,7 @@ inline int RTHidDevice::hidWriteAsync(IOHIDDeviceRef device, IOHIDReportType hrt
 
     IOReturn ret = IOHIDDeviceSetReportWithCallback(device, hrt, rid, buffer, length, timeout, _reportCallback, this);
     if (ret != kIOReturnSuccess) {
-        qCritical("[HIDDEV] Unable to write HID report 0x%02lx.", rid);
-        return ret;
+        return raiseError(ret, "Unable to write HID message.");
     }
 
     auto checkComplete = [this]() -> bool {
@@ -1784,8 +1825,7 @@ inline int RTHidDevice::hidWriteAsync(IOHIDDeviceRef device, IOHIDReportType hrt
         qApp->processEvents();
     }
     if (dt.hasExpired()) {
-        qCritical("[HIDDEV] Timeout while waiting for HID device %p.", device);
-        return kIOReturnTimeout;
+        return raiseError(kIOReturnTimeout, "Timeout while waiting for HID device.");
     }
 
     return ret;

@@ -279,8 +279,8 @@ inline void RTMainWindow::connectController()
     connect(m_ctlr, &RTDeviceController::profileIndexChanged, this, &RTMainWindow::onProfileIndex);
     connect(m_ctlr, &RTDeviceController::settingsChanged, this, &RTMainWindow::onSettingsChanged);
     connect(m_ctlr, &RTDeviceController::buttonsChanged, this, &RTMainWindow::onButtonsChanged);
-    connect(m_ctlr, &RTDeviceController::saveProfilesStarted, this, &RTMainWindow::onSaveProfilesStarted);
-    connect(m_ctlr, &RTDeviceController::saveProfilesFinished, this, &RTMainWindow::onSaveProfilesFinished);
+    connect(m_ctlr, &RTDeviceController::deviceWorkerStarted, this, &RTMainWindow::onDeviceWorkerStarted);
+    connect(m_ctlr, &RTDeviceController::deviceWorkerFinished, this, &RTMainWindow::onDeviceWorkerFinished);
 }
 
 inline void RTMainWindow::connectActions()
@@ -544,11 +544,11 @@ inline bool RTMainWindow::selectColor(TyonLightType target, TyonLight &color)
     return false;
 }
 
-inline bool RTMainWindow::selectFile(QString &file, bool isOpen)
+inline bool RTMainWindow::selectFile(QString &filePath, bool isOpen)
 {
     QString path = QStandardPaths::writableLocation( //
         QStandardPaths::DocumentsLocation);
-    file = QDir::toNativeSeparators(path + "/" + m_rtpfFileName);
+    filePath = QDir::toNativeSeparators(path + "/" + m_rtpfFileName);
 
     QFileDialog d(this);
     connect(&d, &QFileDialog::fileSelected, this, [](const QString &file) { //
@@ -558,24 +558,31 @@ inline bool RTMainWindow::selectFile(QString &file, bool isOpen)
         qDebug("[APPWIN] Directory entered: %s", qPrintable(directory));
     });
     d.setWindowTitle(tr(isOpen ? "Open profile" : "Save profile as"));
-    d.setWindowFilePath(file);
+    d.setWindowFilePath(isOpen ? path : filePath);
+    d.setDirectory(isOpen ? path : filePath);
+    d.setHistory(QStringList() << filePath);
     d.setAcceptMode(isOpen //
                         ? QFileDialog::AcceptMode::AcceptOpen
                         : QFileDialog::AcceptMode::AcceptSave);
     d.setFileMode(QFileDialog::FileMode::AnyFile);
     d.setFilter(QDir::NoFilter);
-    d.setDirectory(file);
     d.setLabelText(QFileDialog::DialogLabel::FileName, tr("Profile name:"));
     d.setLabelText(QFileDialog::DialogLabel::FileType, tr("Extension:"));
     d.setOption(QFileDialog::Option::ReadOnly, isOpen ? true : false);
     d.setOption(QFileDialog::Option::DontConfirmOverwrite, false);
     d.setOption(QFileDialog::Option::DontUseNativeDialog, false);
     d.setNameFilters(QStringList() << "*.rtpf" << "*.*");
-    d.setHistory(QStringList() << file);
     d.setDefaultSuffix(".rtpf");
     if (d.exec() == QFileDialog::Accepted) {
-        if (!d.selectedFiles().isEmpty()) {
-            file = d.selectedFiles().at(0);
+        if (d.selectedFiles().isEmpty())
+            return false;
+        if (!isOpen) {
+            filePath = d.selectedFiles().at(0);
+            return true;
+        }
+        QFileInfo fi(d.selectedFiles().at(0));
+        if (fi.isFile() && fi.exists()) {
+            filePath = d.selectedFiles().at(0);
             return true;
         }
     }
@@ -895,14 +902,14 @@ void RTMainWindow::onButtonsChanged(const TyonProfileButtons &buttons)
     }
 }
 
-void RTMainWindow::onSaveProfilesStarted()
+void RTMainWindow::onDeviceWorkerStarted()
 {
     RTProgress::present(tr("Please wait..."), this);
     ui->pnlContent->setEnabled(false);
     ui->pnlLeft->setEnabled(false);
 }
 
-void RTMainWindow::onSaveProfilesFinished()
+void RTMainWindow::onDeviceWorkerFinished()
 {
     ui->pnlContent->setEnabled(true);
     ui->pnlLeft->setEnabled(true);

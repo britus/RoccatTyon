@@ -86,9 +86,10 @@ public:
     /**
      * @brief Save all ROCCAT Tyon profiles to file
      * @param fileName The file name
+     * @param sync True to save without background thread
      * @return True if success
      */
-    bool saveProfilesToFile(const QString &fileName);
+    bool saveProfilesToFile(const QString &fileName, bool sync = false);
 
     /**
      * @brief Load all ROCCAT Tyon profiles from file
@@ -254,8 +255,8 @@ signals:
     void deviceInfo(const TyonInfo &info);
     void profileIndexChanged(const quint8 pix);
     void profileChanged(const RTHidDevice::TProfile &profile);
-    void saveProfilesStarted();
-    void saveProfilesFinished();
+    void deviceWorkerStarted();
+    void deviceWorkerFinished();
 
     //public slots:
     void reportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
@@ -265,6 +266,10 @@ public slots:
     void onSetReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
     void onDeviceFound(IOHIDDeviceRef device);
     void onDeviceRemoved(IOHIDDeviceRef device);
+
+private slots:
+    void onLoadFile(const QString &fileName, bool raiseEvents);
+    void onSaveFile(const QString &fileName);
 
 private:
     IOHIDManagerRef m_manager;
@@ -282,6 +287,7 @@ private:
     inline void initializeProfiles();
     inline void initializeColorMapping();
     inline void saveProfiles();
+    inline int raiseError(int error, const QString &message);
     inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
     inline int hidWriteRoccatCtl(IOHIDDeviceRef device, uint pix, uint req);
     inline int hidCheckWrite(IOHIDDeviceRef device);
