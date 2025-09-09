@@ -1256,7 +1256,6 @@ void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
             qCritical("[HIDDEV] Unable to read device profile #%d", pix);
             goto error_exit;
         }
-        QThread::yieldCurrentThread();
     }
 
     m_devices.append(device);
