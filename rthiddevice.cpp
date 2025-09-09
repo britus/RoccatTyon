@@ -34,7 +34,7 @@ typedef struct
     Qt::KeyboardModifier modifier;
 } TUidToQtKeyMap;
 
-static TUidToQtKeyMap uid_2_qtkey[] = {
+static TUidToQtKeyMap const uid_2_qtkey[] = {
     {HID_UID_KB_A, Qt::Key_A, Qt::NoModifier},
     {HID_UID_KB_B, Qt::Key_B, Qt::NoModifier},
     {HID_UID_KB_C, Qt::Key_C, Qt::NoModifier},
@@ -132,9 +132,8 @@ static TUidToQtKeyMap uid_2_qtkey[] = {
 };
 
 /*
- * Roccat color index table with UI RGB colors.
- * This is a fixed color set from the device.
- * Index is used by the device as reference.
+ * Roccat color index table with UI RGB colors. This is a fixed color
+ * set from the device. Index is used by the device as reference.
  * Columns: index, red, green, blue, unused
 */
 static TyonLight const roccat_colors[TYON_LIGHT_INFO_COLORS_NUM] = {
@@ -159,10 +158,10 @@ static TyonLight const roccat_colors[TYON_LIGHT_INFO_COLORS_NUM] = {
 // -------------------------------------------------------------
 //
 #ifdef QT_DEBUG
+static inline void debugDevice(IOHIDDeviceRef device);
+static inline void debugDevInfo(TyonInfo *p);
 static inline void debugSettings(const RTHidDevice::TProfile profile, quint8 currentPix);
 static inline void debugButtons(const RTHidDevice::TProfile profile, quint8 currentPix);
-static inline void debugDevInfo(TyonInfo *p);
-static inline void debugDevice(IOHIDDeviceRef device);
 #endif
 
 static inline void _deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
@@ -863,12 +862,12 @@ void RTHidDevice::assignButton(TyonButtonIndex type, TyonButtonType func, const 
     qDebug() << "[HIDDEV] assignButton TYPE:" << type << "FUNC:" << func << "KC:" << kc;
 #endif
 
-    TUidToQtKeyMap *keymap = nullptr;
+    const TUidToQtKeyMap *keymap = nullptr;
     quint8 mods = 0;
 
     if (func == TYON_BUTTON_TYPE_SHORTCUT) {
         // Translate QT key modifiers to ROCCAT Tyon modifiers
-        auto toQtMods2Roccat = [](const Qt::KeyboardModifiers &km) -> quint8 {
+        auto toRoccatKMods = [](const Qt::KeyboardModifiers &km) -> quint8 {
             quint8 mods = 0;
             /* on Mac OSX Meta must be mapped to CTRL */
             if (km.testFlag(Qt::ShiftModifier))
@@ -882,9 +881,9 @@ void RTHidDevice::assignButton(TyonButtonIndex type, TyonButtonType func, const 
             return mods;
         };
 
-        bool isKeyPad = kc.keyboardModifiers().testFlag(Qt::KeypadModifier);
-        Qt::KeyboardModifier testMod = (isKeyPad ? Qt::KeypadModifier : Qt::NoModifier);
-        for (TUidToQtKeyMap *p = uid_2_qtkey; p->uid_key && p->qt_key != Qt::Key_unknown; p++) {
+        const bool isKeyPad = kc.keyboardModifiers().testFlag(Qt::KeypadModifier);
+        const Qt::KeyboardModifier testMod = (isKeyPad ? Qt::KeypadModifier : Qt::NoModifier);
+        for (const TUidToQtKeyMap *p = uid_2_qtkey; p->uid_key && p->qt_key != Qt::Key_unknown; p++) {
             if (kc.key() == p->qt_key && p->modifier == testMod) {
                 keymap = p;
                 break;
@@ -894,7 +893,7 @@ void RTHidDevice::assignButton(TyonButtonIndex type, TyonButtonType func, const 
             return;
         }
 
-        mods = toQtMods2Roccat(kc.keyboardModifiers());
+        mods = toRoccatKMods(kc.keyboardModifiers());
     }
 
     TProfile p = m_profiles[profileIndex()];
@@ -910,7 +909,7 @@ void RTHidDevice::assignButton(TyonButtonIndex type, TyonButtonType func, const 
 const QKeySequence RTHidDevice::toKeySequence(const RoccatButton &b) const
 {
     // Translate ROCCAT Tyon key modifier to QT type
-    auto toQtModifiers = [](quint8 modifier, TUidToQtKeyMap *keymap) -> Qt::KeyboardModifiers {
+    auto toQtModifiers = [](quint8 modifier, const TUidToQtKeyMap *keymap) -> Qt::KeyboardModifiers {
         Qt::KeyboardModifiers km = {};
         if (modifier & ROCCAT_BUTTON_MODIFIER_BIT_SHIFT) {
             km.setFlag(Qt::ShiftModifier, true);
@@ -931,8 +930,8 @@ const QKeySequence RTHidDevice::toKeySequence(const RoccatButton &b) const
         return km;
     };
 
-    TUidToQtKeyMap *keymap = nullptr;
-    for (TUidToQtKeyMap *p = uid_2_qtkey; p->uid_key && p->qt_key != Qt::Key_unknown; p++) {
+    const TUidToQtKeyMap *keymap = nullptr;
+    for (const TUidToQtKeyMap *p = uid_2_qtkey; p->uid_key && p->qt_key != Qt::Key_unknown; p++) {
         if (b.key == p->uid_key) {
             keymap = p;
             break;
