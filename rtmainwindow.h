@@ -62,4 +62,6 @@ private:
     inline QAction *linkAction(QAction *action, TyonButtonType function);
     inline bool selectColor(TyonLightType target, TyonLight &color);
     inline bool selectFile(QString &file, bool isOpen = true);
+    inline void enableUserInterface();
+    inline void disableUserInterface();
 };

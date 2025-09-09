@@ -130,10 +130,7 @@ inline void RTMainWindow::initializeUiElements()
 
     ui->cbxDPIActiveSlot->setMaxVisibleItems(15);
     ui->tableView->setModel(m_ctlr);
-    ui->pnlLeft->setEnabled(false);
-    ui->tabWidget->setEnabled(false);
-    ui->pbSave->setEnabled(false);
-    ui->pbReset->setEnabled(false);
+    disableUserInterface();
 
     QSlider *s;
     foreach (QSpinBox *c, ui->pnlSensorDpi->findChildren<QSpinBox *>(fco)) {
@@ -647,11 +644,7 @@ inline void RTMainWindow::linkButton(QPushButton *pb, const QMap<QString, QActio
 void RTMainWindow::onLookupStarted()
 {
     RTProgress::present(tr("Searching ROCCAT Tyon..."), this);
-
-    ui->pnlLeft->setEnabled(false);
-    ui->tabWidget->setEnabled(false);
-    ui->pbSave->setEnabled(false);
-    ui->pbReset->setEnabled(false);
+    disableUserInterface();
 
     // timeout timer
     QTimer::singleShot(10000, this, [this]() {
@@ -671,25 +664,15 @@ void RTMainWindow::onLookupStarted()
 
 void RTMainWindow::onDeviceFound()
 {
-    ui->pnlContent->setEnabled(true);
-    ui->pnlLeft->setEnabled(true);
-    ui->tabWidget->setEnabled(true);
-    ui->pbSave->setEnabled(true);
-    ui->pbReset->setEnabled(true);
+    enableUserInterface();
 }
 
 void RTMainWindow::onDeviceRemoved()
 {
-    ui->pnlLeft->setEnabled(false);
-    ui->tabWidget->setEnabled(false);
-    ui->pbSave->setEnabled(false);
-    ui->pbReset->setEnabled(false);
-    ui->pbClose->setFocus();
-
-    setWindowTitle(qApp->applicationDisplayName());
-    onProfileIndex(0);
-
     RTProgress::present(tr("Searching ROCCAT device..."), this);
+    setWindowTitle(qApp->applicationDisplayName());
+    disableUserInterface();
+    onProfileIndex(0);
 }
 
 void RTMainWindow::onDeviceError(uint error, const QString &message)
@@ -703,10 +686,7 @@ void RTMainWindow::onDeviceError(uint error, const QString &message)
                              .arg(message));
 
     RTProgress::dismiss();
-    ui->pnlLeft->setEnabled(m_ctlr->hasDevice());
-    ui->tabWidget->setEnabled(m_ctlr->hasDevice());
-    ui->pbSave->setEnabled(m_ctlr->hasDevice());
-    ui->pbReset->setEnabled(m_ctlr->hasDevice());
+    enableUserInterface();
     onProfileIndex(0);
 }
 
@@ -885,16 +865,32 @@ void RTMainWindow::onButtonsChanged(const TyonProfileButtons &buttons)
     }
 }
 
+inline void RTMainWindow::enableUserInterface()
+{
+    ui->pnlContent->setEnabled(true);
+    ui->pnlLeft->setEnabled(true);
+    ui->tabWidget->setEnabled(true);
+    ui->pbSave->setEnabled(true);
+    ui->pbReset->setEnabled(true);
+}
+
+inline void RTMainWindow::disableUserInterface()
+{
+    ui->pnlContent->setEnabled(false);
+    ui->pnlLeft->setEnabled(false);
+    ui->tabWidget->setEnabled(false);
+    ui->pbSave->setEnabled(false);
+    ui->pbReset->setEnabled(false);
+}
+
 void RTMainWindow::onDeviceWorkerStarted()
 {
     RTProgress::present(tr("Please wait..."), this);
-    ui->pnlContent->setEnabled(false);
-    ui->pnlLeft->setEnabled(false);
+    disableUserInterface();
 }
 
 void RTMainWindow::onDeviceWorkerFinished()
 {
     RTProgress::dismiss();
-    ui->pnlContent->setEnabled(true);
-    ui->pnlLeft->setEnabled(true);
+    enableUserInterface();
 }
