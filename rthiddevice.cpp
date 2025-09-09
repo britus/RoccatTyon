@@ -442,9 +442,7 @@ void RTHidDevice::saveProfilesToDevice()
         t->deleteLater();
     });
     connect(t, &QThread::destroyed, this, [this]() { //
-        QTimer::singleShot(1000, this, [this]() {    //
-            lookupDevice();
-        });
+        emit deviceWorkerFinished();
     });
     t->start(QThread::LowPriority);
 }
