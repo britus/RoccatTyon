@@ -306,7 +306,7 @@ private:
     inline int hidCheckWrite(IOHIDDeviceRef device);
     inline int hidSetReportRaw(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
     inline int hidWriteReport(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length);
-    inline int hidWriteAsync(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length);
+    inline int hidWriteWithCB(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length);
     inline int hidParseResponse(int reportId, const quint8 *buffer, CFIndex length);
     inline int setDeviceState(bool state, IOHIDDeviceRef device = nullptr);
     inline int selectProfileSettings(IOHIDDeviceRef device, uint pix);

@@ -19,6 +19,8 @@
 #include <QMessageBox>
 #include <QModelIndex>
 #include <QModelIndexList>
+#include <QMutex>
+#include <QMutexLocker>
 #include <QProcessEnvironment>
 #include <QRadioButton>
 #include <QScreen>
@@ -264,7 +266,7 @@ inline void RTMainWindow::initializeUiElements()
 
 inline void RTMainWindow::connectController()
 {
-    Qt::ConnectionType ct = Qt::QueuedConnection;
+    Qt::ConnectionType ct = Qt::DirectConnection;
     connect(m_ctlr, &RTDeviceController::lookupStarted, this, &RTMainWindow::onLookupStarted, ct);
     connect(m_ctlr, &RTDeviceController::deviceFound, this, &RTMainWindow::onDeviceFound, ct);
     connect(m_ctlr, &RTDeviceController::deviceRemoved, this, &RTMainWindow::onDeviceRemoved, ct);
@@ -643,18 +645,20 @@ inline void RTMainWindow::linkButton(QPushButton *pb, const QMap<QString, QActio
 
 void RTMainWindow::onLookupStarted()
 {
+    qDebug("$$$ onLookupStarted");
+
     RTProgress::present(tr("Searching ROCCAT Tyon..."), this);
     disableUserInterface();
 
     // timeout timer
-    QTimer::singleShot(10000, this, [this]() {
+    QTimer::singleShot(15000, this, [this]() {
         if (!m_ctlr->hasDevice()) {
             QMessageBox::warning( //
                 this,
                 qApp->applicationDisplayName(),
                 tr("Unable to find ROCCAT Tyon device."));
             RTProgress::dismiss();
-            QTimer::singleShot(500, this, []() { qApp->quit(); });
+            QTimer::singleShot(100, this, []() { qApp->quit(); });
             return;
         }
     });
@@ -664,6 +668,8 @@ void RTMainWindow::onLookupStarted()
 
 void RTMainWindow::onDeviceFound()
 {
+    qDebug("**** onDeviceFound");
+    RTProgress::dismiss();
     enableUserInterface();
 }
 
@@ -832,10 +838,6 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
 /* Assign ROCCAT button actions to UI push buttons */
 void RTMainWindow::onButtonsChanged(const TyonProfileButtons &buttons)
 {
-    if (ui->tableView->model()->rowCount({}) >= TYON_PROFILE_NUM) {
-        RTProgress::dismiss();
-    }
-
     /* skip */
     if (buttons.profile_index != m_activeProfile) {
         return;
@@ -867,7 +869,7 @@ void RTMainWindow::onButtonsChanged(const TyonProfileButtons &buttons)
 
 inline void RTMainWindow::enableUserInterface()
 {
-    ui->pnlContent->setEnabled(true);
+    qDebug("     enableUserInterface");
     ui->pnlLeft->setEnabled(true);
     ui->tabWidget->setEnabled(true);
     ui->pbSave->setEnabled(true);
@@ -876,7 +878,7 @@ inline void RTMainWindow::enableUserInterface()
 
 inline void RTMainWindow::disableUserInterface()
 {
-    ui->pnlContent->setEnabled(false);
+    qDebug("     disableUserInterface");
     ui->pnlLeft->setEnabled(false);
     ui->tabWidget->setEnabled(false);
     ui->pbSave->setEnabled(false);
@@ -885,12 +887,14 @@ inline void RTMainWindow::disableUserInterface()
 
 void RTMainWindow::onDeviceWorkerStarted()
 {
+    qDebug("++++ onDeviceWorkerStarted");
     RTProgress::present(tr("Please wait..."), this);
     disableUserInterface();
 }
 
 void RTMainWindow::onDeviceWorkerFinished()
 {
+    qDebug("---- onDeviceWorkerFinished");
     RTProgress::dismiss();
     enableUserInterface();
 }

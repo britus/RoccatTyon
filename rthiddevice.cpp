@@ -19,7 +19,7 @@
 #include <QThread>
 #include <QTimer>
 
-#define QT_DEBUG
+#undef QT_DEBUG
 
 #ifdef QT_DEBUG
 #include "rthiddevicedbg.hpp"
@@ -263,6 +263,8 @@ void RTHidDevice::lookupDevice()
     // cleanup last findings
     releaseManager();
 
+    emit deviceWorkerStarted();
+
     // start from top
     m_manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
     if (!m_manager) {
@@ -423,12 +425,14 @@ void RTHidDevice::saveProfilesToDevice()
             if ((ret = writeIndex(device)) != kIOReturnSuccess) {
                 goto thread_exit;
             }
-            foreach (const TProfile p, m_profiles) {
+            foreach (TProfile p, m_profiles) {
                 if (p.changed) {
                     if ((ret = writeProfile(device, p)) != kIOReturnSuccess) {
                         goto thread_exit;
                     }
                 }
+                p.changed = false;
+                m_profiles[p.index] = p;
             }
         }
     thread_exit:
@@ -438,7 +442,9 @@ void RTHidDevice::saveProfilesToDevice()
         t->deleteLater();
     });
     connect(t, &QThread::destroyed, this, [this]() { //
-        lookupDevice();
+        QTimer::singleShot(1000, this, [this]() {    //
+            lookupDevice();
+        });
     });
     t->start(QThread::LowPriority);
 }
@@ -849,7 +855,7 @@ void RTHidDevice::onLoadFile(const QString &fileName, bool raiseEvents)
                     SafeDelete(profile);
                     goto func_exit;
                 }
-                profile->changed = true;
+                profile->changed = false;
                 profiles[profile->index] = (*profile);
                 SafeDelete(profile);
                 profile = 0L;
@@ -1232,8 +1238,6 @@ QString RTHidDevice::profileName() const
 
 void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
 {
-    emit deviceWorkerStarted();
-
     QThread *t = new QThread();
     connect(t, &QThread::started, this, [this, t, device]() {
         IOReturn ret = kIOReturnSuccess;
@@ -1279,7 +1283,7 @@ void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
                 // skip this silent...
                 if (ret == kIOReturnNotAttached) {
                     IOHIDDeviceClose(device, kIOHIDOptionsTypeSeizeDevice);
-                    return;
+                    goto skip_exit;
                 }
                 emit deviceError(ret, "Unable to read device profile.");
                 goto error_exit;
@@ -1294,6 +1298,9 @@ void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
         IOHIDDeviceClose(device, kIOHIDOptionsTypeSeizeDevice);
         emit deviceError(ENODEV, "Unable to load device data.");
 
+    skip_exit:
+        /* quiet */
+
     func_exit:
         t->exit(ret);
     });
@@ -1306,6 +1313,7 @@ void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
         }
     });
     t->start(QThread::IdlePriority);
+    QThread::yieldCurrentThread();
 
     return;
 }
@@ -1385,11 +1393,7 @@ inline int RTHidDevice::readProfile(IOHIDDeviceRef device, quint8 pix)
         }
     }
 #endif
-
-    // reset change flag
     TProfile p = m_profiles[pix];
-    p.changed = false;
-    m_profiles[pix] = p;
 
     return kIOReturnSuccess;
 }
@@ -1839,10 +1843,10 @@ inline int RTHidDevice::hidSetReportRaw(IOHIDDeviceRef device, const uint8_t *bu
     qDebug("[HIDDEV] hidSetReportRaw(%p): [RID:0x%02x LEN:%ld] pl=%s", device, rid, length, qPrintable(d.toHex(' ')));
 #endif
 
-    return hidWriteAsync(device, hrt, rid, buffer, length);
+    return hidWriteWithCB(device, hrt, rid, buffer, length);
 }
 
-inline int RTHidDevice::hidWriteAsync(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length)
+inline int RTHidDevice::hidWriteWithCB(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length)
 {
     const CFTimeInterval timeout = 4.0f;
 
