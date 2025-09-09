@@ -989,12 +989,12 @@ void RTHidDevice::setProfileName(const QString &name, quint8 pix)
     }
 }
 
-void RTHidDevice::setXSensitivity(quint8 sensitivity)
+void RTHidDevice::setXSensitivity(qint16 sensitivity)
 {
     if (m_profiles.contains(profileIndex())) {
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.sensitivity_x != sensitivity) {
-            p.settings.sensitivity_x = sensitivity;
+            p.settings.sensitivity_x = sensitivity + ROCCAT_SENSITIVITY_CENTER;
             p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);
@@ -1002,12 +1002,12 @@ void RTHidDevice::setXSensitivity(quint8 sensitivity)
     }
 }
 
-void RTHidDevice::setYSensitivity(quint8 sensitivity)
+void RTHidDevice::setYSensitivity(qint16 sensitivity)
 {
     if (m_profiles.contains(profileIndex())) {
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.sensitivity_y != sensitivity) {
-            p.settings.sensitivity_y = sensitivity;
+            p.settings.sensitivity_y = sensitivity + ROCCAT_SENSITIVITY_CENTER;
             p.changed = true;
             m_profiles[profileIndex()] = p;
             emit profileChanged(p);

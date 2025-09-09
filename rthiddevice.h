@@ -157,13 +157,13 @@ public:
      * @brief Set the mouse X sensitivity
      * @param sensitivity
      */
-    void setXSensitivity(quint8 sensitivity);
+    void setXSensitivity(qint16 sensitivity);
 
     /**
      * @brief Set the mouse Y sensitivity
      * @param sensitivity
      */
-    void setYSensitivity(quint8 sensitivity);
+    void setYSensitivity(qint16 sensitivity);
 
     /**
      * @brief Set the advanced sensitivity mode

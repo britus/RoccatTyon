@@ -244,12 +244,12 @@ quint16 RTDeviceController::toDpiLevelValue(const TyonProfileSettings *settings,
     return m_device.toDpiLevelValue(settings, index);
 }
 
-void RTDeviceController::setXSensitivity(quint8 sensitivity)
+void RTDeviceController::setXSensitivity(qint16 sensitivity)
 {
     m_device.setXSensitivity(sensitivity);
 }
 
-void RTDeviceController::setYSensitivity(quint8 sensitivity)
+void RTDeviceController::setYSensitivity(qint16 sensitivity)
 {
     m_device.setYSensitivity(sensitivity);
 }

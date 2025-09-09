@@ -341,14 +341,28 @@ inline void RTMainWindow::connectUiElements()
         if (!ui->cbxSenitivityEnableAdv->isChecked()) {
             ui->edYSensitivity->setValue(position); // trigers slider too
         }
-        m_ctlr->setXSensitivity(position + ROCCAT_SENSITIVITY_CENTER);
+        m_ctlr->setXSensitivity(position);
+    });
+    connect(ui->edXSensitivity, &QSpinBox::valueChanged, this, [this](int position) { //
+        ui->hsXSensitivity->setValue(position);
+        if (!ui->cbxSenitivityEnableAdv->isChecked()) {
+            ui->hsYSensitivity->setValue(position); // trigers slider too
+        }
+        m_ctlr->setXSensitivity(position);
     });
     connect(ui->hsYSensitivity, &QSlider::valueChanged, this, [this](int position) { //
         ui->edYSensitivity->setValue(position);
         if (!ui->cbxSenitivityEnableAdv->isChecked()) {
             ui->edXSensitivity->setValue(position); // trigers slider too
         }
-        m_ctlr->setYSensitivity(position + ROCCAT_SENSITIVITY_CENTER);
+        m_ctlr->setYSensitivity(position);
+    });
+    connect(ui->edYSensitivity, &QSpinBox::valueChanged, this, [this](int position) { //
+        ui->hsYSensitivity->setValue(position);
+        if (!ui->cbxSenitivityEnableAdv->isChecked()) {
+            ui->hsXSensitivity->setValue(position); // trigers slider too
+        }
+        m_ctlr->setYSensitivity(position);
     });
 
     connect(ui->cbxSenitivityEnableAdv, &QCheckBox::clicked, this, [this](bool checked) { //

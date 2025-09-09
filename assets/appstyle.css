@@ -86,6 +86,14 @@ QTabBar::tab:!selected {
 	border-radius: 5px;
 	color: rgb(166, 166, 166);
 }
+QTabBar::tab:hover {
+	background-color: rgb(76, 76, 76);
+	border-color: rgb(75, 168, 247);
+	border-style: solid;
+	border-width: 1px;
+	border-radius: 5px;
+	color: rgb(166, 166, 166);
+}
 /* -----------------------------
  *
  */
@@ -109,6 +117,14 @@ QToolBox::tab:selected {
 	color: rgb(0, 0, 0);
 	font-weight: bold;
 	font: italic;
+}
+QToolBox::tab:hover {
+	background-color: rgb(76, 76, 76);
+	border-color: rgb(75, 168, 247);
+	border-style: solid;
+	border-width: 1px;
+	border-radius: 5px;
+	color: rgb(166, 166, 166);
 }
 /* -----------------------------
  *
