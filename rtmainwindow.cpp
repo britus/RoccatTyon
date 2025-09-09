@@ -300,28 +300,17 @@ inline void RTMainWindow::connectActions()
     connect(ui->pbReset, &QPushButton::clicked, this, [this](bool) { //
         const QString title = tr("Device reset");
         const QString msg = tr("Warning!\nAny changes will be lost.\n\n" //
-                               "Do you want to reset device?\n");
+                               "Do you want to reset ROCCAT Tyon?\n");
         if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
             RTProgress::present(tr("Please wait..."), this);
-            if (!m_ctlr->resetProfiles()) {
-                QMessageBox::warning( //
-                    this,
-                    title,
-                    tr("Unable to reset device profiles.\n"
-                       "Please close the application and try again."));
-                ui->pnlLeft->setEnabled(false);
-                ui->tabWidget->setEnabled(false);
-                ui->pbSave->setEnabled(false);
-            }
+            m_ctlr->resetProfiles();
         }
     });
     connect(ui->pbSave, &QPushButton::clicked, this, [this](bool) { //
         const QString title = tr("Save device profiles");
-        const QString msg = tr("Do you want to updat device profiles?\n");
+        const QString msg = tr("Do you want to update ROCCAT Tyon?\n");
         if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
-            if (!m_ctlr->saveProfilesToDevice()) {
-                QMessageBox::warning(this, title, tr("Unable to save device profiles."));
-            }
+            m_ctlr->saveProfilesToDevice();
         }
     });
 }
@@ -557,7 +546,7 @@ inline bool RTMainWindow::selectFile(QString &filePath, bool isOpen)
     connect(&d, &QFileDialog::directoryEntered, this, [](const QString &directory) { //
         qDebug("[APPWIN] Directory entered: %s", qPrintable(directory));
     });
-    d.setWindowTitle(tr(isOpen ? "Open profile" : "Save profile as"));
+    d.setWindowTitle(tr(isOpen ? "Open profiles" : "Save profiles as"));
     d.setWindowFilePath(isOpen ? path : filePath);
     d.setDirectory(isOpen ? path : filePath);
     d.setHistory(QStringList() << filePath);
@@ -668,7 +657,7 @@ void RTMainWindow::onLookupStarted()
     ui->pbReset->setEnabled(false);
 
     progress_count = 0;
-    RTProgress::present(tr("Searching ROCCAT device..."), this);
+    RTProgress::present(tr("Searching ROCCAT Tyon..."), this);
 
     // timeout timer
     QTimer::singleShot(10000, this, [this]() {
@@ -710,7 +699,7 @@ void RTMainWindow::onDeviceRemoved()
 
 void RTMainWindow::onDeviceError(uint error, const QString &message)
 {
-    qCritical("[APPWIN] ERROR %d: %s", error, qPrintable(message));
+    qCritical("[APPWIN] ERROR 0x%08x: %s", error, qPrintable(message));
 
     QMessageBox::warning(this,
                          qApp->applicationDisplayName(), //
@@ -719,11 +708,10 @@ void RTMainWindow::onDeviceError(uint error, const QString &message)
                              .arg(message));
 
     RTProgress::dismiss();
-    ui->pnlLeft->setEnabled(false);
-    ui->tabWidget->setEnabled(false);
-    ui->pbSave->setEnabled(false);
-    ui->pbReset->setEnabled(true);
-    ui->pbReset->setFocus();
+    ui->pnlLeft->setEnabled(m_ctlr->hasDevice());
+    ui->tabWidget->setEnabled(m_ctlr->hasDevice());
+    ui->pbSave->setEnabled(m_ctlr->hasDevice());
+    ui->pbReset->setEnabled(m_ctlr->hasDevice());
     onProfileIndex(0);
 }
 

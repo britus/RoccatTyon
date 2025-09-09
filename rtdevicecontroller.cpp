@@ -178,6 +178,7 @@ inline void RTDeviceController::setPhysicalButton(quint8 index, TPhysicalButton 
 
 void RTDeviceController::lookupDevice()
 {
+    m_hasDevice = false;
     m_device.lookupDevice();
 }
 
@@ -301,27 +302,27 @@ void RTDeviceController::setLightColor(TyonLightType target, const TyonLight &li
 
 QString RTDeviceController::profileName() const
 {
-    return m_device.profileName();
+    m_device.profileName();
 }
 
-bool RTDeviceController::loadProfilesFromFile(const QString &fileName)
+void RTDeviceController::loadProfilesFromFile(const QString &fileName)
 {
-    return m_device.loadProfilesFromFile(fileName);
+    m_device.loadProfilesFromFile(fileName);
 }
 
-bool RTDeviceController::saveProfilesToFile(const QString &fileName)
+void RTDeviceController::saveProfilesToFile(const QString &fileName)
 {
-    return m_device.saveProfilesToFile(fileName);
+    m_device.saveProfilesToFile(fileName);
 }
 
-bool RTDeviceController::resetProfiles()
+void RTDeviceController::resetProfiles()
 {
-    return m_device.resetProfiles();
+    m_device.resetProfiles();
 }
 
-bool RTDeviceController::saveProfilesToDevice()
+void RTDeviceController::saveProfilesToDevice()
 {
-    return m_device.saveProfilesToDevice();
+    m_device.saveProfilesToDevice();
 }
 
 TyonLight RTDeviceController::toDeviceColor(TyonLightType target, const QColor &color) const
@@ -348,6 +349,7 @@ void RTDeviceController::onDeviceRemoved()
 
 void RTDeviceController::onLookupStarted()
 {
+    m_hasDevice = false;
     emit lookupStarted();
 }
 

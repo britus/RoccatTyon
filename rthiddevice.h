@@ -55,11 +55,6 @@ public:
     ~RTHidDevice();
 
     /**
-     * @brief Find ROCCAT Tyon device
-     */
-    void lookupDevice();
-
-    /**
      * @brief Return active profile index
      * @return Profile index
      */
@@ -76,34 +71,6 @@ public:
      * @return QString
      */
     QString profileName() const;
-
-    /**
-     * @brief Save ROCCAT Tyon profiles to device
-     * @return True if success
-     */
-    bool saveProfilesToDevice();
-
-    /**
-     * @brief Save all ROCCAT Tyon profiles to file
-     * @param fileName The file name
-     * @param sync True to save without background thread
-     * @return True if success
-     */
-    bool saveProfilesToFile(const QString &fileName, bool sync = false);
-
-    /**
-     * @brief Load all ROCCAT Tyon profiles from file
-     * @param fileName The file name
-     * @param raiseEvents True to raise profile change event
-     * @return True if success
-     */
-    bool loadProfilesFromFile(const QString &fileName, bool raiseEvents = true);
-
-    /**
-     * @brief ROCCAT Tyon device to defaults
-     * @return True if success
-     */
-    bool resetProfiles();
 
     /**
      * @brief Assign ROCCAT Tyon button function
@@ -140,6 +107,84 @@ public:
      * @return A value usable by UI
      */
     quint16 toDpiLevelValue(const TyonProfileSettings *settings, quint8 index) const;
+
+    /**
+     * @brief Translte QT color to ROCCAT Tyon light info
+     * @param color QT color object
+     * @param target ROCCAT Tyon light 0=Wheel 1=Bottom
+     * @return TyonColorInfo structure
+     */
+    TyonLight toDeviceColor(TyonLightType target, const QColor &color) const;
+
+    /**
+     * @brief Translte ROCCAT Tyon light to UI color
+     * @param light ROCCAT Tyon light info structure
+     * @param isCustomColor True for custom color
+     * @return QColor object
+     */
+    QColor toScreenColor(const TyonLight &light, bool isCustomColor = false) const;
+
+    /**
+     * @brief Return ROCCAT Tyon light color table
+     * @return A mapping of color index to RGB
+     */
+    inline const TDeviceColors &deviceColors() const { return m_colors; }
+
+    /**
+     * @brief Set the color for the wheel or bottom light
+     * @param target 0=Wheel or 1=Bottom
+     * @param light Tyon light info type
+     */
+    void setLightColor(TyonLightType target, const TyonLight &light);
+
+signals:
+    void lookupStarted();
+    void deviceFound();
+    void deviceRemoved();
+    void deviceError(int error, const QString &message);
+    void deviceInfo(const TyonInfo &info);
+    void profileIndexChanged(const quint8 pix);
+    void profileChanged(const RTHidDevice::TProfile &profile);
+    void deviceWorkerStarted();
+    void deviceWorkerFinished();
+
+    //public slots:
+    void reportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
+    void deviceFoundCallback(IOReturn status, IOHIDDeviceRef device);
+
+public slots:
+    /**
+     * @brief Find ROCCAT Tyon device
+     */
+    void lookupDevice();
+
+    /**
+     * @brief Save ROCCAT Tyon profiles to device
+     * @return True if success
+     */
+    void saveProfilesToDevice();
+
+    /**
+     * @brief Save all ROCCAT Tyon profiles to file
+     * @param fileName The file name
+     * @param sync True to save without background thread
+     * @return True if success
+     */
+    void saveProfilesToFile(const QString &fileName, bool sync = false);
+
+    /**
+     * @brief Load all ROCCAT Tyon profiles from file
+     * @param fileName The file name
+     * @param raiseEvents True to raise profile change event
+     * @return True if success
+     */
+    void loadProfilesFromFile(const QString &fileName, bool raiseEvents = true);
+
+    /**
+     * @brief ROCCAT Tyon device to defaults
+     * @return True if success
+     */
+    void resetProfiles();
 
     /**
      * @brief Set active profile index
@@ -218,51 +263,11 @@ public:
      */
     void setColorFlow(quint8 value);
 
-    /**
-     * @brief Translte QT color to ROCCAT Tyon light info
-     * @param color QT color object
-     * @param target ROCCAT Tyon light 0=Wheel 1=Bottom
-     * @return TyonColorInfo structure
-     */
-    TyonLight toDeviceColor(TyonLightType target, const QColor &color) const;
+protected:
+    static void _deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device);
+    static void _deviceRemovedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device);
+    static void _reportCallback(void *context, IOReturn result, void *, IOHIDReportType type, uint32_t reportID, uint8_t *report, CFIndex reportLength);
 
-    /**
-     * @brief Translte ROCCAT Tyon light to UI color
-     * @param light ROCCAT Tyon light info structure
-     * @param isCustomColor True for custom color
-     * @return QColor object
-     */
-    QColor toScreenColor(const TyonLight &light, bool isCustomColor = false) const;
-
-    /**
-     * @brief Return ROCCAT Tyon light color table
-     * @return A mapping of color index to RGB
-     */
-    inline const TDeviceColors &deviceColors() const { return m_colors; }
-
-    /**
-     * @brief Set the color for the wheel or bottom light
-     * @param target 0=Wheel or 1=Bottom
-     * @param light Tyon light info type
-     */
-    void setLightColor(TyonLightType target, const TyonLight &light);
-
-signals:
-    void lookupStarted();
-    void deviceFound();
-    void deviceRemoved();
-    void deviceError(int error, const QString &message);
-    void deviceInfo(const TyonInfo &info);
-    void profileIndexChanged(const quint8 pix);
-    void profileChanged(const RTHidDevice::TProfile &profile);
-    void deviceWorkerStarted();
-    void deviceWorkerFinished();
-
-    //public slots:
-    void reportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
-    void deviceFoundCallback(IOReturn status, IOHIDDeviceRef device);
-
-public slots:
     void onSetReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
     void onDeviceFound(IOHIDDeviceRef device);
     void onDeviceRemoved(IOHIDDeviceRef device);

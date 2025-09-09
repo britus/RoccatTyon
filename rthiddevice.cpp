@@ -164,7 +164,7 @@ static inline void debugSettings(const RTHidDevice::TProfile profile, quint8 cur
 static inline void debugButtons(const RTHidDevice::TProfile profile, quint8 currentPix);
 #endif
 
-static inline void _deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
+void RTHidDevice::_deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
 {
 #ifdef QT_DEBUG
     debugDevice(device);
@@ -174,14 +174,14 @@ static inline void _deviceAttachedCallback(void *context, IOReturn, void *, IOHI
     ctx->onDeviceFound(device);
 }
 
-static inline void _deviceRemovedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
+void RTHidDevice::_deviceRemovedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
 {
     RTHidDevice *ctx = static_cast<RTHidDevice *>(context);
     ctx->onDeviceRemoved(device);
 }
 
 // Callback for IOHIDDeviceSetReportWithCallback
-static inline void _reportCallback( //
+void RTHidDevice::_reportCallback( //
     void *context,
     IOReturn result,
     void *,
@@ -258,7 +258,7 @@ void RTHidDevice::lookupDevice()
 {
     m_manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
     if (!m_manager) {
-        raiseError(kIOReturnIOError, "Failed to create HID manager.");
+        raiseError(kIOReturnIOError, tr("Failed to create HID manager."));
         return;
     }
 
@@ -315,7 +315,7 @@ void RTHidDevice::lookupDevice()
     // Open HID manager
     IOReturn result = IOHIDManagerOpen(m_manager, kIOHIDOptionsTypeNone);
     if (result != kIOReturnSuccess && result != -536870174) {
-        raiseError(result, "Failed to open HID manager.");
+        raiseError(result, tr("Failed to open HID manager."));
         CFRelease(m_manager);
         m_manager = nullptr;
         return;
@@ -324,7 +324,7 @@ void RTHidDevice::lookupDevice()
     emit lookupStarted();
 }
 
-bool RTHidDevice::resetProfiles()
+void RTHidDevice::resetProfiles()
 {
     TyonInfo info = {};
     info.report_id = TYON_REPORT_ID_INFO;
@@ -349,14 +349,18 @@ bool RTHidDevice::resetProfiles()
     }
 
 func_exit:
+    if (ret != kIOReturnSuccess) {
+        raiseError(ret,
+                   tr("Unable to reset device profiles.\n"
+                      "Please close the application and try again."));
+    }
+
     QThread::msleep(1000);
     releaseManager();
     lookupDevice();
-
-    return ret == kIOReturnSuccess;
 }
 
-bool RTHidDevice::saveProfilesToDevice()
+void RTHidDevice::saveProfilesToDevice()
 {
     emit deviceWorkerStarted();
 
@@ -438,8 +442,6 @@ bool RTHidDevice::saveProfilesToDevice()
         },
         Qt::QueuedConnection);
     t->start(QThread::LowPriority);
-
-    return true;
 }
 
 static const quint32 FILE_BLOCK_MARKER[] = {
@@ -609,11 +611,11 @@ func_exit:
     f.close();
 }
 
-bool RTHidDevice::saveProfilesToFile(const QString &fileName, bool sync)
+void RTHidDevice::saveProfilesToFile(const QString &fileName, bool sync)
 {
     if (sync) {
         onSaveFile(fileName);
-        return true;
+        return;
     }
 
     emit deviceWorkerStarted();
@@ -630,8 +632,6 @@ bool RTHidDevice::saveProfilesToFile(const QString &fileName, bool sync)
         emit deviceWorkerFinished();
     });
     t->start(QThread::IdlePriority);
-
-    return true;
 }
 
 #define SafeDelete(p) \
@@ -874,7 +874,7 @@ func_exit:
     f.close();
 }
 
-bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents)
+void RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents)
 {
     emit deviceWorkerStarted();
     QThread *t = new QThread();
@@ -889,7 +889,6 @@ bool RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
         emit deviceWorkerFinished();
     });
     t->start(QThread::IdlePriority);
-    return true;
 }
 
 void RTHidDevice::assignButton(TyonButtonIndex type, TyonButtonType func, const QKeyCombination &kc)
@@ -1515,11 +1514,11 @@ inline int RTHidDevice::readButtonMacro(IOHIDDeviceRef device, uint pix, uint bi
     IOReturn ret;
 
     if (pix >= TYON_PROFILE_NUM) {
-        return raiseError(kIOReturnBadArgument, "Invalid profile index parameter.");
+        return raiseError(kIOReturnBadArgument, tr("Invalid profile index parameter."));
     }
 
     if (bix >= TYON_PROFILE_BUTTON_NUM) {
-        return raiseError(kIOReturnBadArgument, "Invalid button index parameter.");
+        return raiseError(kIOReturnBadArgument, tr("Invalid button index parameter."));
     }
 
     const TyonControlDataIndex dix1 = TYON_CONTROL_DATA_INDEX_MACRO_1;
@@ -1547,7 +1546,7 @@ inline int RTHidDevice::readButtonMacro(IOHIDDeviceRef device, uint pix, uint bi
 inline int RTHidDevice::selectProfileSettings(IOHIDDeviceRef device, uint pix)
 {
     if (pix >= TYON_PROFILE_NUM) {
-        return raiseError(kIOReturnBadArgument, "Invalid profile index.");
+        return raiseError(kIOReturnBadArgument, tr("Invalid profile index."));
     }
 
     const quint8 _req = TYON_CONTROL_REQUEST_PROFILE_SETTINGS;
@@ -1563,7 +1562,7 @@ inline int RTHidDevice::selectProfileSettings(IOHIDDeviceRef device, uint pix)
 inline int RTHidDevice::selectProfileButtons(IOHIDDeviceRef device, uint pix)
 {
     if (pix >= TYON_PROFILE_NUM) {
-        return raiseError(kIOReturnBadArgument, "Invalid profile index.");
+        return raiseError(kIOReturnBadArgument, tr("Invalid profile index."));
     }
 
     const quint8 _req = TYON_CONTROL_REQUEST_PROFILE_BUTTONS;
@@ -1579,10 +1578,10 @@ inline int RTHidDevice::selectProfileButtons(IOHIDDeviceRef device, uint pix)
 inline int RTHidDevice::selectMacro(IOHIDDeviceRef device, uint pix, uint dix, uint bix)
 {
     if (pix >= TYON_PROFILE_NUM) {
-        return raiseError(kIOReturnBadArgument, "Invalid profile index.");
+        return raiseError(kIOReturnBadArgument, tr("Invalid profile index."));
     }
     if (bix >= TYON_PROFILE_BUTTON_NUM) {
-        return raiseError(kIOReturnBadArgument, "Invalid macro index.");
+        return raiseError(kIOReturnBadArgument, tr("Invalid macro index."));
     }
 
     const quint8 _dix = (dix | pix);
@@ -1683,7 +1682,7 @@ inline int RTHidDevice::parsePayload(int rid, const quint8 *buffer, CFIndex leng
 inline int RTHidDevice::hidGetReportById(IOHIDDeviceRef device, int rid, CFIndex size)
 {
     if (!size || !rid) {
-        return raiseError(kIOReturnBadArgument, "Invalid parameters.");
+        return raiseError(kIOReturnBadArgument, tr("Invalid parameters."));
     }
 
     IOReturn ret;
@@ -1694,7 +1693,7 @@ inline int RTHidDevice::hidGetReportById(IOHIDDeviceRef device, int rid, CFIndex
     ret = IOHIDDeviceGetReport(device, kIOHIDReportTypeFeature, rid, buffer, &length);
     if (ret != kIOReturnSuccess) {
         free(buffer);
-        return raiseError(ret, "Unable to read HID device.");
+        return raiseError(ret, tr("Unable to read HID device."));
     }
     if (length == 0) {
         free(buffer);
@@ -1726,7 +1725,7 @@ inline int RTHidDevice::hidCheckWrite(IOHIDDeviceRef device)
     while (ret == kIOReturnSuccess) {
         ret = IOHIDDeviceGetReport(device, hrt, rid, (quint8 *) buffer, &length);
         if (ret != kIOReturnSuccess) {
-            raiseError(ret, "Unable to read HID device.");
+            raiseError(ret, tr("Unable to read HID device."));
             goto func_exit;
         }
         if (length == 0) {
@@ -1798,7 +1797,7 @@ inline int RTHidDevice::hidWriteSync(IOHIDDeviceRef device, IOHIDReportType hrt,
 {
     IOReturn ret = IOHIDDeviceSetReport(device, hrt, rid, buffer, length);
     if (ret != kIOReturnSuccess) {
-        return raiseError(ret, "Unable to write HID raw message.");
+        return raiseError(ret, tr("Unable to write HID raw message."));
     }
     QThread::msleep(250);
     return ret;
@@ -1812,7 +1811,7 @@ inline int RTHidDevice::hidWriteAsync(IOHIDDeviceRef device, IOHIDReportType hrt
 
     IOReturn ret = IOHIDDeviceSetReportWithCallback(device, hrt, rid, buffer, length, timeout, _reportCallback, this);
     if (ret != kIOReturnSuccess) {
-        return raiseError(ret, "Unable to write HID message.");
+        return raiseError(ret, tr("Unable to write HID message."));
     }
 
     auto checkComplete = [this]() -> bool {
@@ -1825,7 +1824,7 @@ inline int RTHidDevice::hidWriteAsync(IOHIDDeviceRef device, IOHIDReportType hrt
         qApp->processEvents();
     }
     if (dt.hasExpired()) {
-        return raiseError(kIOReturnTimeout, "Timeout while waiting for HID device.");
+        return raiseError(kIOReturnTimeout, tr("Timeout while waiting for HID device."));
     }
 
     return ret;

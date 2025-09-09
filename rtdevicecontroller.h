@@ -52,11 +52,6 @@ public:
     explicit RTDeviceController(QObject *parent = nullptr);
 
     /**
-     * @brief Find ROCCAT Tyon device
-     */
-    void lookupDevice();
-
-    /**
      * @brief Check device is present
      * @return true if present
      */
@@ -124,6 +119,90 @@ public:
      * @return DPI value for the UI
      */
     quint16 toDpiLevelValue(const TyonProfileSettings *settings, quint8 index) const;
+
+    /**
+     * @brief Return the name of the active profile
+     * @return QString
+     */
+    QString profileName() const;
+
+    /**
+     * @brief Translte QT color to ROCCAT Tyon light info
+     * @param color QT color object
+     * @param target ROCCAT Tyon light 0=Wheel 1=Bottom
+     * @return TyonColorInfo structure
+     */
+    TyonLight toDeviceColor(TyonLightType target, const QColor &color) const;
+
+    /**
+     * @brief Translte ROCCAT Tyon light to UI color
+     * @param light ROCCAT Tyon light info structure
+     * @param isCustomColor True for custom color
+     * @return QColor object
+     */
+    QColor toScreenColor(const TyonLight &light, bool isCustomColor = false) const;
+
+    /**
+     * @brief Return ROCCAT Tyon light color table
+     * @return A mapping of color index to RGB
+     */
+    inline const RTHidDevice::TDeviceColors &deviceColors() const { return m_device.deviceColors(); }
+
+    /* ------------------------------------------------------
+     * QAbstractItemModel interface
+     * ------------------------------------------------------ */
+
+    // Header:
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+    bool setHeaderData(int section, Qt::Orientation orientation, const QVariant &value, int role = Qt::EditRole) override;
+
+    // Basic functionality:
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
+    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
+    QModelIndex parent(const QModelIndex &index) const override;
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+
+    // Editable:
+    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
+    bool clearItemData(const QModelIndex &index) override;
+    Qt::ItemFlags flags(const QModelIndex &index) const override;
+
+    // Add data:
+    bool insertRows(int row, int count, const QModelIndex &parent = QModelIndex()) override;
+    bool insertColumns(int column, int count, const QModelIndex &parent = QModelIndex()) override;
+
+public slots:
+    /**
+     * @brief Find ROCCAT Tyon device
+     */
+    void lookupDevice();
+
+    /**
+     * @brief Load all ROCCAT Tyon profiles from file
+     * @param fileName The file name
+     * @return true if success
+     */
+    void loadProfilesFromFile(const QString &fileName);
+
+    /**
+     * @brief Save all ROCCAT Tyon profiles to file
+     * @param fileName The file name
+     * @return true if success
+     */
+    void saveProfilesToFile(const QString &fileName);
+
+    /**
+     * @brief Save all modified ROCCAT Tyon profiles to device
+     * @return true if success
+     */
+    void saveProfilesToDevice();
+
+    /**
+     * @brief Reset all ROCCAT Tyon profiles to device defaults
+     * @return true if success
+     */
+    void resetProfiles();
 
     /**
      * @brief Set the mouse X sensitivity
@@ -195,84 +274,6 @@ public:
      * @param light Tyon light info type
      */
     void setLightColor(TyonLightType target, const TyonLight &light);
-
-    /**
-     * @brief Return the name of the active profile
-     * @return QString
-     */
-    QString profileName() const;
-
-    /**
-     * @brief Load all ROCCAT Tyon profiles from file
-     * @param fileName The file name
-     * @return true if success
-     */
-    bool loadProfilesFromFile(const QString &fileName);
-
-    /**
-     * @brief Save all ROCCAT Tyon profiles to file
-     * @param fileName The file name
-     * @return true if success
-     */
-    bool saveProfilesToFile(const QString &fileName);
-
-    /**
-     * @brief Save all modified ROCCAT Tyon profiles to device
-     * @return true if success
-     */
-    bool saveProfilesToDevice();
-
-    /**
-     * @brief Reset all ROCCAT Tyon profiles to device defaults
-     * @return true if success
-     */
-    bool resetProfiles();
-
-    /**
-     * @brief Translte QT color to ROCCAT Tyon light info
-     * @param color QT color object
-     * @param target ROCCAT Tyon light 0=Wheel 1=Bottom
-     * @return TyonColorInfo structure
-     */
-    TyonLight toDeviceColor(TyonLightType target, const QColor &color) const;
-
-    /**
-     * @brief Translte ROCCAT Tyon light to UI color
-     * @param light ROCCAT Tyon light info structure
-     * @param isCustomColor True for custom color
-     * @return QColor object
-     */
-    QColor toScreenColor(const TyonLight &light, bool isCustomColor = false) const;
-
-    /**
-     * @brief Return ROCCAT Tyon light color table
-     * @return A mapping of color index to RGB
-     */
-    inline const RTHidDevice::TDeviceColors &deviceColors() const { return m_device.deviceColors(); }
-
-    /* ------------------------------------------------------
-     * QAbstractItemModel interface
-     * ------------------------------------------------------ */
-
-    // Header:
-    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
-    bool setHeaderData(int section, Qt::Orientation orientation, const QVariant &value, int role = Qt::EditRole) override;
-
-    // Basic functionality:
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
-    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
-    QModelIndex parent(const QModelIndex &index) const override;
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-
-    // Editable:
-    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
-    bool clearItemData(const QModelIndex &index) override;
-    Qt::ItemFlags flags(const QModelIndex &index) const override;
-
-    // Add data:
-    bool insertRows(int row, int count, const QModelIndex &parent = QModelIndex()) override;
-    bool insertColumns(int column, int count, const QModelIndex &parent = QModelIndex()) override;
 
 signals:
     void lookupStarted();
