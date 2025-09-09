@@ -1111,29 +1111,6 @@ void RTHidDevice::setColorFlow(quint8 value)
     }
 }
 
-// TODO: How to convert screen color to custom color?
-#define ROCCAT_BYTE_TO_COLOR_FACTOR 1
-
-static inline quint8 colorIndex(quint8 index, quint8 flags)
-{
-    if (flags & TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR) {
-        // increase color index behind default color table
-        //if (index < TYON_LIGHT_INFO_COLORS_NUM) {
-        //    index += TYON_LIGHT_INFO_COLORS_NUM;
-        //}
-        //index = (0x10 | index);
-        qDebug("[HIDDEV] colorIndex(): Custom color index=%d", index);
-    } else {
-        // restore color index into default color table
-        //if (index >= TYON_LIGHT_INFO_COLORS_NUM) {
-        //    index -= TYON_LIGHT_INFO_COLORS_NUM;
-        //}
-        //index &= ~0x10;
-        qDebug("[HIDDEV] colorIndex(): Standad color index=%d", index);
-    }
-    return index;
-}
-
 void RTHidDevice::setLightsEnabled(quint8 bit, bool state)
 {
     if (m_profiles.contains(profileIndex())) {
