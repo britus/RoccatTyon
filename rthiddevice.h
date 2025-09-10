@@ -67,10 +67,28 @@ public:
     inline quint8 profileIndex() const { return m_profile.profile_index; }
 
     /**
-     * @brief Return a pointer to the profiles
-     * @return A pointer of TProfiles
+     * @brief Return number of device profiles
+     * @return TYON_PROFILE_NUM
      */
-    inline const TProfiles *profiles() const { return &m_profiles; }
+    inline quint8 profileCount() const { return m_profiles.count(); }
+
+    /**
+     * @brief Return number of device profiles
+     * @return TYON_PROFILE_NUM
+     */
+    inline TProfile profile(quint8 pix, bool &found) const
+    {
+        if (pix > TYON_PROFILE_NUM) {
+            found = false;
+            return {};
+        }
+        if (!m_profiles.contains(pix)) {
+            found = false;
+            return {};
+        }
+        found = true;
+        return m_profiles[pix];
+    }
 
     /**
      * @brief Return active profile name
@@ -143,16 +161,25 @@ public:
      */
     void setLightColor(TyonLightType target, const TyonLight &light);
 
+    quint8 minimumXCelerate() const;
+    quint8 maximumXCelerate() const;
+    quint8 middleXCelerate() const;
+
+    uint medianOfSensorImage(TyonSensorImage const *image);
+
 signals:
     void lookupStarted();
+    void deviceWorkerStarted();
+    void deviceWorkerFinished();
     void deviceFound();
     void deviceRemoved();
     void deviceError(int error, const QString &message);
     void deviceInfo(const TyonInfo &info);
     void profileIndexChanged(const quint8 pix);
     void profileChanged(const RTHidDevice::TProfile &profile);
-    void deviceWorkerStarted();
-    void deviceWorkerFinished();
+    void controlUnitChanged(const TyonControlUnit &controlUnit);
+    void sensorChanged(const TyonSensor &sensor);
+    void sensorImageChanged(const TyonSensorImage &image);
 
     //public slots:
     void reportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
@@ -173,10 +200,9 @@ public slots:
     /**
      * @brief Save all ROCCAT Tyon profiles to file
      * @param fileName The file name
-     * @param sync True to save without background thread
      * @return True if success
      */
-    void saveProfilesToFile(const QString &fileName, bool sync = false);
+    void saveProfilesToFile(const QString &fileName);
 
     /**
      * @brief Load all ROCCAT Tyon profiles from file
@@ -269,6 +295,9 @@ public slots:
      */
     void setColorFlow(quint8 value);
 
+    void startXCCalibration();
+    void stopXCCalibration();
+
 protected:
     static void _deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device);
     static void _deviceRemovedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device);
@@ -277,10 +306,6 @@ protected:
     void onSetReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
     void onDeviceFound(IOHIDDeviceRef device);
     void onDeviceRemoved(IOHIDDeviceRef device);
-
-private slots:
-    void onLoadFile(const QString &fileName, bool raiseEvents);
-    void onSaveFile(const QString &fileName);
 
 private:
     IOHIDManagerRef m_manager;
@@ -292,15 +317,22 @@ private:
     QMutex m_waitMutex;
     QMutex m_accessMutex;
     bool m_isCBComplete;
+    bool m_initComplete;
     quint8 m_requestedProfile;
+    TyonControlUnit m_controlUnit;
+    TyonSensor m_sensor;
+    TyonSensorImage m_sensorImage;
 
 private:
     inline void releaseDevices();
     inline void releaseManager();
     inline void initializeProfiles();
     inline void initializeColorMapping();
-    inline void saveProfiles();
+    inline void internalSaveProfiles();
     inline int raiseError(int error, const QString &message);
+    inline void setModified(quint8 pix, bool changed);
+    inline void setModified(TProfile *p, bool changed);
+    inline void updateProfileMap(TProfile *p, bool changed);
     inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
     inline int hidWriteRoccatCtl(IOHIDDeviceRef device, uint pix, uint req);
     inline int hidCheckWrite(IOHIDDeviceRef device);
@@ -320,12 +352,33 @@ private:
     inline int readDeviceSpecial(IOHIDDeviceRef device);
     inline int readProfileSettings(IOHIDDeviceRef device);
     inline int readProfileButtons(IOHIDDeviceRef device);
-    inline int readDeviceSensor(IOHIDDeviceRef device);
+    inline int sensorRead(IOHIDDeviceRef device);
+    inline int sensorReadImage(IOHIDDeviceRef device);
     inline int readDeviceControlUnit(IOHIDDeviceRef device);
     inline int readDeviceTalk(IOHIDDeviceRef device);
     inline int readDevice0A(IOHIDDeviceRef device);
     inline int readDevice11(IOHIDDeviceRef device);
     inline int readDevice1A(IOHIDDeviceRef device);
+    //--
+    inline int tcuRead(IOHIDDeviceRef device);
+    inline int tcuWriteTest(IOHIDDeviceRef device, uint dcu, uint median);
+    inline int tcuWriteAccept(IOHIDDeviceRef device, uint dcu, uint median);
+    inline int tcuWriteCancel(IOHIDDeviceRef device, uint dcu);
+    inline int tcuWriteOff(IOHIDDeviceRef device, uint dcu);
+    //--
+    inline int dcuRead(IOHIDDeviceRef device);
+    inline int dcuWriteTry(IOHIDDeviceRef device, uint newdcu);
+    inline int dcuWriteCancel(IOHIDDeviceRef device, uint olddcu);
+    inline int dcuWriteAccept(IOHIDDeviceRef device, uint newdcu);
+    //--
+    inline int sensorWriteStruct(IOHIDDeviceRef device, quint8 action, quint8 reg, quint8 value);
+    inline int sensorWriteRegister(IOHIDDeviceRef device, quint8 reg, quint8 value);
+    inline int sensorReadRegister(IOHIDDeviceRef device, quint8 reg);
+    inline int sensorCalibrateStep(IOHIDDeviceRef device);
+    //--
+    inline int xcCalibWriteStart(IOHIDDeviceRef device);
+    inline int xcCalibWriteData(IOHIDDeviceRef device, quint8 min, quint8 mid, quint8 max);
+    inline int xcCalibWriteEnd(IOHIDDeviceRef device);
 };
 
 Q_DECLARE_METATYPE(TyonInfo);
@@ -334,6 +387,9 @@ Q_DECLARE_METATYPE(TyonProfileSettings);
 Q_DECLARE_METATYPE(TyonProfileButtons);
 Q_DECLARE_METATYPE(TyonButtonIndex);
 Q_DECLARE_METATYPE(TyonButtonType);
+Q_DECLARE_METATYPE(TyonControlUnit);
+Q_DECLARE_METATYPE(TyonSensor);
+Q_DECLARE_METATYPE(TyonSensorImage);
 Q_DECLARE_METATYPE(RTHidDevice::TProfile);
 Q_DECLARE_METATYPE(RTHidDevice::TProfiles);
 Q_DECLARE_METATYPE(RTHidDevice::TColorItem);

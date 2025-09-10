@@ -351,34 +351,6 @@ struct _RoccatLight
 } __attribute__((packed));
 typedef struct _RoccatLight RoccatLight;
 
-enum {
-    ROCCAT_SWARM_RMP_PROFILE_NAME_LENGTH = 12,
-    ROCCAT_SWARM_RMP_GAMEFILE_LENGTH = 256,
-    ROCCAT_SWARM_RMP_GAMEFILE_NUM = 5,
-    ROCCAT_SWARM_RMP_OPENER_LENGTH = 256,
-};
-
-struct _RoccatSwarmRmpHeader
-{
-    /* does not need to be zero terminated, utf16 */
-    quint16 profile_name[ROCCAT_SWARM_RMP_PROFILE_NAME_LENGTH];
-    quint8 unknown1[80];
-    quint8 volume;
-    quint8 unknown3;
-    quint8 profile_autoswitch;
-    quint8 unknown4[5];
-} __attribute__((packed));
-typedef struct _RoccatSwarmRmpHeader RoccatSwarmRmpHeader;
-
-struct _RoccatSwarmRmpTimer
-{
-    quint8 unknown[11];
-} __attribute__((packed));
-typedef struct _RoccatSwarmRmpTimer RoccatSwarmRmpTimer;
-
-typedef char RoccatSwarmOpener[ROCCAT_SWARM_RMP_OPENER_LENGTH];
-typedef char RoccatSwarmGamefile[ROCCAT_SWARM_RMP_GAMEFILE_LENGTH];
-
 typedef enum {
     ROCCAT_TALK_DEVICE_NONE = 0,
     /* Devices use USB_DEVICE_ID_ROCCAT_* */
@@ -538,3 +510,74 @@ typedef struct _TyonDeviceState TyonDeviceState;
 enum {
     TYON_LIGHT_INFO_COLORS_NUM = 16,
 };
+
+enum {
+    TYON_SENSOR_IMAGE_SIZE = 30,
+};
+
+struct _TyonSensorImage
+{
+    quint8 report_id; /* TYON_REPORT_ID_SENSOR */
+    quint8 action;    /* 3 */
+    quint8 unused1;   /* 0 */
+    quint8 data[TYON_SENSOR_IMAGE_SIZE * TYON_SENSOR_IMAGE_SIZE];
+    quint8 unused2[125]; /* all bytes 0 */
+} __attribute__((packed));
+typedef struct _TyonSensorImage TyonSensorImage;
+
+struct _TyonSensor
+{
+    quint8 report_id; /* TYON_REPORT_ID_SENSOR */
+    quint8 action;
+    quint8 reg;
+    quint8 value;
+} __attribute__((packed));
+typedef struct _TyonSensor TyonSensor;
+
+typedef enum {
+    TYON_SENSOR_ACTION_WRITE = 1,
+    TYON_SENSOR_ACTION_READ = 2,
+    TYON_SENSOR_ACTION_FRAME_CAPTURE = 3,
+} TyonSensorAction;
+
+struct _TyonSpecial
+{
+    quint8 report_id; /* TYON_REPORT_ID_SPECIAL */
+    quint8 analogue;
+    quint8 type;
+    quint8 data;
+    quint8 action;
+} __attribute__((packed));
+typedef struct _TyonSpecial TyonSpecial;
+
+typedef enum {
+    TYON_SPECIAL_TYPE_TILT = 0x10,    /* data: 0xff = left, 0x01 = right */
+    TYON_SPECIAL_TYPE_PROFILE = 0x20, /* data: profile_nr */
+    /* gets sent on xcelerator down if set to shortcut */
+    TYON_SPECIAL_TYPE_XCELERATOR = 0x25,             /* data: value, action = 0xa9 */
+    TYON_SPECIAL_TYPE_QUICKLAUNCH = 0x60,            /* data: button_nr, action: press/release */
+    TYON_SPECIAL_TYPE_TIMER_START = 0x80,            /* data: button_nr, action: press/release */
+    TYON_SPECIAL_TYPE_TIMER_STOP = 0x90,             /* action: press/release */
+    TYON_SPECIAL_TYPE_OPEN_DRIVER = 0xa0,            /* data: press/release ! */
+    TYON_SPECIAL_TYPE_CPI = 0xb0,                    /* data: 1-5 */
+    TYON_SPECIAL_TYPE_SENSITIVITY = 0xc0,            /* data: action: 1-b */
+    TYON_SPECIAL_TYPE_ANALOGUE = 0xd1,               /* analogue: value, data: 0x00, action: 0x10 */
+    TYON_SPECIAL_TYPE_XCELERATOR_CALIBRATION = 0xe0, /* data: 0x06, action: value */
+    TYON_SPECIAL_TYPE_RAD_LEFT = 0xe1,               /* all rads: data: count */
+    TYON_SPECIAL_TYPE_RAD_RIGHT = 0xe2,
+    TYON_SPECIAL_TYPE_RAD_MIDDLE = 0xe3,
+    TYON_SPECIAL_TYPE_RAD_THUMB_BACKWARD = 0xe4,
+    TYON_SPECIAL_TYPE_RAD_THUMB_FORWARD = 0xe5,
+    TYON_SPECIAL_TYPE_RAD_SCROLL_UP = 0xe6,
+    TYON_SPECIAL_TYPE_RAD_SCROLL_DOWN = 0xe7,
+    TYON_SPECIAL_TYPE_RAD_EASYSHIFT = 0xe8,
+    TYON_SPECIAL_TYPE_RAD_EASYAIM = 0xe9,
+    TYON_SPECIAL_TYPE_RAD_DISTANCE = 0xea,
+    TYON_SPECIAL_TYPE_MULTIMEDIA = 0xf0, /* data: ?, action: press/release */
+    TYON_SPECIAL_TYPE_TALK = 0xff,       /* data: button_nr, action: press/release */
+} TyonSpecialType;
+
+typedef enum {
+    TYON_SPECIAL_ACTION_PRESS = 0x00,
+    TYON_SPECIAL_ACTION_RELEASE = 0x01,
+} TyonSpecialAction;

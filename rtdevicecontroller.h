@@ -148,6 +148,10 @@ public:
      */
     inline const RTHidDevice::TDeviceColors &deviceColors() const { return m_device.deviceColors(); }
 
+    quint8 minimumXCelerate() const;
+    quint8 maximumXCelerate() const;
+    quint8 middleXCelerate() const;
+
     /* ------------------------------------------------------
      * QAbstractItemModel interface
      * ------------------------------------------------------ */
@@ -275,8 +279,13 @@ public slots:
      */
     void setLightColor(TyonLightType target, const TyonLight &light);
 
+    void startXCCalibration();
+    void stopXCCalibration();
+
 signals:
     void lookupStarted();
+    void deviceWorkerStarted();
+    void deviceWorkerFinished();
     void deviceFound();
     void deviceRemoved();
     void deviceError(int error, const QString &message);
@@ -284,19 +293,23 @@ signals:
     void profileIndexChanged(quint8 index);
     void settingsChanged(const TyonProfileSettings &settings);
     void buttonsChanged(const TyonProfileButtons &buttons);
-    void deviceWorkerStarted();
-    void deviceWorkerFinished();
+    void controlUnitChanged(const TyonControlUnit &controlUnit);
+    void sensorChanged(const TyonSensor &sensor);
+    void sensorImageChanged(const TyonSensorImage &image);
 
 private slots:
     void onLookupStarted();
+    void onDeviceWorkerStarted();
+    void onDeviceWorkerFinished();
     void onDeviceError(int error, const QString &message);
     void onDeviceFound();
     void onDeviceRemoved();
     void onDeviceInfo(const TyonInfo &info);
     void onProfileIndexChanged(const quint8 pix);
     void onProfileChanged(const RTHidDevice::TProfile &profile);
-    void onDeviceWorkerStarted();
-    void onDeviceWorkerFinished();
+    void onControlUnitChanged(const TyonControlUnit &controlUnit);
+    void onSensorChanged(const TyonSensor &sensor);
+    void onSensorImageChanged(const TyonSensorImage &image);
 
 private:
     RTHidDevice m_device;

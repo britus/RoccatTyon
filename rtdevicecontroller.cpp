@@ -18,14 +18,17 @@ RTDeviceController::RTDeviceController(QObject *parent)
 
     Qt::ConnectionType ct = Qt::QueuedConnection;
     connect(&m_device, &RTHidDevice::lookupStarted, this, &RTDeviceController::onLookupStarted, ct);
+    connect(&m_device, &RTHidDevice::deviceWorkerStarted, this, &RTDeviceController::onDeviceWorkerStarted, ct);
+    connect(&m_device, &RTHidDevice::deviceWorkerFinished, this, &RTDeviceController::onDeviceWorkerFinished, ct);
     connect(&m_device, &RTHidDevice::deviceError, this, &RTDeviceController::onDeviceError, ct);
     connect(&m_device, &RTHidDevice::deviceFound, this, &RTDeviceController::onDeviceFound, ct);
     connect(&m_device, &RTHidDevice::deviceRemoved, this, &RTDeviceController::onDeviceRemoved, ct);
     connect(&m_device, &RTHidDevice::deviceInfo, this, &RTDeviceController::onDeviceInfo, ct);
     connect(&m_device, &RTHidDevice::profileChanged, this, &RTDeviceController::onProfileChanged, ct);
     connect(&m_device, &RTHidDevice::profileIndexChanged, this, &RTDeviceController::onProfileIndexChanged, ct);
-    connect(&m_device, &RTHidDevice::deviceWorkerStarted, this, &RTDeviceController::onDeviceWorkerStarted, ct);
-    connect(&m_device, &RTHidDevice::deviceWorkerFinished, this, &RTDeviceController::onDeviceWorkerFinished, ct);
+    connect(&m_device, &RTHidDevice::controlUnitChanged, this, &RTDeviceController::onControlUnitChanged, ct);
+    connect(&m_device, &RTHidDevice::sensorChanged, this, &RTDeviceController::onSensorChanged, ct);
+    connect(&m_device, &RTHidDevice::sensorImageChanged, this, &RTDeviceController::onSensorImageChanged, ct);
 }
 
 inline void RTDeviceController::initPhysicalButtons()
@@ -333,6 +336,31 @@ QColor RTDeviceController::toScreenColor(const TyonLight &light, bool isCustomCo
     return m_device.toScreenColor(light, isCustomColor);
 }
 
+quint8 RTDeviceController::minimumXCelerate() const
+{
+    return m_device.minimumXCelerate();
+}
+
+quint8 RTDeviceController::maximumXCelerate() const
+{
+    return m_device.maximumXCelerate();
+}
+
+quint8 RTDeviceController::middleXCelerate() const
+{
+    return m_device.middleXCelerate();
+}
+
+void RTDeviceController::startXCCalibration()
+{
+    m_device.startXCCalibration();
+}
+
+void RTDeviceController::stopXCCalibration()
+{
+    m_device.stopXCCalibration();
+}
+
 void RTDeviceController::onLookupStarted()
 {
     emit lookupStarted();
@@ -340,12 +368,16 @@ void RTDeviceController::onLookupStarted()
 
 void RTDeviceController::onDeviceFound()
 {
+    beginResetModel();
     emit deviceFound();
+    endResetModel();
 }
 
 void RTDeviceController::onDeviceRemoved()
 {
+    beginResetModel();
     emit deviceRemoved();
+    endResetModel();
 }
 
 void RTDeviceController::onDeviceError(int error, const QString &message)
@@ -383,6 +415,21 @@ void RTDeviceController::onProfileChanged(const RTHidDevice::TProfile &profile)
     }
 }
 
+void RTDeviceController::onControlUnitChanged(const TyonControlUnit &controlUnit)
+{
+    emit controlUnitChanged(controlUnit);
+}
+
+void RTDeviceController::onSensorChanged(const TyonSensor &sensor)
+{
+    emit sensorChanged(sensor);
+}
+
+void RTDeviceController::onSensorImageChanged(const TyonSensorImage &image)
+{
+    emit sensorImageChanged(image);
+}
+
 QVariant RTDeviceController::headerData(int section, Qt::Orientation orientation, int role) const
 {
     if (orientation == Qt::Orientation::Horizontal && role == Qt::DisplayRole) {
@@ -416,7 +463,7 @@ QModelIndex RTDeviceController::parent(const QModelIndex &) const
 
 int RTDeviceController::rowCount(const QModelIndex &) const
 {
-    return m_device.profiles()->count();
+    return m_device.profileCount();
 }
 
 int RTDeviceController::columnCount(const QModelIndex &) const
@@ -426,15 +473,15 @@ int RTDeviceController::columnCount(const QModelIndex &) const
 
 QVariant RTDeviceController::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() >= m_device.profiles()->count()) {
+    if (!index.isValid() || index.row() >= m_device.profileCount()) {
         return QVariant();
     }
 
-    if (!m_device.profiles()->contains(index.row())) {
+    bool found = false;
+    RTHidDevice::TProfile p = m_device.profile(index.row(), found);
+    if (!found) {
         return QVariant();
     }
-
-    RTHidDevice::TProfile p = m_device.profiles()->value(index.row());
 
     switch (role) {
         case Qt::DisplayRole: {
@@ -460,15 +507,24 @@ bool RTDeviceController::clearItemData(const QModelIndex &index)
 
 bool RTDeviceController::setData(const QModelIndex &index, const QVariant &value, int role)
 {
-    if (index.isValid()) {
-        const QVariant v = data(index, role);
-        if (!v.isNull() && v.isValid() && v != value) {
-            m_device.setProfileName(value.toString(), index.row());
-            emit dataChanged(index, index, {role});
-            return true;
-        }
+    if (!index.isValid()) {
+        return false;
     }
-    return false;
+
+    const QVariant v = data(index, role);
+    if (v.isNull() && !v.isValid()) {
+        return false;
+    }
+    if (value.toString().isEmpty()) {
+        return false;
+    }
+    if (value.toString() == v.toString()) {
+        return false;
+    }
+
+    m_device.setProfileName(value.toString(), index.row());
+    emit dataChanged(index, index, {role});
+    return true;
 }
 
 Qt::ItemFlags RTDeviceController::flags(const QModelIndex &index) const

@@ -1,4 +1,6 @@
 #include "rtmainwindow.h"
+#include "rtcalibratetcudialog.h"
+#include "rtcalibratexcdialog.h"
 #include "rtcolordialog.h"
 #include "rtdevicecontroller.h"
 #include "rtprogress.h"
@@ -59,6 +61,7 @@ RTMainWindow::RTMainWindow(QWidget *parent)
 
     setWindowTitle(QApplication::applicationDisplayName());
 
+    disableUserInterface();
     initializeSettings();
     initializeUiElements();
     loadSettings(m_settings);
@@ -132,7 +135,6 @@ inline void RTMainWindow::initializeUiElements()
 
     ui->cbxDPIActiveSlot->setMaxVisibleItems(15);
     ui->tableView->setModel(m_ctlr);
-    disableUserInterface();
 
     QSlider *s;
     foreach (QSpinBox *c, ui->pnlSensorDpi->findChildren<QSpinBox *>(fco)) {
@@ -284,12 +286,14 @@ inline void RTMainWindow::connectActions()
     connect(ui->pbImport, &QPushButton::clicked, this, [this](bool) { //
         QString fileName;
         if (selectFile(fileName, true)) {
+            disableUserInterface();
             m_ctlr->loadProfilesFromFile(fileName);
         }
     });
     connect(ui->pbExport, &QPushButton::clicked, this, [this](bool) { //
         QString fileName;
         if (selectFile(fileName, false)) {
+            disableUserInterface();
             m_ctlr->saveProfilesToFile(fileName);
         }
     });
@@ -298,6 +302,7 @@ inline void RTMainWindow::connectActions()
         const QString msg = tr("Warning!\nAny changes will be lost.\n\n" //
                                "Do you want to reset ROCCAT Tyon?\n");
         if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
+            disableUserInterface();
             m_ctlr->resetProfiles();
         }
     });
@@ -305,6 +310,7 @@ inline void RTMainWindow::connectActions()
         const QString title = tr("Save device profiles");
         const QString msg = tr("Do you want to update ROCCAT Tyon?\n");
         if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
+            disableUserInterface();
             m_ctlr->saveProfilesToDevice();
         }
     });
@@ -505,6 +511,39 @@ inline void RTMainWindow::connectUiElements()
             m_ctlr->setLightColor(TYON_LIGHT_BOTTOM, color);
         }
     });
+
+    // --
+    connect(ui->cbxTalkFx, &QCheckBox::clicked, this, [this](bool checked) { //
+        //m_ctlr->setTalkFxState(0, checked);
+    });
+
+    connect(ui->cbxTcuActivate, &QCheckBox::clicked, this, [this](bool checked) { //
+        //m_ctlr->setTcuState(0, checked);
+    });
+
+    connect(ui->pbTcuCalibrate, &QPushButton::clicked, this, [this](bool checked) { //
+        calibrateTcu();
+    });
+
+    connect(ui->rbDcuOff, &QRadioButton::clicked, this, [this](bool checked) { //
+        //m_ctlr->setDcuState(0, checked);
+    });
+
+    connect(ui->rbDcuExtraLow, &QRadioButton::clicked, this, [this](bool checked) { //
+        //m_ctlr->setDcuState(0, checked);
+    });
+
+    connect(ui->rbDcuLow, &QRadioButton::clicked, this, [this](bool checked) { //
+        //m_ctlr->setDcuState(0, checked);
+    });
+
+    connect(ui->rbDcuNormal, &QRadioButton::clicked, this, [this](bool checked) { //
+        //m_ctlr->setDcuState(0, checked);
+    });
+
+    connect(ui->pbXCelCalibrate, &QPushButton::clicked, this, [this](bool checked) { //
+        calibrateXCelerator();
+    });
 }
 
 inline bool RTMainWindow::selectColor(TyonLightType target, TyonLight &color)
@@ -571,6 +610,22 @@ inline bool RTMainWindow::selectFile(QString &filePath, bool isOpen)
         }
     }
     return false;
+}
+
+inline void RTMainWindow::calibrateXCelerator()
+{
+    RTCalibrateXCDialog d(m_ctlr, this);
+    if (d.exec() == RTCalibrateXCDialog::Accepted) {
+        //
+    }
+}
+
+inline void RTMainWindow::calibrateTcu()
+{
+    RTCalibrateTcuDialog d(m_ctlr, this);
+    if (d.exec() == RTCalibrateTcuDialog::Accepted) {
+        //
+    }
 }
 
 inline QAction *RTMainWindow::linkAction(QAction *action, TyonButtonType function)
@@ -648,7 +703,6 @@ void RTMainWindow::onLookupStarted()
     qDebug("$$$ onLookupStarted");
 
     RTProgress::present(tr("Searching ROCCAT Tyon..."), this);
-    disableUserInterface();
 
     // timeout timer
     QTimer::singleShot(15000, this, [this]() {
@@ -889,7 +943,6 @@ void RTMainWindow::onDeviceWorkerStarted()
 {
     qDebug("++++ onDeviceWorkerStarted");
     RTProgress::present(tr("Please wait..."), this);
-    disableUserInterface();
 }
 
 void RTMainWindow::onDeviceWorkerFinished()

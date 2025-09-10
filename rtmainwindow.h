@@ -58,10 +58,12 @@ private:
     inline void connectActions();
     inline void loadSettings(QSettings *settings);
     inline void saveSettings(QSettings *settings);
+    inline void enableUserInterface();
+    inline void disableUserInterface();
     inline void linkButton(QPushButton *pb, const QMap<QString, QActionGroup *> &actions);
     inline QAction *linkAction(QAction *action, TyonButtonType function);
     inline bool selectColor(TyonLightType target, TyonLight &color);
     inline bool selectFile(QString &file, bool isOpen = true);
-    inline void enableUserInterface();
-    inline void disableUserInterface();
+    inline void calibrateXCelerator();
+    inline void calibrateTcu();
 };

@@ -67,6 +67,8 @@ mac {
 
 SOURCES += \
     main.cpp \
+    rtcalibratetcudialog.cpp \
+    rtcalibratexcdialog.cpp \
     rtcolordialog.cpp \
     rtdevicecontroller.cpp \
     rthiddevice.cpp \
@@ -76,6 +78,8 @@ SOURCES += \
 
 HEADERS += \
     hid_uid.h \
+    rtcalibratetcudialog.h \
+    rtcalibratexcdialog.h \
     rtcolordialog.h \
     rtdevicecontroller.h \
     rthiddevice.h \
@@ -86,6 +90,8 @@ HEADERS += \
     rttypes.h
 
 FORMS += \
+    rtcalibratetcudialog.ui \
+    rtcalibratexcdialog.ui \
     rtcolordialog.ui \
     rtmainwindow.ui \
     rtshortcutdialog.ui
