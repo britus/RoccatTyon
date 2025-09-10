@@ -72,13 +72,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
            <widget class="QSlider" name="vslXCelerate">
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="maximum">
+             <number>2</number>
+            </property>
+            <property name="value">
+             <number>1</number>
+            </property>
             <property name="orientation">
              <enum>Qt::Orientation::Vertical</enum>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="label_2">
+           <widget class="QLabel" name="txInstruction">
             <property name="text">
              <string>(Placeholder for Instructions)</string>
             </property>
@@ -161,6 +170,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
         </property>
         <property name="default">
          <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pbApply">
+        <property name="text">
+         <string>Apply</string>
         </property>
        </widget>
       </item>

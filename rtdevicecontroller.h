@@ -158,7 +158,6 @@ public:
 
     // Header:
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
-    bool setHeaderData(int section, Qt::Orientation orientation, const QVariant &value, int role = Qt::EditRole) override;
 
     // Basic functionality:
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -169,12 +168,7 @@ public:
 
     // Editable:
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
-    bool clearItemData(const QModelIndex &index) override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
-
-    // Add data:
-    bool insertRows(int row, int count, const QModelIndex &parent = QModelIndex()) override;
-    bool insertColumns(int column, int count, const QModelIndex &parent = QModelIndex()) override;
 
 public slots:
     /**
@@ -279,8 +273,9 @@ public slots:
      */
     void setLightColor(TyonLightType target, const TyonLight &light);
 
-    void startXCCalibration();
-    void stopXCCalibration();
+    void xcStartCalibration();
+    void xcStopCalibration();
+    void xcApplyCalibration(quint8 min, quint8 mid, quint8 max);
 
 signals:
     void lookupStarted();
@@ -294,6 +289,7 @@ signals:
     void settingsChanged(const TyonProfileSettings &settings);
     void buttonsChanged(const TyonProfileButtons &buttons);
     void controlUnitChanged(const TyonControlUnit &controlUnit);
+    void specialReport(uint reportId, const QByteArray &report);
     void sensorChanged(const TyonSensor &sensor);
     void sensorImageChanged(const TyonSensorImage &image);
 
@@ -310,6 +306,7 @@ private slots:
     void onControlUnitChanged(const TyonControlUnit &controlUnit);
     void onSensorChanged(const TyonSensor &sensor);
     void onSensorImageChanged(const TyonSensorImage &image);
+    void onSpecialReport(uint reportId, const QByteArray &report);
 
 private:
     RTHidDevice m_device;

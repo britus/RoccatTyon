@@ -285,14 +285,14 @@ inline void RTMainWindow::connectActions()
 {
     connect(ui->pbImport, &QPushButton::clicked, this, [this](bool) { //
         QString fileName;
-        if (selectFile(fileName, true)) {
+        if (doSelectFile(fileName, true)) {
             disableUserInterface();
             m_ctlr->loadProfilesFromFile(fileName);
         }
     });
     connect(ui->pbExport, &QPushButton::clicked, this, [this](bool) { //
         QString fileName;
-        if (selectFile(fileName, false)) {
+        if (doSelectFile(fileName, false)) {
             disableUserInterface();
             m_ctlr->saveProfilesToFile(fileName);
         }
@@ -498,7 +498,7 @@ inline void RTMainWindow::connectUiElements()
     });
     connect(ui->pbLightColorWheel, &QPushButton::clicked, this, [this]() { //
         TyonLight color;
-        if (selectColor(TYON_LIGHT_WHEEL, color)) {
+        if (doSelectColor(TYON_LIGHT_WHEEL, color)) {
             m_ctlr->setLightColor(TYON_LIGHT_WHEEL, color);
         }
     });
@@ -507,7 +507,7 @@ inline void RTMainWindow::connectUiElements()
     });
     connect(ui->pbLightColorBottom, &QPushButton::clicked, this, [this]() { //
         TyonLight color;
-        if (selectColor(TYON_LIGHT_BOTTOM, color)) {
+        if (doSelectColor(TYON_LIGHT_BOTTOM, color)) {
             m_ctlr->setLightColor(TYON_LIGHT_BOTTOM, color);
         }
     });
@@ -542,11 +542,11 @@ inline void RTMainWindow::connectUiElements()
     });
 
     connect(ui->pbXCelCalibrate, &QPushButton::clicked, this, [this](bool checked) { //
-        calibrateXCelerator();
+        doCalibrateXCelerator();
     });
 }
 
-inline bool RTMainWindow::selectColor(TyonLightType target, TyonLight &color)
+inline bool RTMainWindow::doSelectColor(TyonLightType target, TyonLight &color)
 {
     if (ui->rbLightCustomColor->isChecked()) {
         QColorDialog d(this);
@@ -567,7 +567,7 @@ inline bool RTMainWindow::selectColor(TyonLightType target, TyonLight &color)
     return false;
 }
 
-inline bool RTMainWindow::selectFile(QString &filePath, bool isOpen)
+inline bool RTMainWindow::doSelectFile(QString &filePath, bool isOpen)
 {
     QString path = QStandardPaths::writableLocation( //
         QStandardPaths::DocumentsLocation);
@@ -612,12 +612,21 @@ inline bool RTMainWindow::selectFile(QString &filePath, bool isOpen)
     return false;
 }
 
-inline void RTMainWindow::calibrateXCelerator()
+inline void RTMainWindow::doCalibrateXCelerator()
 {
-    RTCalibrateXCDialog d(m_ctlr, this);
-    if (d.exec() == RTCalibrateXCDialog::Accepted) {
-        //
-    }
+    disableUserInterface();
+
+    RTCalibrateXCDialog *d = new RTCalibrateXCDialog(m_ctlr, this);
+    connect(d, &RTCalibrateXCDialog::accepted, this, [this, d]() {
+        enableUserInterface();
+        d->deleteLater();
+    });
+    connect(d, &RTCalibrateXCDialog::rejected, this, [this, d]() {
+        enableUserInterface();
+        d->deleteLater();
+    });
+    d->show();
+    d->raise();
 }
 
 inline void RTMainWindow::calibrateTcu()

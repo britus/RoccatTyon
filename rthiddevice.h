@@ -1,6 +1,7 @@
 #pragma once
 #include "rttypes.h"
 #include <IOKit/hid/IOHIDManager.h>
+#include <dispatch/dispatch.h>
 #include <QAbstractItemModel>
 #include <QColor>
 #include <QMap>
@@ -58,7 +59,7 @@ public:
      * @brief Return true if devices found
      * @return True or False
      */
-    inline bool hasDevice() const { return !m_devices.isEmpty(); }
+    inline bool hasDevice() const { return !m_wrkrDevices.isEmpty(); }
 
     /**
      * @brief Return active profile index
@@ -180,6 +181,7 @@ signals:
     void controlUnitChanged(const TyonControlUnit &controlUnit);
     void sensorChanged(const TyonSensor &sensor);
     void sensorImageChanged(const TyonSensorImage &image);
+    void specialReport(uint reportId, const QByteArray &report);
 
     //public slots:
     void reportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
@@ -295,21 +297,20 @@ public slots:
      */
     void setColorFlow(quint8 value);
 
-    void startXCCalibration();
-    void stopXCCalibration();
+    void xcStartCalibration();
+    void xcStopCalibration();
+    void xcApplyCalibration(quint8 min, quint8 mid, quint8 max);
 
-protected:
-    static void _deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device);
-    static void _deviceRemovedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device);
-    static void _reportCallback(void *context, IOReturn result, void *, IOHIDReportType type, uint32_t reportID, uint8_t *report, CFIndex reportLength);
-
-    void onSetReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
+public:
     void onDeviceFound(IOHIDDeviceRef device);
     void onDeviceRemoved(IOHIDDeviceRef device);
+    void onSetReport(IOReturn status, uint rid, CFIndex length, uint8_t *report);
+    void onSpecialReport(uint rid, CFIndex length, uint8_t *report);
 
 private:
     IOHIDManagerRef m_manager;
-    QList<IOHIDDeviceRef> m_devices;
+    QList<IOHIDDeviceRef> m_wrkrDevices;
+    QList<IOHIDDeviceRef> m_miscDevices;
     TDeviceColors m_colors;
     TyonInfo m_info;
     TyonProfile m_profile;
@@ -322,6 +323,10 @@ private:
     TyonControlUnit m_controlUnit;
     TyonSensor m_sensor;
     TyonSensorImage m_sensorImage;
+    dispatch_queue_t m_hidQueue;
+
+    uint8_t m_cbReportBuffer[4096];
+    uint m_cbReportLength = 4096;
 
 private:
     inline void releaseDevices();

@@ -62,8 +62,8 @@ private:
     inline void disableUserInterface();
     inline void linkButton(QPushButton *pb, const QMap<QString, QActionGroup *> &actions);
     inline QAction *linkAction(QAction *action, TyonButtonType function);
-    inline bool selectColor(TyonLightType target, TyonLight &color);
-    inline bool selectFile(QString &file, bool isOpen = true);
-    inline void calibrateXCelerator();
+    inline bool doSelectColor(TyonLightType target, TyonLight &color);
+    inline bool doSelectFile(QString &file, bool isOpen = true);
+    inline void doCalibrateXCelerator();
     inline void calibrateTcu();
 };

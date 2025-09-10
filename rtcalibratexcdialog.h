@@ -17,10 +17,14 @@ public:
     ~RTCalibrateXCDialog();
 
 private slots:
-    void onControlUnit(const TyonControlUnit &unit);
     void onDeviceError(int error, const QString &message);
+    void onSpecialReport(uint reportId, const QByteArray &report);
 
 private:
     Ui::RTCalibrateXCDialog *ui;
     RTDeviceController *m_ctlr;
+    quint8 m_last_value;
+    quint8 m_min;
+    quint8 m_max;
+    quint8 m_mid;
 };

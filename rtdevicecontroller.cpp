@@ -29,6 +29,7 @@ RTDeviceController::RTDeviceController(QObject *parent)
     connect(&m_device, &RTHidDevice::controlUnitChanged, this, &RTDeviceController::onControlUnitChanged, ct);
     connect(&m_device, &RTHidDevice::sensorChanged, this, &RTDeviceController::onSensorChanged, ct);
     connect(&m_device, &RTHidDevice::sensorImageChanged, this, &RTDeviceController::onSensorImageChanged, ct);
+    connect(&m_device, &RTHidDevice::specialReport, this, &RTDeviceController::onSpecialReport, ct);
 }
 
 inline void RTDeviceController::initPhysicalButtons()
@@ -351,14 +352,18 @@ quint8 RTDeviceController::middleXCelerate() const
     return m_device.middleXCelerate();
 }
 
-void RTDeviceController::startXCCalibration()
+void RTDeviceController::xcStartCalibration()
 {
-    m_device.startXCCalibration();
+    m_device.xcStartCalibration();
 }
 
-void RTDeviceController::stopXCCalibration()
+void RTDeviceController::xcStopCalibration()
 {
-    m_device.stopXCCalibration();
+    m_device.xcStopCalibration();
+}
+void RTDeviceController::xcApplyCalibration(quint8 min, quint8 mid, quint8 max)
+{
+    m_device.xcApplyCalibration(min, mid, max);
 }
 
 void RTDeviceController::onLookupStarted()
@@ -430,6 +435,11 @@ void RTDeviceController::onSensorImageChanged(const TyonSensorImage &image)
     emit sensorImageChanged(image);
 }
 
+void RTDeviceController::onSpecialReport(uint reportId, const QByteArray &report)
+{
+    emit specialReport(reportId, report);
+}
+
 QVariant RTDeviceController::headerData(int section, Qt::Orientation orientation, int role) const
 {
     if (orientation == Qt::Orientation::Horizontal && role == Qt::DisplayRole) {
@@ -440,15 +450,6 @@ QVariant RTDeviceController::headerData(int section, Qt::Orientation orientation
         }
     }
     return QVariant();
-}
-
-bool RTDeviceController::setHeaderData(int section, Qt::Orientation orientation, const QVariant &value, int role)
-{
-    if (value != headerData(section, orientation, role)) {
-        emit headerDataChanged(orientation, section, section);
-        return true;
-    }
-    return false;
 }
 
 QModelIndex RTDeviceController::index(int row, int column, const QModelIndex &) const
@@ -500,11 +501,6 @@ QVariant RTDeviceController::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
-bool RTDeviceController::clearItemData(const QModelIndex &index)
-{
-    return QAbstractItemModel::clearItemData(index);
-}
-
 bool RTDeviceController::setData(const QModelIndex &index, const QVariant &value, int role)
 {
     if (!index.isValid()) {
@@ -532,18 +528,4 @@ Qt::ItemFlags RTDeviceController::flags(const QModelIndex &index) const
     if (!index.isValid())
         return Qt::NoItemFlags;
     return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
-}
-
-bool RTDeviceController::insertRows(int row, int count, const QModelIndex &parent)
-{
-    beginInsertRows(parent, row, row + count - 1);
-    endInsertRows();
-    return true;
-}
-
-bool RTDeviceController::insertColumns(int column, int count, const QModelIndex &parent)
-{
-    beginInsertColumns(parent, column, column + count - 1);
-    endInsertColumns();
-    return true;
 }
