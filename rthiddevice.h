@@ -403,13 +403,13 @@ private:
     inline int xcCalibWriteData(IOHIDDeviceRef device, quint8 min, quint8 mid, quint8 max);
     inline int xcCalibWriteEnd(IOHIDDeviceRef device);
     //--
-    inline int talkWriteReport(IOHIDDeviceRef device, TyonTalk *talk);
+    inline int talkWriteReport(IOHIDDeviceRef device);
     inline int talkWriteKey(IOHIDDeviceRef device, quint8 easyshift, quint8 easyshift_lock, quint8 easyaim);
     inline int talkWriteEasyshift(IOHIDDeviceRef device, quint8 state);
     inline int talkWriteEasyshiftLock(IOHIDDeviceRef device, quint8 state);
     inline int talkWriteEasyAim(IOHIDDeviceRef device, quint8 state);
     //--
-    inline int talkWriteFxData(IOHIDDeviceRef device, TyonTalk *talk);
+    inline int talkWriteFxData(IOHIDDeviceRef device);
     inline int talkWriteFxState(IOHIDDeviceRef device, quint8 state);
     inline int talkWriteFx(IOHIDDeviceRef device, quint32 effect, quint32 ambient_color, quint32 event_color);
 };

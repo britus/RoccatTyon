@@ -998,5 +998,5 @@ void RTMainWindow::onControlUnitChanged(const TyonControlUnit &controlUnit)
 
 void RTMainWindow::onTalkFxChanged(const TyonTalk &talkFx)
 {
-    ui->cbxTalkFx->setChecked(talkFx.fx_status == ROCCAT_TALKFX_STATE_ON);
+    ui->cbxTalkFx->setChecked(m_ctlr->talkFxState());
 }

@@ -558,20 +558,11 @@ void RTHidDevice::saveProfilesToDevice()
     connect(t, &QThread::started, this, [this, t, writeIndex, writeProfile]() { //
         IOReturn ret;
         foreach (IOHIDDeviceRef device, m_wrkrDevices) {
-            if ((ret = writeIndex(device)) != kIOReturnSuccess) {
-                goto thread_exit;
-            }
-            foreach (TProfile p, m_profiles) {
-                if (p.changed) {
-                    if ((ret = writeProfile(device, p)) != kIOReturnSuccess) {
-                        goto thread_exit;
-                    }
-                    updateProfileMap(&p, false);
-                }
-            }
+            /* update Talk FX */
             if ((ret = talkWriteFxState(device, m_talkFx.fx_status)) != kIOReturnSuccess) {
                 goto thread_exit;
             }
+            /* update TCU / DCU */
             if (m_controlUnit.tcu == TYON_TRACKING_CONTROL_UNIT_OFF) {
                 if ((ret = tcuWriteOff(device, (TyonControlUnitDcu) m_controlUnit.dcu)) != kIOReturnSuccess) {
                     goto thread_exit;
@@ -579,6 +570,19 @@ void RTHidDevice::saveProfilesToDevice()
             } else {
                 if ((ret = tcuWriteAccept(device, (TyonControlUnitDcu) m_controlUnit.dcu, m_controlUnit.median)) != kIOReturnSuccess) {
                     goto thread_exit;
+                }
+            }
+            /* set active profile */
+            if ((ret = writeIndex(device)) != kIOReturnSuccess) {
+                goto thread_exit;
+            }
+            /* write all profiles */
+            foreach (TProfile p, m_profiles) {
+                if (p.changed) {
+                    if ((ret = writeProfile(device, p)) != kIOReturnSuccess) {
+                        goto thread_exit;
+                    }
+                    updateProfileMap(&p, false);
                 }
             }
         }
@@ -1351,7 +1355,7 @@ QString RTHidDevice::profileName() const
 
 bool RTHidDevice::talkFxState() const
 {
-    return m_talkFx.fx_status == ROCCAT_TALKFX_STATE_ON;
+    return m_talkFx.fx_status != ROCCAT_TALKFX_STATE_OFF;
 }
 
 TyonControlUnitDcu RTHidDevice::dcuState() const
@@ -2092,7 +2096,7 @@ uint RTHidDevice::sensorMedianOfImage(TyonSensorImage const *image)
     ulong sum = 0;
     for (i = 0; i < TYON_SENSOR_IMAGE_SIZE * TYON_SENSOR_IMAGE_SIZE; ++i)
         sum += image->data[i];
-    return (uint)(sum /  (TYON_SENSOR_IMAGE_SIZE * TYON_SENSOR_IMAGE_SIZE));
+    return (uint) (sum / (TYON_SENSOR_IMAGE_SIZE * TYON_SENSOR_IMAGE_SIZE));
 }
 
 inline int RTHidDevice::xcCalibWriteStart(IOHIDDeviceRef device)
@@ -2228,7 +2232,7 @@ inline int RTHidDevice::selectMacro(IOHIDDeviceRef device, uint pix, uint dix, u
     return hidWriteRoccatCtl(device, _dix, _req);
 }
 
-inline int RTHidDevice::talkWriteReport(IOHIDDeviceRef device, TyonTalk *talk)
+inline int RTHidDevice::talkWriteReport(IOHIDDeviceRef device)
 {
     IOReturn ret;
 
@@ -2236,23 +2240,18 @@ inline int RTHidDevice::talkWriteReport(IOHIDDeviceRef device, TyonTalk *talk)
         return ret;
     }
 
-    talk->report_id = TYON_REPORT_ID_TALK;
-    talk->size = sizeof(TyonTalk);
-    return hidSetReportRaw(device, (const quint8 *) &talk, sizeof(TyonTalk));
+    m_talkFx.report_id = TYON_REPORT_ID_TALK;
+    m_talkFx.size = sizeof(TyonTalk);
+    return hidSetReportRaw(device, (const quint8 *) &m_talkFx, sizeof(TyonTalk));
 }
 
 inline int RTHidDevice::talkWriteKey(IOHIDDeviceRef device, quint8 easyshift, quint8 easyshift_lock, quint8 easyaim)
 {
-    TyonTalk talk;
-
-    memset(&talk, 0, sizeof(TyonTalk));
-
-    talk.easyshift = easyshift;
-    talk.easyshift_lock = easyshift_lock;
-    talk.easyaim = easyaim;
-    talk.fx_status = TYON_TALKFX_STATE_UNUSED;
-
-    return talkWriteReport(device, &talk);
+    m_talkFx.easyshift = easyshift;
+    m_talkFx.easyshift_lock = easyshift_lock;
+    m_talkFx.easyaim = easyaim;
+    m_talkFx.fx_status = TYON_TALKFX_STATE_UNUSED;
+    return talkWriteReport(device);
 }
 
 inline int RTHidDevice::talkWriteEasyshift(IOHIDDeviceRef device, quint8 state)
@@ -2270,44 +2269,44 @@ inline int RTHidDevice::talkWriteEasyAim(IOHIDDeviceRef device, quint8 state)
     return talkWriteKey(device, TYON_TALK_EASYSHIFT_UNUSED, TYON_TALK_EASYSHIFT_UNUSED, state);
 }
 
-inline int RTHidDevice::talkWriteFxData(IOHIDDeviceRef device, TyonTalk *talk)
+inline int RTHidDevice::talkWriteFxData(IOHIDDeviceRef device)
 {
-    talk->easyshift = TYON_TALK_EASYSHIFT_UNUSED;
-    talk->easyshift_lock = TYON_TALK_EASYSHIFT_UNUSED;
-    talk->easyaim = TYON_TALK_EASYAIM_UNUSED;
-    return talkWriteReport(device, talk);
+    m_talkFx.easyshift = TYON_TALK_EASYSHIFT_UNUSED;
+    m_talkFx.easyshift_lock = TYON_TALK_EASYSHIFT_UNUSED;
+    m_talkFx.easyaim = TYON_TALK_EASYAIM_UNUSED;
+    return talkWriteReport(device);
 }
 
 inline int RTHidDevice::talkWriteFx(IOHIDDeviceRef device, quint32 effect, quint32 ambient_color, quint32 event_color)
 {
-    TyonTalk talk;
     uint zone;
-
-    memset(&talk, 0, sizeof(TyonTalk));
-
-    talk.fx_status = ROCCAT_TALKFX_STATE_ON;
-
+    m_talkFx.fx_status = ROCCAT_TALKFX_STATE_ON;
     zone = (effect & ROCCAT_TALKFX_ZONE_BIT_MASK) >> ROCCAT_TALKFX_ZONE_BIT_SHIFT;
-    talk.zone = (zone == ROCCAT_TALKFX_ZONE_AMBIENT) ? TYON_TALKFX_ZONE_AMBIENT : TYON_TALKFX_ZONE_EVENT;
-
-    talk.effect = (effect & ROCCAT_TALKFX_EFFECT_BIT_MASK) >> ROCCAT_TALKFX_EFFECT_BIT_SHIFT;
-    talk.speed = (effect & ROCCAT_TALKFX_SPEED_BIT_MASK) >> ROCCAT_TALKFX_SPEED_BIT_SHIFT;
-    talk.ambient_red = (ambient_color & ROCCAT_TALKFX_COLOR_RED_MASK) >> ROCCAT_TALKFX_COLOR_RED_SHIFT;
-    talk.ambient_green = (ambient_color & ROCCAT_TALKFX_COLOR_GREEN_MASK) >> ROCCAT_TALKFX_COLOR_GREEN_SHIFT;
-    talk.ambient_blue = (ambient_color & ROCCAT_TALKFX_COLOR_BLUE_MASK) >> ROCCAT_TALKFX_COLOR_BLUE_SHIFT;
-    talk.event_red = (event_color & ROCCAT_TALKFX_COLOR_RED_MASK) >> ROCCAT_TALKFX_COLOR_RED_SHIFT;
-    talk.event_green = (event_color & ROCCAT_TALKFX_COLOR_GREEN_MASK) >> ROCCAT_TALKFX_COLOR_GREEN_SHIFT;
-    talk.event_blue = (event_color & ROCCAT_TALKFX_COLOR_BLUE_MASK) >> ROCCAT_TALKFX_COLOR_BLUE_SHIFT;
-
-    return talkWriteFxData(device, &talk);
+    m_talkFx.zone = (zone == ROCCAT_TALKFX_ZONE_AMBIENT) ? TYON_TALKFX_ZONE_AMBIENT : TYON_TALKFX_ZONE_EVENT;
+    m_talkFx.effect = (effect & ROCCAT_TALKFX_EFFECT_BIT_MASK) >> ROCCAT_TALKFX_EFFECT_BIT_SHIFT;
+    m_talkFx.speed = (effect & ROCCAT_TALKFX_SPEED_BIT_MASK) >> ROCCAT_TALKFX_SPEED_BIT_SHIFT;
+    m_talkFx.ambient_red = (ambient_color & ROCCAT_TALKFX_COLOR_RED_MASK) >> ROCCAT_TALKFX_COLOR_RED_SHIFT;
+    m_talkFx.ambient_green = (ambient_color & ROCCAT_TALKFX_COLOR_GREEN_MASK) >> ROCCAT_TALKFX_COLOR_GREEN_SHIFT;
+    m_talkFx.ambient_blue = (ambient_color & ROCCAT_TALKFX_COLOR_BLUE_MASK) >> ROCCAT_TALKFX_COLOR_BLUE_SHIFT;
+    m_talkFx.event_red = (event_color & ROCCAT_TALKFX_COLOR_RED_MASK) >> ROCCAT_TALKFX_COLOR_RED_SHIFT;
+    m_talkFx.event_green = (event_color & ROCCAT_TALKFX_COLOR_GREEN_MASK) >> ROCCAT_TALKFX_COLOR_GREEN_SHIFT;
+    m_talkFx.event_blue = (event_color & ROCCAT_TALKFX_COLOR_BLUE_MASK) >> ROCCAT_TALKFX_COLOR_BLUE_SHIFT;
+    return talkWriteFxData(device);
 }
 
 inline int RTHidDevice::talkWriteFxState(IOHIDDeviceRef device, quint8 state)
 {
-    TyonTalk talk;
-    memset(&talk, 0, sizeof(TyonTalk));
-    talk.fx_status = state;
-    return talkWriteFxData(device, &talk);
+    IOReturn ret;
+
+    if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+        return ret;
+    }
+
+    m_talkFx.report_id = TYON_REPORT_ID_TALK;
+    m_talkFx.size = sizeof(TyonTalk);
+    m_talkFx.fx_status = state;
+    const quint8 *buffer = (const quint8 *) &m_talkFx;
+    return hidSetReportRaw(device, buffer, sizeof(TyonTalk));
 }
 
 // Read ROCCAT Mouse report descriptor
@@ -2414,11 +2413,11 @@ inline int RTHidDevice::hidParseResponse(int rid, const quint8 *buffer, CFIndex)
             qDebug("[HIDDEV] SENSOR: action=%d reg=%d value=%d", p->action, p->reg, p->value);
             //#endif
             //if (p->action == 3 && p->value == 0) {
-                memcpy(&m_sensor, p, sizeof(TyonSensor));
-                emit sensorChanged(m_sensor);
+            memcpy(&m_sensor, p, sizeof(TyonSensor));
+            emit sensorChanged(m_sensor);
             //} else {
-                memcpy(&m_sensorImage, p, sizeof(TyonSensorImage));
-                emit sensorImageChanged(m_sensorImage);
+            memcpy(&m_sensorImage, p, sizeof(TyonSensorImage));
+            emit sensorImageChanged(m_sensorImage);
             //}
             break;
         }
