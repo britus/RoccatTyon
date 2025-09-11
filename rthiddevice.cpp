@@ -466,6 +466,9 @@ void RTHidDevice::lookupDevice()
         m_manager = nullptr;
         return;
     }
+
+    // hold loop in separated thread for monitoring
+    std::thread([]() { CFRunLoopRun(); }).detach();
 }
 
 void RTHidDevice::resetProfiles()
@@ -559,9 +562,10 @@ void RTHidDevice::saveProfilesToDevice()
         IOReturn ret;
         foreach (IOHIDDeviceRef device, m_wrkrDevices) {
             /* update Talk FX */
-            if ((ret = talkWriteFxState(device, m_talkFx.fx_status)) != kIOReturnSuccess) {
-                goto thread_exit;
-            }
+            //WIP: switch light of excep easyshift light effect (don't push all!)
+            //if ((ret = talkWriteFxData(device)) != kIOReturnSuccess) {
+            //    goto thread_exit;
+            //}
             /* update TCU / DCU */
             if (m_controlUnit.tcu == TYON_TRACKING_CONTROL_UNIT_OFF) {
                 if ((ret = tcuWriteOff(device, (TyonControlUnitDcu) m_controlUnit.dcu)) != kIOReturnSuccess) {
@@ -572,10 +576,12 @@ void RTHidDevice::saveProfilesToDevice()
                     goto thread_exit;
                 }
             }
+
             /* set active profile */
             if ((ret = writeIndex(device)) != kIOReturnSuccess) {
                 goto thread_exit;
             }
+
             /* write all profiles */
             foreach (TProfile p, m_profiles) {
                 if (p.changed) {
@@ -2267,9 +2273,9 @@ inline int RTHidDevice::talkWriteEasyAim(IOHIDDeviceRef device, quint8 state)
 
 inline int RTHidDevice::talkWriteFxData(IOHIDDeviceRef device)
 {
-    m_talkFx.easyshift = TYON_TALK_EASYSHIFT_UNUSED;
-    m_talkFx.easyshift_lock = TYON_TALK_EASYSHIFT_UNUSED;
-    m_talkFx.easyaim = TYON_TALK_EASYAIM_UNUSED;
+    //m_talkFx.easyshift = TYON_TALK_EASYSHIFT_UNUSED;
+    //m_talkFx.easyshift_lock = TYON_TALK_EASYSHIFT_UNUSED;
+    //m_talkFx.easyaim = TYON_TALK_EASYAIM_UNUSED;
     return talkWriteReport(device);
 }
 
