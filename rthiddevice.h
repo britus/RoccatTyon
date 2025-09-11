@@ -27,7 +27,6 @@ public:
         QString name;
         quint8 index;
         bool changed;
-        quint8 talkFxState;
         TyonProfileSettings settings;
         TyonProfileButtons buttons;
     } TProfile;
@@ -189,6 +188,7 @@ signals:
     void sensorImageChanged(const TyonSensorImage &image);
     void sensorMedianChanged(int median);
     void specialReport(uint reportId, const QByteArray &report);
+    void talkFxChanged(const TyonTalk &talkFx);
 
     //public slots:
     void reportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
@@ -343,6 +343,7 @@ private:
     TyonControlUnit m_controlUnit;
     TyonSensor m_sensor;
     TyonSensorImage m_sensorImage;
+    TyonTalk m_talkFx;
     dispatch_queue_t m_hidQueue;
 
     uint8_t m_cbReportBuffer[4096];
@@ -401,6 +402,16 @@ private:
     inline int xcCalibWriteStart(IOHIDDeviceRef device);
     inline int xcCalibWriteData(IOHIDDeviceRef device, quint8 min, quint8 mid, quint8 max);
     inline int xcCalibWriteEnd(IOHIDDeviceRef device);
+    //--
+    inline int talkWriteReport(IOHIDDeviceRef device, TyonTalk *talk);
+    inline int talkWriteKey(IOHIDDeviceRef device, quint8 easyshift, quint8 easyshift_lock, quint8 easyaim);
+    inline int talkWriteEasyshift(IOHIDDeviceRef device, quint8 state);
+    inline int talkWriteEasyshiftLock(IOHIDDeviceRef device, quint8 state);
+    inline int talkWriteEasyAim(IOHIDDeviceRef device, quint8 state);
+    //--
+    inline int talkWriteFxData(IOHIDDeviceRef device, TyonTalk *talk);
+    inline int talkWriteFxState(IOHIDDeviceRef device, quint8 state);
+    inline int talkWriteFx(IOHIDDeviceRef device, quint32 effect, quint32 ambient_color, quint32 event_color);
 };
 
 Q_DECLARE_METATYPE(TyonInfo);
@@ -412,6 +423,7 @@ Q_DECLARE_METATYPE(TyonButtonType);
 Q_DECLARE_METATYPE(TyonControlUnit);
 Q_DECLARE_METATYPE(TyonSensor);
 Q_DECLARE_METATYPE(TyonSensorImage);
+Q_DECLARE_METATYPE(TyonTalk);
 Q_DECLARE_METATYPE(RTHidDevice::TProfile);
 Q_DECLARE_METATYPE(RTHidDevice::TProfiles);
 Q_DECLARE_METATYPE(RTHidDevice::TColorItem);

@@ -31,6 +31,7 @@ private slots:
     void onSettingsChanged(const TyonProfileSettings &settings);
     void onButtonsChanged(const TyonProfileButtons &buttons);
     void onControlUnitChanged(const TyonControlUnit &controlUnit);
+    void onTalkFxChanged(const TyonTalk &talkFx);
     void onDeviceWorkerStarted();
     void onDeviceWorkerFinished();
 

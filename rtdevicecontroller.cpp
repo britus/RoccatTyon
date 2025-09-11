@@ -30,6 +30,7 @@ RTDeviceController::RTDeviceController(QObject *parent)
     connect(&m_device, &RTHidDevice::sensorChanged, this, &RTDeviceController::onSensorChanged, ct);
     connect(&m_device, &RTHidDevice::sensorImageChanged, this, &RTDeviceController::onSensorImageChanged, ct);
     connect(&m_device, &RTHidDevice::specialReport, this, &RTDeviceController::onSpecialReport, ct);
+    connect(&m_device, &RTHidDevice::talkFxChanged, this, &RTDeviceController::onTalkFxChanged, ct);
 }
 
 inline void RTDeviceController::initPhysicalButtons()
@@ -508,6 +509,11 @@ void RTDeviceController::onSensorMedianChanged(int median)
 void RTDeviceController::onSpecialReport(uint reportId, const QByteArray &report)
 {
     emit specialReport(reportId, report);
+}
+
+void RTDeviceController::onTalkFxChanged(const TyonTalk &talkFx)
+{
+    emit talkFxChanged(talkFx);
 }
 
 QVariant RTDeviceController::headerData(int section, Qt::Orientation orientation, int role) const

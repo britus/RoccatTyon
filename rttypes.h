@@ -581,3 +581,87 @@ typedef enum {
     TYON_SPECIAL_ACTION_PRESS = 0x00,
     TYON_SPECIAL_ACTION_RELEASE = 0x01,
 } TyonSpecialAction;
+
+struct _TyonTalk
+{
+    quint8 report_id; /* TYON_REPORT_ID_TALK */
+    quint8 size;      /* always 16 */
+    quint8 easyshift;
+    quint8 easyshift_lock;
+    quint8 easyaim;
+    quint8 fx_status;
+    quint8 zone;
+    quint8 unused;
+    quint8 effect;
+    quint8 speed;
+    quint8 ambient_red;
+    quint8 ambient_green;
+    quint8 ambient_blue;
+    quint8 event_red;
+    quint8 event_green;
+    quint8 event_blue;
+} __attribute__((packed));
+typedef struct _TyonTalk TyonTalk;
+
+/* also valid as TyonTalkEasyshiftLock */
+typedef enum {
+    TYON_TALK_EASYSHIFT_OFF = 0,
+    TYON_TALK_EASYSHIFT_ON = 1,
+    TYON_TALK_EASYSHIFT_UNUSED = 0xff,
+} TyonTalkEasyshift;
+
+typedef enum {
+    TYON_TALK_EASYAIM_OFF = 0,
+    TYON_TALK_EASYAIM_1 = 1,
+    TYON_TALK_EASYAIM_2 = 2,
+    TYON_TALK_EASYAIM_3 = 3,
+    TYON_TALK_EASYAIM_4 = 4,
+    TYON_TALK_EASYAIM_5 = 5,
+    TYON_TALK_EASYAIM_UNUSED = 0xff,
+} TyonTalkEasyaim;
+
+typedef enum {
+    TYON_TALKFX_ZONE_EVENT = 4,
+    TYON_TALKFX_ZONE_AMBIENT = 3,
+} TyonTalkfxZone;
+
+typedef enum {
+    ROCCAT_TALKFX_STATE_OFF = 0x00,
+    ROCCAT_TALKFX_STATE_ON = 0x01,
+    TYON_TALKFX_STATE_UNUSED = 0xff,
+} TyonTalkfxState;
+
+typedef enum {
+    ROCCAT_TALKFX_ZONE_AMBIENT = 0x00,
+    ROCCAT_TALKFX_ZONE_EVENT = 0x01,
+    ROCCAT_TALKFX_ZONE_BIT_MASK = 0x00ff0000,
+    ROCCAT_TALKFX_ZONE_BIT_SHIFT = 16,
+} RoccatTalkfxZone;
+
+typedef enum {
+    ROCCAT_TALKFX_EFFECT_OFF = 0x00,
+    ROCCAT_TALKFX_EFFECT_ON = 0x01,
+    ROCCAT_TALKFX_EFFECT_BLINKING = 0x02,
+    ROCCAT_TALKFX_EFFECT_BREATHING = 0x03,
+    ROCCAT_TALKFX_EFFECT_HEARTBEAT = 0x04, /* not supported by IskuFX */
+    ROCCAT_TALKFX_EFFECT_BIT_MASK = 0x0000ff00,
+    ROCCAT_TALKFX_EFFECT_BIT_SHIFT = 8,
+} RoccatTalkfxEffect;
+
+typedef enum {
+    ROCCAT_TALKFX_SPEED_OFF = 0x00,
+    ROCCAT_TALKFX_SPEED_SLOW = 0x01,
+    ROCCAT_TALKFX_SPEED_NORMAL = 0x02,
+    ROCCAT_TALKFX_SPEED_FAST = 0x03,
+    ROCCAT_TALKFX_SPEED_BIT_MASK = 0x000000ff,
+    ROCCAT_TALKFX_SPEED_BIT_SHIFT = 0,
+} RoccatTalkfxSpeed;
+
+typedef enum {
+    ROCCAT_TALKFX_COLOR_RED_MASK = 0x00ff0000,
+    ROCCAT_TALKFX_COLOR_GREEN_MASK = 0x0000ff00,
+    ROCCAT_TALKFX_COLOR_BLUE_MASK = 0x000000ff,
+    ROCCAT_TALKFX_COLOR_RED_SHIFT = 16,
+    ROCCAT_TALKFX_COLOR_GREEN_SHIFT = 8,
+    ROCCAT_TALKFX_COLOR_BLUE_SHIFT = 0,
+} RoccatTalkfxColor;

@@ -310,6 +310,7 @@ signals:
     void sensorChanged(const TyonSensor &sensor);
     void sensorImageChanged(const TyonSensorImage &image);
     void sensorMedianChanged(int median);
+    void talkFxChanged(const TyonTalk &talkFx);
 
 private slots:
     void onLookupStarted();
@@ -326,6 +327,7 @@ private slots:
     void onSensorImageChanged(const TyonSensorImage &image);
     void onSensorMedianChanged(int median);
     void onSpecialReport(uint reportId, const QByteArray &report);
+    void onTalkFxChanged(const TyonTalk &talkFx);
 
 private:
     RTHidDevice m_device;

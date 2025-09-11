@@ -287,6 +287,8 @@ inline void RTMainWindow::initializeUiElements()
 inline void RTMainWindow::connectController()
 {
     Qt::ConnectionType ct = Qt::DirectConnection;
+    connect(m_ctlr, &RTDeviceController::deviceWorkerStarted, this, &RTMainWindow::onDeviceWorkerStarted, ct);
+    connect(m_ctlr, &RTDeviceController::deviceWorkerFinished, this, &RTMainWindow::onDeviceWorkerFinished, ct);
     connect(m_ctlr, &RTDeviceController::lookupStarted, this, &RTMainWindow::onLookupStarted, ct);
     connect(m_ctlr, &RTDeviceController::deviceFound, this, &RTMainWindow::onDeviceFound, ct);
     connect(m_ctlr, &RTDeviceController::deviceRemoved, this, &RTMainWindow::onDeviceRemoved, ct);
@@ -296,8 +298,7 @@ inline void RTMainWindow::connectController()
     connect(m_ctlr, &RTDeviceController::settingsChanged, this, &RTMainWindow::onSettingsChanged, ct);
     connect(m_ctlr, &RTDeviceController::buttonsChanged, this, &RTMainWindow::onButtonsChanged, ct);
     connect(m_ctlr, &RTDeviceController::controlUnitChanged, this, &RTMainWindow::onControlUnitChanged, ct);
-    connect(m_ctlr, &RTDeviceController::deviceWorkerStarted, this, &RTMainWindow::onDeviceWorkerStarted, ct);
-    connect(m_ctlr, &RTDeviceController::deviceWorkerFinished, this, &RTMainWindow::onDeviceWorkerFinished, ct);
+    connect(m_ctlr, &RTDeviceController::talkFxChanged, this, &RTMainWindow::onTalkFxChanged, ct);
 }
 
 inline void RTMainWindow::connectActions()
@@ -993,18 +994,9 @@ void RTMainWindow::onControlUnitChanged(const TyonControlUnit &controlUnit)
             break;
         }
     }
-    switch (controlUnit.action) {
-        case TYON_CONTROL_UNIT_ACTION_OFF: {
-            break;
-        }
-        case TYON_CONTROL_UNIT_ACTION_ACCEPT: {
-            break;
-        }
-        case TYON_CONTROL_UNIT_ACTION_CANCEL: {
-            break;
-        }
-        case TYON_CONTROL_UNIT_ACTION_UNDEFINED: {
-            break;
-        }
-    }
+}
+
+void RTMainWindow::onTalkFxChanged(const TyonTalk &talkFx)
+{
+    ui->cbxTalkFx->setChecked(talkFx.fx_status == ROCCAT_TALKFX_STATE_ON);
 }

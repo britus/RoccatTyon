@@ -568,6 +568,18 @@ void RTHidDevice::saveProfilesToDevice()
                     updateProfileMap(&p, false);
                 }
             }
+            if ((ret = talkWriteFxState(device, m_talkFx.fx_status)) != kIOReturnSuccess) {
+                goto thread_exit;
+            }
+            if (m_controlUnit.tcu == TYON_TRACKING_CONTROL_UNIT_OFF) {
+                if ((ret = tcuWriteOff(device, (TyonControlUnitDcu) m_controlUnit.dcu)) != kIOReturnSuccess) {
+                    goto thread_exit;
+                }
+            } else {
+                if ((ret = tcuWriteAccept(device, (TyonControlUnitDcu) m_controlUnit.dcu, m_controlUnit.median)) != kIOReturnSuccess) {
+                    goto thread_exit;
+                }
+            }
         }
     thread_exit:
         t->exit(ret);
@@ -1248,13 +1260,7 @@ void RTHidDevice::setColorFlow(quint8 value)
 
 void RTHidDevice::setTalkFxState(bool state)
 {
-    if (m_profiles.contains(profileIndex())) {
-        TProfile p = m_profiles[profileIndex()];
-        if (p.talkFxState != state) {
-            p.talkFxState = state;
-            updateProfileMap(&p, true);
-        }
-    }
+    m_talkFx.fx_status = (state ? ROCCAT_TALKFX_STATE_ON : ROCCAT_TALKFX_STATE_OFF);
 }
 
 void RTHidDevice::setDcuState(TyonControlUnitDcu state)
@@ -1344,10 +1350,7 @@ QString RTHidDevice::profileName() const
 
 bool RTHidDevice::talkFxState() const
 {
-    if (m_profiles.contains(profileIndex())) {
-        return m_profiles[profileIndex()].talkFxState;
-    }
-    return false;
+    return m_talkFx.fx_status == ROCCAT_TALKFX_STATE_ON;
 }
 
 TyonControlUnitDcu RTHidDevice::dcuState() const
@@ -1560,25 +1563,31 @@ void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
 #endif
         /* read device control state */
         if ((ret = readDeviceControl(device)) != kIOReturnSuccess) {
-            emit deviceError(ret, "Unable to read device control state.");
+            raiseError(ret, "Unable to read device control state.");
             goto error_exit;
         }
 
         /* read device control unit */
         if ((ret = readDeviceControlUnit(device)) != kIOReturnSuccess) {
-            emit deviceError(ret, "Unable to read device control unit.");
+            raiseError(ret, "Unable to read device control unit.");
+            goto error_exit;
+        }
+
+        /* read talk-fx status */
+        if ((ret = readDeviceTalk(device)) != kIOReturnSuccess) {
+            raiseError(ret, "Unable to read device Talk-FX status.");
             goto error_exit;
         }
 
         /* read firmware release */
         if ((ret = readDeviceInfo(device)) != kIOReturnSuccess) {
-            emit deviceError(ret, "Unable to read device info.");
+            raiseError(ret, "Unable to read device info.");
             goto error_exit;
         }
 
         /* read current profile number */
         if ((ret = readActiveProfile(device)) != kIOReturnSuccess) {
-            emit deviceError(ret, "Unable to read device profile.");
+            raiseError(ret, "Unable to read device profile.");
             goto error_exit;
         }
 
@@ -1592,14 +1601,14 @@ void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
                     qInfo("[HIDDEV] Device '%p' isn't control. Set as misc device.", device);
                     goto skip_exit;
                 }
-                emit deviceError(ret, "Unable to read device profile.");
+                raiseError(ret, "Unable to read device profile.");
                 goto error_exit;
             }
         }
 
         /* read control unit */
         if ((ret = readDeviceControlUnit(device)) != kIOReturnSuccess) {
-            emit deviceError(ret, "Unable to read control unit.");
+            raiseError(ret, "Unable to read control unit.");
             goto error_exit;
         }
 
@@ -1617,7 +1626,7 @@ void RTHidDevice::onDeviceFound(IOHIDDeviceRef device)
 
     error_exit:
         IOHIDDeviceClose(device, kIOHIDOptionsTypeSeizeDevice);
-        emit deviceError(ENODEV, "Unable to load device data.");
+        //ret = raiseError(kIOReturnIOError, "Unable to load device data.");
 
     func_exit:
         t->exit(ret);
@@ -1861,7 +1870,7 @@ inline int RTHidDevice::readDeviceSpecial(IOHIDDeviceRef device)
 
 inline int RTHidDevice::readDeviceControl(IOHIDDeviceRef device)
 {
-    return hidGetReportById(device, TYON_REPORT_ID_CONTROL, 3);
+    return hidGetReportById(device, TYON_REPORT_ID_CONTROL, sizeof(RoccatControl));
 }
 
 inline int RTHidDevice::readActiveProfile(IOHIDDeviceRef device)
@@ -1884,14 +1893,19 @@ inline int RTHidDevice::readDeviceInfo(IOHIDDeviceRef device)
     return hidGetReportById(device, TYON_REPORT_ID_INFO, sizeof(TyonInfo));
 }
 
+inline int RTHidDevice::readDeviceTalk(IOHIDDeviceRef device)
+{
+    return hidGetReportById(device, TYON_REPORT_ID_TALK, sizeof(TyonTalk));
+}
+
+inline int RTHidDevice::readDeviceControlUnit(IOHIDDeviceRef device)
+{
+    return hidGetReportById(device, TYON_REPORT_ID_CONTROL_UNIT, sizeof(TyonControlUnit));
+}
+
 inline int RTHidDevice::readDevice0A(IOHIDDeviceRef device)
 {
     return hidGetReportById(device, TYON_REPORT_ID_A, 8);
-}
-
-inline int RTHidDevice::readDeviceTalk(IOHIDDeviceRef device)
-{
-    return hidGetReportById(device, TYON_REPORT_ID_TALK, 16);
 }
 
 inline int RTHidDevice::readDevice11(IOHIDDeviceRef device)
@@ -1904,13 +1918,14 @@ inline int RTHidDevice::readDevice1A(IOHIDDeviceRef device)
     return hidGetReportById(device, TYON_REPORT_ID_1A, 1029);
 }
 
-inline int RTHidDevice::readDeviceControlUnit(IOHIDDeviceRef device)
-{
-    return hidGetReportById(device, TYON_REPORT_ID_CONTROL_UNIT, sizeof(TyonControlUnit));
-}
-
 inline int RTHidDevice::tcuWriteTest(IOHIDDeviceRef device, TyonControlUnitDcu dcuState, uint median)
 {
+    IOReturn ret;
+
+    if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+        return ret;
+    }
+
     TyonControlUnit control;
     control.report_id = TYON_REPORT_ID_CONTROL_UNIT;
     control.size = sizeof(TyonControlUnit);
@@ -1923,6 +1938,12 @@ inline int RTHidDevice::tcuWriteTest(IOHIDDeviceRef device, TyonControlUnitDcu d
 
 inline int RTHidDevice::tcuWriteAccept(IOHIDDeviceRef device, TyonControlUnitDcu dcuState, uint median)
 {
+    IOReturn ret;
+
+    if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+        return ret;
+    }
+
     TyonControlUnit control;
     control.report_id = TYON_REPORT_ID_CONTROL_UNIT;
     control.size = sizeof(TyonControlUnit);
@@ -1935,6 +1956,12 @@ inline int RTHidDevice::tcuWriteAccept(IOHIDDeviceRef device, TyonControlUnitDcu
 
 inline int RTHidDevice::tcuWriteOff(IOHIDDeviceRef device, TyonControlUnitDcu dcuState)
 {
+    IOReturn ret;
+
+    if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+        return ret;
+    }
+
     TyonControlUnit control;
     control.report_id = TYON_REPORT_ID_CONTROL_UNIT;
     control.size = sizeof(TyonControlUnit);
@@ -1947,6 +1974,12 @@ inline int RTHidDevice::tcuWriteOff(IOHIDDeviceRef device, TyonControlUnitDcu dc
 
 inline int RTHidDevice::tcuWriteTry(IOHIDDeviceRef device, TyonControlUnitDcu dcuState)
 {
+    IOReturn ret;
+
+    if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+        return ret;
+    }
+
     TyonControlUnit control;
     control.report_id = TYON_REPORT_ID_CONTROL_UNIT;
     control.size = sizeof(TyonControlUnit);
@@ -2194,6 +2227,88 @@ inline int RTHidDevice::selectMacro(IOHIDDeviceRef device, uint pix, uint dix, u
     return hidWriteRoccatCtl(device, _dix, _req);
 }
 
+inline int RTHidDevice::talkWriteReport(IOHIDDeviceRef device, TyonTalk *talk)
+{
+    IOReturn ret;
+
+    if ((ret = hidCheckWrite(device)) != kIOReturnSuccess) {
+        return ret;
+    }
+
+    talk->report_id = TYON_REPORT_ID_TALK;
+    talk->size = sizeof(TyonTalk);
+    return hidSetReportRaw(device, (const quint8 *) &talk, sizeof(TyonTalk));
+}
+
+inline int RTHidDevice::talkWriteKey(IOHIDDeviceRef device, quint8 easyshift, quint8 easyshift_lock, quint8 easyaim)
+{
+    TyonTalk talk;
+
+    memset(&talk, 0, sizeof(TyonTalk));
+
+    talk.easyshift = easyshift;
+    talk.easyshift_lock = easyshift_lock;
+    talk.easyaim = easyaim;
+    talk.fx_status = TYON_TALKFX_STATE_UNUSED;
+
+    return talkWriteReport(device, &talk);
+}
+
+inline int RTHidDevice::talkWriteEasyshift(IOHIDDeviceRef device, quint8 state)
+{
+    return talkWriteKey(device, state, TYON_TALK_EASYSHIFT_UNUSED, TYON_TALK_EASYAIM_UNUSED);
+}
+
+inline int RTHidDevice::talkWriteEasyshiftLock(IOHIDDeviceRef device, quint8 state)
+{
+    return talkWriteKey(device, TYON_TALK_EASYSHIFT_UNUSED, state, TYON_TALK_EASYAIM_UNUSED);
+}
+
+inline int RTHidDevice::talkWriteEasyAim(IOHIDDeviceRef device, quint8 state)
+{
+    return talkWriteKey(device, TYON_TALK_EASYSHIFT_UNUSED, TYON_TALK_EASYSHIFT_UNUSED, state);
+}
+
+inline int RTHidDevice::talkWriteFxData(IOHIDDeviceRef device, TyonTalk *talk)
+{
+    talk->easyshift = TYON_TALK_EASYSHIFT_UNUSED;
+    talk->easyshift_lock = TYON_TALK_EASYSHIFT_UNUSED;
+    talk->easyaim = TYON_TALK_EASYAIM_UNUSED;
+    return talkWriteReport(device, talk);
+}
+
+inline int RTHidDevice::talkWriteFx(IOHIDDeviceRef device, quint32 effect, quint32 ambient_color, quint32 event_color)
+{
+    TyonTalk talk;
+    uint zone;
+
+    memset(&talk, 0, sizeof(TyonTalk));
+
+    talk.fx_status = ROCCAT_TALKFX_STATE_ON;
+
+    zone = (effect & ROCCAT_TALKFX_ZONE_BIT_MASK) >> ROCCAT_TALKFX_ZONE_BIT_SHIFT;
+    talk.zone = (zone == ROCCAT_TALKFX_ZONE_AMBIENT) ? TYON_TALKFX_ZONE_AMBIENT : TYON_TALKFX_ZONE_EVENT;
+
+    talk.effect = (effect & ROCCAT_TALKFX_EFFECT_BIT_MASK) >> ROCCAT_TALKFX_EFFECT_BIT_SHIFT;
+    talk.speed = (effect & ROCCAT_TALKFX_SPEED_BIT_MASK) >> ROCCAT_TALKFX_SPEED_BIT_SHIFT;
+    talk.ambient_red = (ambient_color & ROCCAT_TALKFX_COLOR_RED_MASK) >> ROCCAT_TALKFX_COLOR_RED_SHIFT;
+    talk.ambient_green = (ambient_color & ROCCAT_TALKFX_COLOR_GREEN_MASK) >> ROCCAT_TALKFX_COLOR_GREEN_SHIFT;
+    talk.ambient_blue = (ambient_color & ROCCAT_TALKFX_COLOR_BLUE_MASK) >> ROCCAT_TALKFX_COLOR_BLUE_SHIFT;
+    talk.event_red = (event_color & ROCCAT_TALKFX_COLOR_RED_MASK) >> ROCCAT_TALKFX_COLOR_RED_SHIFT;
+    talk.event_green = (event_color & ROCCAT_TALKFX_COLOR_GREEN_MASK) >> ROCCAT_TALKFX_COLOR_GREEN_SHIFT;
+    talk.event_blue = (event_color & ROCCAT_TALKFX_COLOR_BLUE_MASK) >> ROCCAT_TALKFX_COLOR_BLUE_SHIFT;
+
+    return talkWriteFxData(device, &talk);
+}
+
+inline int RTHidDevice::talkWriteFxState(IOHIDDeviceRef device, quint8 state)
+{
+    TyonTalk talk;
+    memset(&talk, 0, sizeof(TyonTalk));
+    talk.fx_status = state;
+    return talkWriteFxData(device, &talk);
+}
+
 // Read ROCCAT Mouse report descriptor
 inline int RTHidDevice::hidParseResponse(int rid, const quint8 *buffer, CFIndex)
 {
@@ -2313,6 +2428,12 @@ inline int RTHidDevice::hidParseResponse(int rid, const quint8 *buffer, CFIndex)
 #endif
             break;
         }
+        /* Talk-FX */
+        case TYON_REPORT_ID_TALK: {
+            TyonTalk *p = (TyonTalk *) buffer;
+            memcpy(&m_talkFx, p, sizeof(TyonTalk));
+            emit talkFxChanged(m_talkFx);
+        }
         default: {
             qDebug("[HIDDEV] RID UNHANDLED: rid=%d", rid);
             break;
@@ -2394,18 +2515,15 @@ inline int RTHidDevice::hidCheckWrite(IOHIDDeviceRef device)
             }
             case ROCCAT_CONTROL_VALUE_STATUS_CRITICAL_1:
             case ROCCAT_CONTROL_VALUE_STATUS_CRITICAL_2: {
-                emit deviceError(buffer->value, tr("Got critical status"));
-                ret = kIOReturnIOError;
+                ret = raiseError(buffer->value, tr("Got critical status"));
                 break;
             }
             case ROCCAT_CONTROL_VALUE_STATUS_INVALID: {
-                emit deviceError(buffer->value, tr("Got invalid status"));
-                ret = kIOReturnIOError;
+                ret = raiseError(buffer->value, tr("Got invalid status"));
                 break;
             }
             default: {
-                emit deviceError(buffer->value, tr("Got unknown error"));
-                ret = kIOReturnIOError;
+                ret = raiseError(buffer->value, tr("Got unknown error"));
                 break;
             }
         }
