@@ -27,6 +27,7 @@ public:
         QString name;
         quint8 index;
         bool changed;
+        quint8 talkFxState;
         TyonProfileSettings settings;
         TyonProfileButtons buttons;
     } TProfile;
@@ -166,7 +167,12 @@ public:
     quint8 maximumXCelerate() const;
     quint8 middleXCelerate() const;
 
-    uint medianOfSensorImage(TyonSensorImage const *image);
+    uint sensorMedianOfImage(TyonSensorImage const *image);
+
+    bool talkFxState() const;
+    TyonControlUnitDcu dcuState() const;
+    TyonControlUnitTcu tcuState() const;
+    uint tcuMedian() const;
 
 signals:
     void lookupStarted();
@@ -181,6 +187,7 @@ signals:
     void controlUnitChanged(const TyonControlUnit &controlUnit);
     void sensorChanged(const TyonSensor &sensor);
     void sensorImageChanged(const TyonSensorImage &image);
+    void sensorMedianChanged(int median);
     void specialReport(uint reportId, const QByteArray &report);
 
     //public slots:
@@ -297,9 +304,22 @@ public slots:
      */
     void setColorFlow(quint8 value);
 
+    void setTalkFxState(bool state);
+    void setDcuState(TyonControlUnitDcu state);
+    void setTcuState(TyonControlUnitTcu state);
+
+    // X-Celerator calibration
     void xcStartCalibration();
     void xcStopCalibration();
     void xcApplyCalibration(quint8 min, quint8 mid, quint8 max);
+
+    // TCU calibration
+    void tcuSensorTest(TyonControlUnitDcu dcuState, uint median);
+    void tcuSensorAccept(TyonControlUnitDcu dcuState, uint median);
+    void tcuSensorCancel(TyonControlUnitDcu dcuState);
+    void tcuSensorCaptureImage();
+    void tcuSensorReadImage();
+    int tcuSensorReadMedian(TyonSensorImage *image);
 
 public:
     void onDeviceFound(IOHIDDeviceRef device);
@@ -365,21 +385,18 @@ private:
     inline int readDevice11(IOHIDDeviceRef device);
     inline int readDevice1A(IOHIDDeviceRef device);
     //--
-    inline int tcuRead(IOHIDDeviceRef device);
-    inline int tcuWriteTest(IOHIDDeviceRef device, uint dcu, uint median);
-    inline int tcuWriteAccept(IOHIDDeviceRef device, uint dcu, uint median);
-    inline int tcuWriteCancel(IOHIDDeviceRef device, uint dcu);
-    inline int tcuWriteOff(IOHIDDeviceRef device, uint dcu);
-    //--
-    inline int dcuRead(IOHIDDeviceRef device);
-    inline int dcuWriteTry(IOHIDDeviceRef device, uint newdcu);
-    inline int dcuWriteCancel(IOHIDDeviceRef device, uint olddcu);
-    inline int dcuWriteAccept(IOHIDDeviceRef device, uint newdcu);
+    inline int tcuWriteTest(IOHIDDeviceRef device, TyonControlUnitDcu dcuState, uint median);
+    inline int tcuWriteAccept(IOHIDDeviceRef device, TyonControlUnitDcu dcuState, uint median);
+    inline int tcuWriteCancel(IOHIDDeviceRef device, TyonControlUnitDcu dcuState);
+    inline int tcuWriteOff(IOHIDDeviceRef device, TyonControlUnitDcu dcuState);
+    inline int tcuWriteTry(IOHIDDeviceRef device, TyonControlUnitDcu dcuState);
+    // --
+    inline int dcuWriteState(IOHIDDeviceRef device, TyonControlUnitDcu dcuState);
     //--
     inline int sensorWriteStruct(IOHIDDeviceRef device, quint8 action, quint8 reg, quint8 value);
     inline int sensorWriteRegister(IOHIDDeviceRef device, quint8 reg, quint8 value);
     inline int sensorReadRegister(IOHIDDeviceRef device, quint8 reg);
-    inline int sensorCalibrateStep(IOHIDDeviceRef device);
+    inline int sensorCaptureImage(IOHIDDeviceRef device);
     //--
     inline int xcCalibWriteStart(IOHIDDeviceRef device);
     inline int xcCalibWriteData(IOHIDDeviceRef device, quint8 min, quint8 mid, quint8 max);

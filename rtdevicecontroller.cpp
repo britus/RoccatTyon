@@ -302,6 +302,36 @@ void RTDeviceController::setLightColor(TyonLightType target, const TyonLight &li
     m_device.setLightColor(target, light);
 }
 
+void RTDeviceController::setTalkFxState(bool state)
+{
+    m_device.setTalkFxState(state);
+}
+
+bool RTDeviceController::talkFxState() const
+{
+    return m_device.talkFxState();
+}
+
+void RTDeviceController::setDcuState(TyonControlUnitDcu state)
+{
+    m_device.setDcuState(state);
+}
+
+TyonControlUnitDcu RTDeviceController::dcuState() const
+{
+    return m_device.dcuState();
+}
+
+void RTDeviceController::setTcuState(TyonControlUnitTcu state)
+{
+    m_device.setTcuState(state);
+}
+
+TyonControlUnitTcu RTDeviceController::tcuState() const
+{
+    return m_device.tcuState();
+}
+
 QString RTDeviceController::profileName() const
 {
     return m_device.profileName();
@@ -337,6 +367,11 @@ QColor RTDeviceController::toScreenColor(const TyonLight &light, bool isCustomCo
     return m_device.toScreenColor(light, isCustomColor);
 }
 
+uint RTDeviceController::tcuMedian() const
+{
+    return m_device.tcuMedian();
+}
+
 quint8 RTDeviceController::minimumXCelerate() const
 {
     return m_device.minimumXCelerate();
@@ -364,6 +399,36 @@ void RTDeviceController::xcStopCalibration()
 void RTDeviceController::xcApplyCalibration(quint8 min, quint8 mid, quint8 max)
 {
     m_device.xcApplyCalibration(min, mid, max);
+}
+
+void RTDeviceController::tcuSensorTest(TyonControlUnitDcu dcuState, uint median)
+{
+    m_device.tcuSensorTest(dcuState, median);
+}
+
+void RTDeviceController::tcuSensorAccept(TyonControlUnitDcu dcuState, uint median)
+{
+    m_device.tcuSensorAccept(dcuState, median);
+}
+
+void RTDeviceController::tcuSensorCancel(TyonControlUnitDcu dcuState)
+{
+    m_device.tcuSensorCancel(dcuState);
+}
+
+void RTDeviceController::tcuSensorCaptureImage()
+{
+    m_device.tcuSensorCaptureImage();
+}
+
+void RTDeviceController::tcuSensorReadImage()
+{
+    m_device.tcuSensorReadImage();
+}
+
+int RTDeviceController::tcuSensorReadMedian(TyonSensorImage *image)
+{
+    return m_device.tcuSensorReadMedian(image);
 }
 
 void RTDeviceController::onLookupStarted()
@@ -433,6 +498,11 @@ void RTDeviceController::onSensorChanged(const TyonSensor &sensor)
 void RTDeviceController::onSensorImageChanged(const TyonSensorImage &image)
 {
     emit sensorImageChanged(image);
+}
+
+void RTDeviceController::onSensorMedianChanged(int median)
+{
+    emit sensorMedianChanged(median);
 }
 
 void RTDeviceController::onSpecialReport(uint reportId, const QByteArray &report)

@@ -74,7 +74,9 @@ SOURCES += \
     rthiddevice.cpp \
     rtmainwindow.cpp \
     rtprogress.cpp \
-    rtshortcutdialog.cpp
+    rtshortcutdialog.cpp \
+    rttcuimagewidget.cpp \
+    rtxceleratorwidget.cpp
 
 HEADERS += \
     hid_uid.h \
@@ -87,7 +89,9 @@ HEADERS += \
     rtmainwindow.h \
     rtprogress.h \
     rtshortcutdialog.h \
-    rttypes.h
+    rttcuimagewidget.h \
+    rttypes.h \
+    rtxceleratorwidget.h
 
 FORMS += \
     rtcalibratetcudialog.ui \

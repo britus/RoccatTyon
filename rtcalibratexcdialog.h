@@ -1,8 +1,8 @@
 #pragma once
 
 #include "rtdevicecontroller.h"
-#include "rttypes.h"
 #include <QDialog>
+#include <QTime>
 
 namespace Ui {
 class RTCalibrateXCDialog;
@@ -23,8 +23,19 @@ private slots:
 private:
     Ui::RTCalibrateXCDialog *ui;
     RTDeviceController *m_ctlr;
-    quint8 m_last_value;
-    quint8 m_min;
-    quint8 m_max;
-    quint8 m_mid;
+    QStringList m_instructions;
+    bool m_isSaved;
+    uint m_stage;
+    uint m_count;
+    QTime m_phaseStart;
+    qint32 m_last_value;
+    qint32 m_min;
+    qint32 m_max;
+    qint32 m_mid;
+
+private:
+    inline void setParentEnabled(QWidget *parent, bool enable = true);
+    inline bool inRange(qint32 a, qint32 b, qint32 range);
+    inline void setPhase(uint phase);
+    inline void nextPhase();
 };

@@ -151,6 +151,7 @@ public:
     quint8 minimumXCelerate() const;
     quint8 maximumXCelerate() const;
     quint8 middleXCelerate() const;
+    uint tcuMedian() const;
 
     /* ------------------------------------------------------
      * QAbstractItemModel interface
@@ -273,9 +274,25 @@ public slots:
      */
     void setLightColor(TyonLightType target, const TyonLight &light);
 
+    void setTalkFxState(bool state);
+    bool talkFxState() const;
+
+    void setDcuState(TyonControlUnitDcu dcuState);
+    TyonControlUnitDcu dcuState() const;
+
+    void setTcuState(TyonControlUnitTcu state);
+    TyonControlUnitTcu tcuState() const;
+
     void xcStartCalibration();
     void xcStopCalibration();
     void xcApplyCalibration(quint8 min, quint8 mid, quint8 max);
+
+    void tcuSensorTest(TyonControlUnitDcu dcuState, uint median);
+    void tcuSensorAccept(TyonControlUnitDcu dcuState, uint median);
+    void tcuSensorCancel(TyonControlUnitDcu dcuState);
+    void tcuSensorCaptureImage();
+    void tcuSensorReadImage();
+    int tcuSensorReadMedian(TyonSensorImage *image);
 
 signals:
     void lookupStarted();
@@ -292,6 +309,7 @@ signals:
     void specialReport(uint reportId, const QByteArray &report);
     void sensorChanged(const TyonSensor &sensor);
     void sensorImageChanged(const TyonSensorImage &image);
+    void sensorMedianChanged(int median);
 
 private slots:
     void onLookupStarted();
@@ -306,6 +324,7 @@ private slots:
     void onControlUnitChanged(const TyonControlUnit &controlUnit);
     void onSensorChanged(const TyonSensor &sensor);
     void onSensorImageChanged(const TyonSensorImage &image);
+    void onSensorMedianChanged(int median);
     void onSpecialReport(uint reportId, const QByteArray &report);
 
 private:

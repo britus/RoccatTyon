@@ -78,6 +78,24 @@ RTMainWindow::~RTMainWindow()
     delete ui;
 }
 
+inline void RTMainWindow::enableUserInterface()
+{
+    //qDebug("     enableUserInterface");
+    ui->pnlLeft->setEnabled(true);
+    ui->tabWidget->setEnabled(true);
+    ui->pbSave->setEnabled(true);
+    ui->pbReset->setEnabled(true);
+}
+
+inline void RTMainWindow::disableUserInterface()
+{
+    //qDebug("     disableUserInterface");
+    ui->pnlLeft->setEnabled(false);
+    ui->tabWidget->setEnabled(false);
+    ui->pbSave->setEnabled(false);
+    ui->pbReset->setEnabled(false);
+}
+
 inline void RTMainWindow::initializeSettings()
 {
     QString fpath = QStandardPaths::writableLocation( //
@@ -277,6 +295,7 @@ inline void RTMainWindow::connectController()
     connect(m_ctlr, &RTDeviceController::profileIndexChanged, this, &RTMainWindow::onProfileIndex);
     connect(m_ctlr, &RTDeviceController::settingsChanged, this, &RTMainWindow::onSettingsChanged, ct);
     connect(m_ctlr, &RTDeviceController::buttonsChanged, this, &RTMainWindow::onButtonsChanged, ct);
+    connect(m_ctlr, &RTDeviceController::controlUnitChanged, this, &RTMainWindow::onControlUnitChanged, ct);
     connect(m_ctlr, &RTDeviceController::deviceWorkerStarted, this, &RTMainWindow::onDeviceWorkerStarted, ct);
     connect(m_ctlr, &RTDeviceController::deviceWorkerFinished, this, &RTMainWindow::onDeviceWorkerFinished, ct);
 }
@@ -514,34 +533,34 @@ inline void RTMainWindow::connectUiElements()
 
     // --
     connect(ui->cbxTalkFx, &QCheckBox::clicked, this, [this](bool checked) { //
-        //m_ctlr->setTalkFxState(0, checked);
+        m_ctlr->setTalkFxState(checked);
     });
 
     connect(ui->cbxTcuActivate, &QCheckBox::clicked, this, [this](bool checked) { //
-        //m_ctlr->setTcuState(0, checked);
+        m_ctlr->setTcuState(checked ? TYON_TRACKING_CONTROL_UNIT_ON : TYON_TRACKING_CONTROL_UNIT_OFF);
     });
 
-    connect(ui->pbTcuCalibrate, &QPushButton::clicked, this, [this](bool checked) { //
+    connect(ui->pbTcuCalibrate, &QPushButton::clicked, this, [this]() { //
         calibrateTcu();
     });
 
-    connect(ui->rbDcuOff, &QRadioButton::clicked, this, [this](bool checked) { //
-        //m_ctlr->setDcuState(0, checked);
+    connect(ui->rbDcuOff, &QRadioButton::clicked, this, [this](bool) { //
+        m_ctlr->setDcuState(TYON_DISTANCE_CONTROL_UNIT_OFF);
     });
 
-    connect(ui->rbDcuExtraLow, &QRadioButton::clicked, this, [this](bool checked) { //
-        //m_ctlr->setDcuState(0, checked);
+    connect(ui->rbDcuExtraLow, &QRadioButton::clicked, this, [this](bool) { //
+        m_ctlr->setDcuState(TYON_DISTANCE_CONTROL_UNIT_EXTRA_LOW);
     });
 
-    connect(ui->rbDcuLow, &QRadioButton::clicked, this, [this](bool checked) { //
-        //m_ctlr->setDcuState(0, checked);
+    connect(ui->rbDcuLow, &QRadioButton::clicked, this, [this](bool) { //
+        m_ctlr->setDcuState(TYON_DISTANCE_CONTROL_UNIT_LOW);
     });
 
-    connect(ui->rbDcuNormal, &QRadioButton::clicked, this, [this](bool checked) { //
-        //m_ctlr->setDcuState(0, checked);
+    connect(ui->rbDcuNormal, &QRadioButton::clicked, this, [this](bool) { //
+        m_ctlr->setDcuState(TYON_DISTANCE_CONTROL_UNIT_NORMAL);
     });
 
-    connect(ui->pbXCelCalibrate, &QPushButton::clicked, this, [this](bool checked) { //
+    connect(ui->pbXCelCalibrate, &QPushButton::clicked, this, [this](bool) { //
         doCalibrateXCelerator();
     });
 }
@@ -616,25 +635,26 @@ inline void RTMainWindow::doCalibrateXCelerator()
 {
     disableUserInterface();
 
+    // dialog destroying on close automatically
     RTCalibrateXCDialog *d = new RTCalibrateXCDialog(m_ctlr, this);
-    connect(d, &RTCalibrateXCDialog::accepted, this, [this, d]() {
+    connect(d, &RTCalibrateXCDialog::finished, this, [this](int) { //
         enableUserInterface();
-        d->deleteLater();
     });
-    connect(d, &RTCalibrateXCDialog::rejected, this, [this, d]() {
-        enableUserInterface();
-        d->deleteLater();
-    });
+
     d->show();
     d->raise();
 }
 
 inline void RTMainWindow::calibrateTcu()
 {
-    RTCalibrateTcuDialog d(m_ctlr, this);
-    if (d.exec() == RTCalibrateTcuDialog::Accepted) {
-        //
-    }
+    // dialog destroying on close automatically
+    RTCalibrateTcuDialog *d = new RTCalibrateTcuDialog(m_ctlr, this);
+    connect(d, &RTCalibrateTcuDialog::finished, this, [this](int) { //
+        enableUserInterface();
+    });
+
+    d->show();
+    d->raise();
 }
 
 inline QAction *RTMainWindow::linkAction(QAction *action, TyonButtonType function)
@@ -757,6 +777,19 @@ void RTMainWindow::onDeviceError(uint error, const QString &message)
     RTProgress::dismiss();
     enableUserInterface();
     onProfileIndex(0);
+}
+
+void RTMainWindow::onDeviceWorkerStarted()
+{
+    qDebug("++++ onDeviceWorkerStarted");
+    RTProgress::present(tr("Please wait..."), this);
+}
+
+void RTMainWindow::onDeviceWorkerFinished()
+{
+    qDebug("---- onDeviceWorkerFinished");
+    RTProgress::dismiss();
+    enableUserInterface();
 }
 
 void RTMainWindow::onDeviceInfo(const TyonInfo &info)
@@ -930,33 +963,48 @@ void RTMainWindow::onButtonsChanged(const TyonProfileButtons &buttons)
     }
 }
 
-inline void RTMainWindow::enableUserInterface()
+void RTMainWindow::onControlUnitChanged(const TyonControlUnit &controlUnit)
 {
-    qDebug("     enableUserInterface");
-    ui->pnlLeft->setEnabled(true);
-    ui->tabWidget->setEnabled(true);
-    ui->pbSave->setEnabled(true);
-    ui->pbReset->setEnabled(true);
-}
-
-inline void RTMainWindow::disableUserInterface()
-{
-    qDebug("     disableUserInterface");
-    ui->pnlLeft->setEnabled(false);
-    ui->tabWidget->setEnabled(false);
-    ui->pbSave->setEnabled(false);
-    ui->pbReset->setEnabled(false);
-}
-
-void RTMainWindow::onDeviceWorkerStarted()
-{
-    qDebug("++++ onDeviceWorkerStarted");
-    RTProgress::present(tr("Please wait..."), this);
-}
-
-void RTMainWindow::onDeviceWorkerFinished()
-{
-    qDebug("---- onDeviceWorkerFinished");
-    RTProgress::dismiss();
-    enableUserInterface();
+    switch (controlUnit.dcu) {
+        case TYON_DISTANCE_CONTROL_UNIT_OFF: {
+            ui->rbDcuOff->setChecked(true);
+            break;
+        }
+        case TYON_DISTANCE_CONTROL_UNIT_EXTRA_LOW: {
+            ui->rbDcuExtraLow->setChecked(true);
+            break;
+        }
+        case TYON_DISTANCE_CONTROL_UNIT_LOW: {
+            ui->rbDcuLow->setChecked(true);
+            break;
+        }
+        case TYON_DISTANCE_CONTROL_UNIT_NORMAL: {
+            ui->rbDcuNormal->setChecked(true);
+            break;
+        }
+    }
+    switch (controlUnit.tcu) {
+        case TYON_TRACKING_CONTROL_UNIT_OFF: {
+            ui->cbxTcuActivate->setChecked(false);
+            break;
+        }
+        case TYON_TRACKING_CONTROL_UNIT_ON: {
+            ui->cbxTcuActivate->setChecked(true);
+            break;
+        }
+    }
+    switch (controlUnit.action) {
+        case TYON_CONTROL_UNIT_ACTION_OFF: {
+            break;
+        }
+        case TYON_CONTROL_UNIT_ACTION_ACCEPT: {
+            break;
+        }
+        case TYON_CONTROL_UNIT_ACTION_CANCEL: {
+            break;
+        }
+        case TYON_CONTROL_UNIT_ACTION_UNDEFINED: {
+            break;
+        }
+    }
 }
