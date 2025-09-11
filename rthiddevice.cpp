@@ -289,6 +289,7 @@ static inline void _reportCallback(void *context, IOReturn result, void *device,
            reportID,
            reportLength);
 #else
+    Q_UNUSED(device)
     Q_UNUSED(type)
 #endif
 
@@ -459,7 +460,7 @@ void RTHidDevice::lookupDevice()
     // kernel[0:1b4e77] (IOHIDFamily) IOHIDLibUserClient:0x0
     // [RoccatTyon] Entitlements 0 privilegedClient : No
     result = IOHIDManagerOpen(m_manager, kIOHIDOptionsTypeSeizeDevice);
-    if (result != kIOReturnSuccess && result != -536870174) {
+    if (result != kIOReturnSuccess && result != kIOReturnNotPrivileged && result != kIOReturnNotPermitted) {
         raiseError(result, tr("Failed to open HID manager."));
         CFRelease(m_manager);
         m_manager = nullptr;
@@ -636,7 +637,7 @@ void RTHidDevice::saveProfilesToFile(const QString &fileName)
         if (write(&f, &p.index, sizeof(p.index))) {
             goto error_exit;
         }
-        length = p.name.length();
+        length = (quint32) p.name.length();
         if (write(&f, &length, sizeof(quint32))) {
             goto error_exit;
         }
@@ -2091,7 +2092,7 @@ uint RTHidDevice::sensorMedianOfImage(TyonSensorImage const *image)
     ulong sum = 0;
     for (i = 0; i < TYON_SENSOR_IMAGE_SIZE * TYON_SENSOR_IMAGE_SIZE; ++i)
         sum += image->data[i];
-    return sum / (TYON_SENSOR_IMAGE_SIZE * TYON_SENSOR_IMAGE_SIZE);
+    return (uint)(sum /  (TYON_SENSOR_IMAGE_SIZE * TYON_SENSOR_IMAGE_SIZE));
 }
 
 inline int RTHidDevice::xcCalibWriteStart(IOHIDDeviceRef device)
@@ -2412,13 +2413,13 @@ inline int RTHidDevice::hidParseResponse(int rid, const quint8 *buffer, CFIndex)
             //#ifdef QT_DEBUG
             qDebug("[HIDDEV] SENSOR: action=%d reg=%d value=%d", p->action, p->reg, p->value);
             //#endif
-            if (p->action == 3 && p->value == 0) {
+            //if (p->action == 3 && p->value == 0) {
                 memcpy(&m_sensor, p, sizeof(TyonSensor));
                 emit sensorChanged(m_sensor);
-            } else {
+            //} else {
                 memcpy(&m_sensorImage, p, sizeof(TyonSensorImage));
                 emit sensorImageChanged(m_sensorImage);
-            }
+            //}
             break;
         }
         /* X-Celerator calibration events */

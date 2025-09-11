@@ -34,7 +34,7 @@ RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTDeviceController *controller, QWidg
     ui->progressBar->setValue(0);
 
     m_timer.setTimerType(Qt::PreciseTimer);
-    m_timer.setInterval(500);
+    m_timer.setInterval(300);
 
     m_median = m_ctlr->tcuMedian();
     m_dcu = m_ctlr->dcuState();
