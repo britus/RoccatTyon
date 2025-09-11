@@ -20,6 +20,11 @@ RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTDeviceController *controller, QWidg
     , m_count(0)
 {
     ui->setupUi(this);
+
+    //| Qt::WindowStaysOnTopHint| Qt::FramelessWindowHint| Qt::CustomizeWindowHint
+    setAttribute(Qt::WA_DeleteOnClose, false);
+    setWindowFlags(Qt::Tool);
+
     ui->swWizzard->setCurrentIndex(0);
     ui->swWizzard->setCurrentIndex(0);
     ui->pbApply->setVisible(false);
@@ -39,10 +44,6 @@ RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTDeviceController *controller, QWidg
     m_median = m_ctlr->tcuMedian();
     m_dcu = m_ctlr->dcuState();
     m_tcu = m_ctlr->tcuState();
-
-    //| Qt::WindowStaysOnTopHint| Qt::FramelessWindowHint| Qt::CustomizeWindowHint
-    setAttribute(Qt::WA_DeleteOnClose, true);
-    setWindowFlags(Qt::Tool);
 
     connect(&m_timer, &QTimer::timeout, this, &RTCalibrateTcuDialog::onTimer);
     connect(m_ctlr, &RTDeviceController::deviceError, this, &RTCalibrateTcuDialog::onDeviceError, Qt::DirectConnection);

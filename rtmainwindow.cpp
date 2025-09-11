@@ -638,8 +638,9 @@ inline void RTMainWindow::doCalibrateXCelerator()
 
     // dialog destroying on close automatically
     RTCalibrateXCDialog *d = new RTCalibrateXCDialog(m_ctlr, this);
-    connect(d, &RTCalibrateXCDialog::finished, this, [this](int) { //
+    connect(d, &RTCalibrateXCDialog::finished, this, [this, d](int) { //
         enableUserInterface();
+        d->deleteLater();
     });
 
     d->show();
@@ -650,8 +651,9 @@ inline void RTMainWindow::calibrateTcu()
 {
     // dialog destroying on close automatically
     RTCalibrateTcuDialog *d = new RTCalibrateTcuDialog(m_ctlr, this);
-    connect(d, &RTCalibrateTcuDialog::finished, this, [this](int) { //
+    connect(d, &RTCalibrateTcuDialog::finished, this, [this, d](int) { //
         enableUserInterface();
+        d->deleteLater();
     });
 
     d->show();

@@ -789,8 +789,6 @@ void RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
         return;
     }
 
-    emit deviceWorkerStarted();
-
     const QByteArray buffer = f.readAll();
     if (buffer.length() < (qsizetype) sizeof(TProfile)) {
         emit deviceError(EIO, tr("Invalid profiles file: %1").arg(fileName));
@@ -1016,8 +1014,6 @@ func_exit:
         blockSignals(false);
     }
     f.close();
-
-    emit deviceWorkerFinished();
 }
 
 void RTHidDevice::assignButton(TyonButtonIndex type, TyonButtonType func, const QKeyCombination &kc)

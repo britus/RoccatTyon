@@ -53,7 +53,7 @@ RTCalibrateXCDialog::RTCalibrateXCDialog(RTDeviceController *controller, QWidget
     ui->pbNextPage->setFocus();
 
     //| Qt::WindowStaysOnTopHint| Qt::FramelessWindowHint| Qt::CustomizeWindowHint
-    setAttribute(Qt::WA_DeleteOnClose, true);
+    setAttribute(Qt::WA_DeleteOnClose, false);
     setWindowFlags(Qt::Tool);
 
     m_instructions.append(tr("Please don't touch the paddle for center calibration."));
