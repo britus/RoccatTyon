@@ -17,19 +17,33 @@ RTDeviceController::RTDeviceController(QObject *parent)
     initPhysicalButtons();
 
     Qt::ConnectionType ct = Qt::QueuedConnection;
+
+    //-- HID device level
     connect(&m_device, &RTHidDevice::lookupStarted, this, &RTDeviceController::onLookupStarted, ct);
-    connect(&m_device, &RTHidDevice::deviceWorkerStarted, this, &RTDeviceController::onDeviceWorkerStarted, ct);
-    connect(&m_device, &RTHidDevice::deviceWorkerFinished, this, &RTDeviceController::onDeviceWorkerFinished, ct);
     connect(&m_device, &RTHidDevice::deviceError, this, &RTDeviceController::onDeviceError, ct);
     connect(&m_device, &RTHidDevice::deviceFound, this, &RTDeviceController::onDeviceFound, ct);
     connect(&m_device, &RTHidDevice::deviceRemoved, this, &RTDeviceController::onDeviceRemoved, ct);
+
+    //-- Worker thread device level
+    connect(&m_device, &RTHidDevice::deviceWorkerStarted, this, &RTDeviceController::onDeviceWorkerStarted, ct);
+    connect(&m_device, &RTHidDevice::deviceWorkerFinished, this, &RTDeviceController::onDeviceWorkerFinished, ct);
+
+    //-- Toplevel info
     connect(&m_device, &RTHidDevice::deviceInfo, this, &RTDeviceController::onDeviceInfo, ct);
-    connect(&m_device, &RTHidDevice::profileChanged, this, &RTDeviceController::onProfileChanged, ct);
+
+    //-- Profile level
     connect(&m_device, &RTHidDevice::profileIndexChanged, this, &RTDeviceController::onProfileIndexChanged, ct);
+    connect(&m_device, &RTHidDevice::profileChanged, this, &RTDeviceController::onProfileChanged, ct);
+
+    //-- TCU/DCU calibration
     connect(&m_device, &RTHidDevice::controlUnitChanged, this, &RTDeviceController::onControlUnitChanged, ct);
     connect(&m_device, &RTHidDevice::sensorChanged, this, &RTDeviceController::onSensorChanged, ct);
     connect(&m_device, &RTHidDevice::sensorImageChanged, this, &RTDeviceController::onSensorImageChanged, ct);
+
+    //-- X-Celerator calibration (Thumb paddle)
     connect(&m_device, &RTHidDevice::specialReport, this, &RTDeviceController::onSpecialReport, ct);
+
+    //-- TalkFX related
     connect(&m_device, &RTHidDevice::talkFxChanged, this, &RTDeviceController::onTalkFxChanged, ct);
 }
 

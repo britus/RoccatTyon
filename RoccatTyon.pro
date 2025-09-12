@@ -166,4 +166,5 @@ DISTFILES += \
     LICENSE \
     README.md \
     deploy.sh \
-    make.sh
+    make.sh \
+    roccattyon.qmodel

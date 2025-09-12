@@ -998,7 +998,7 @@ void RTMainWindow::onControlUnitChanged(const TyonControlUnit &controlUnit)
     }
 }
 
-void RTMainWindow::onTalkFxChanged(const TyonTalk &talkFx)
+void RTMainWindow::onTalkFxChanged(const TyonTalk & /*talkFx*/)
 {
     ui->cbxTalkFx->setChecked(m_ctlr->talkFxState());
 }
