@@ -125,7 +125,7 @@ HEADERS += \
     rtprogress.h \
     rtshortcutdialog.h \
     rttcuimagewidget.h \
-    rttypes.h \
+    rttypedefs.h \
     rtxceleratorwidget.h
 
 FORMS += \

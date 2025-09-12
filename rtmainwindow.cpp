@@ -1,3 +1,10 @@
+// ********************************************************************
+// Copyright © 2025 by EoF Software Labs
+// Copyright © 2024 Apple Inc. (some copied parts)
+// Copyright by libgaminggear Project (some copied parts)
+// Copyright by roccat-tools Project (some copied parts)
+// SPDX-License-Identifier: GPL-3.0
+// ********************************************************************
 #include "rtmainwindow.h"
 #include "rtcalibratetcudialog.h"
 #include "rtcalibratexcdialog.h"
@@ -5,7 +12,7 @@
 #include "rtdevicecontroller.h"
 #include "rtprogress.h"
 #include "rtshortcutdialog.h"
-#include "rttypes.h"
+#include "rttypedefs.h"
 #include "ui_rtmainwindow.h"
 #include <QAction>
 #include <QActionGroup>

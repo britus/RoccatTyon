@@ -1,3 +1,10 @@
+// ********************************************************************
+// Copyright © 2025 by EoF Software Labs
+// Copyright © 2024 Apple Inc. (some copied parts)
+// Copyright by libgaminggear Project (some copied parts)
+// Copyright by roccat-tools Project (some copied parts)
+// SPDX-License-Identifier: GPL-3.0
+// ********************************************************************
 #pragma once
 
 #include <QColor>
