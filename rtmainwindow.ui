@@ -242,9 +242,9 @@
                  <property name="geometry">
                   <rect>
                    <x>0</x>
-                   <y>-99</y>
-                   <width>594</width>
-                   <height>562</height>
+                   <y>0</y>
+                   <width>609</width>
+                   <height>463</height>
                   </rect>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -287,8 +287,23 @@
                         <string>Slot 1</string>
                        </property>
                        <layout class="QGridLayout" name="gridLayout_2">
-                        <item row="1" column="1">
+                        <property name="spacing">
+                         <number>12</number>
+                        </property>
+                        <item row="1" column="2">
                          <widget class="QSpinBox" name="edDpiSlot1">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="alignment">
                            <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                           </property>
@@ -312,8 +327,20 @@
                           </property>
                          </widget>
                         </item>
-                        <item row="1" column="0">
+                        <item row="1" column="1">
                          <widget class="QSlider" name="hsDpiSlot1">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="minimum">
                            <number>200</number>
                           </property>
@@ -334,8 +361,20 @@
                           </property>
                          </widget>
                         </item>
-                        <item row="0" column="0" colspan="2">
+                        <item row="1" column="0">
                          <widget class="QCheckBox" name="cbxDpiSlot1">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="text">
                            <string>Enabled</string>
                           </property>
@@ -353,8 +392,23 @@
                         <string>Slot 2</string>
                        </property>
                        <layout class="QGridLayout" name="gridLayout_3">
-                        <item row="1" column="1">
+                        <property name="spacing">
+                         <number>12</number>
+                        </property>
+                        <item row="1" column="2">
                          <widget class="QSpinBox" name="edDpiSlot2">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="alignment">
                            <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                           </property>
@@ -378,8 +432,20 @@
                           </property>
                          </widget>
                         </item>
-                        <item row="1" column="0">
+                        <item row="1" column="1">
                          <widget class="QSlider" name="hsDpiSlot2">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="minimum">
                            <number>200</number>
                           </property>
@@ -406,8 +472,20 @@
                           </property>
                          </widget>
                         </item>
-                        <item row="0" column="0" colspan="2">
+                        <item row="1" column="0">
                          <widget class="QCheckBox" name="cbxDpiSlot2">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="text">
                            <string>Enabled</string>
                           </property>
@@ -425,8 +503,23 @@
                         <string>Slot 3</string>
                        </property>
                        <layout class="QGridLayout" name="gridLayout_4">
-                        <item row="1" column="1">
+                        <property name="spacing">
+                         <number>12</number>
+                        </property>
+                        <item row="1" column="2">
                          <widget class="QSpinBox" name="edDpiSlot3">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="alignment">
                            <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                           </property>
@@ -450,8 +543,20 @@
                           </property>
                          </widget>
                         </item>
-                        <item row="1" column="0">
+                        <item row="1" column="1">
                          <widget class="QSlider" name="hsDpiSlot3">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="minimum">
                            <number>200</number>
                           </property>
@@ -472,8 +577,20 @@
                           </property>
                          </widget>
                         </item>
-                        <item row="0" column="0" colspan="2">
+                        <item row="1" column="0">
                          <widget class="QCheckBox" name="cbxDpiSlot3">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="text">
                            <string>Enabled</string>
                           </property>
@@ -491,8 +608,57 @@
                         <string>Slot 4</string>
                        </property>
                        <layout class="QGridLayout" name="gridLayout_5">
+                        <property name="spacing">
+                         <number>12</number>
+                        </property>
                         <item row="1" column="1">
+                         <widget class="QSlider" name="hsDpiSlot4">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="minimum">
+                           <number>200</number>
+                          </property>
+                          <property name="maximum">
+                           <number>8200</number>
+                          </property>
+                          <property name="singleStep">
+                           <number>200</number>
+                          </property>
+                          <property name="pageStep">
+                           <number>200</number>
+                          </property>
+                          <property name="value">
+                           <number>6400</number>
+                          </property>
+                          <property name="orientation">
+                           <enum>Qt::Orientation::Horizontal</enum>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="2">
                          <widget class="QSpinBox" name="edDpiSlot4">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="alignment">
                            <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                           </property>
@@ -517,29 +683,19 @@
                          </widget>
                         </item>
                         <item row="1" column="0">
-                         <widget class="QSlider" name="hsDpiSlot4">
-                          <property name="minimum">
-                           <number>200</number>
-                          </property>
-                          <property name="maximum">
-                           <number>8200</number>
-                          </property>
-                          <property name="singleStep">
-                           <number>200</number>
-                          </property>
-                          <property name="pageStep">
-                           <number>200</number>
-                          </property>
-                          <property name="value">
-                           <number>6400</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Orientation::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item row="0" column="0" colspan="2">
                          <widget class="QCheckBox" name="cbxDpiSlot4">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="text">
                            <string>Enabled</string>
                           </property>
@@ -557,8 +713,57 @@
                         <string>Slot 5</string>
                        </property>
                        <layout class="QGridLayout" name="gridLayout_6">
+                        <property name="spacing">
+                         <number>12</number>
+                        </property>
                         <item row="1" column="1">
+                         <widget class="QSlider" name="hsDpiSlot5">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="minimum">
+                           <number>200</number>
+                          </property>
+                          <property name="maximum">
+                           <number>8200</number>
+                          </property>
+                          <property name="singleStep">
+                           <number>200</number>
+                          </property>
+                          <property name="pageStep">
+                           <number>200</number>
+                          </property>
+                          <property name="value">
+                           <number>8200</number>
+                          </property>
+                          <property name="orientation">
+                           <enum>Qt::Orientation::Horizontal</enum>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="2">
                          <widget class="QSpinBox" name="edDpiSlot5">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="alignment">
                            <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                           </property>
@@ -583,29 +788,19 @@
                          </widget>
                         </item>
                         <item row="1" column="0">
-                         <widget class="QSlider" name="hsDpiSlot5">
-                          <property name="minimum">
-                           <number>200</number>
-                          </property>
-                          <property name="maximum">
-                           <number>8200</number>
-                          </property>
-                          <property name="singleStep">
-                           <number>200</number>
-                          </property>
-                          <property name="pageStep">
-                           <number>200</number>
-                          </property>
-                          <property name="value">
-                           <number>8200</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Orientation::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item row="0" column="0" colspan="2">
                          <widget class="QCheckBox" name="cbxDpiSlot5">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>26</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>26</height>
+                           </size>
+                          </property>
                           <property name="text">
                            <string>Enabled</string>
                           </property>
@@ -1286,7 +1481,7 @@
                      <property name="geometry">
                       <rect>
                        <x>0</x>
-                       <y>-46</y>
+                       <y>0</y>
                        <width>580</width>
                        <height>350</height>
                       </rect>
@@ -1545,7 +1740,7 @@
                      <property name="geometry">
                       <rect>
                        <x>0</x>
-                       <y>-46</y>
+                       <y>0</y>
                        <width>580</width>
                        <height>350</height>
                       </rect>
@@ -1805,8 +2000,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>593</width>
-                       <height>319</height>
+                       <width>580</width>
+                       <height>300</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2813,19 +3008,14 @@
   <tabstop>pbExport</tabstop>
   <tabstop>tabWidget</tabstop>
   <tabstop>saSensorDpi</tabstop>
-  <tabstop>cbxDpiSlot1</tabstop>
   <tabstop>hsDpiSlot1</tabstop>
   <tabstop>edDpiSlot1</tabstop>
-  <tabstop>cbxDpiSlot2</tabstop>
   <tabstop>hsDpiSlot2</tabstop>
   <tabstop>edDpiSlot2</tabstop>
-  <tabstop>cbxDpiSlot3</tabstop>
   <tabstop>hsDpiSlot3</tabstop>
   <tabstop>edDpiSlot3</tabstop>
-  <tabstop>cbxDpiSlot4</tabstop>
   <tabstop>hsDpiSlot4</tabstop>
   <tabstop>edDpiSlot4</tabstop>
-  <tabstop>cbxDpiSlot5</tabstop>
   <tabstop>hsDpiSlot5</tabstop>
   <tabstop>edDpiSlot5</tabstop>
   <tabstop>saSensorCtrl</tabstop>

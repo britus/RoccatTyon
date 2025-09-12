@@ -877,10 +877,20 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
     }
 
     ui->cbxDpiSlot1->setChecked(s->cpi_levels_enabled & 0x01);
+    ui->cbxDpiSlot1->setText(tr("%1").arg( //
+        ui->cbxDpiSlot1->isChecked() ? tr("Enabled ") : tr("Disabled")));
     ui->cbxDpiSlot2->setChecked(s->cpi_levels_enabled & 0x02);
+    ui->cbxDpiSlot2->setText(tr("%1").arg( //
+        ui->cbxDpiSlot2->isChecked() ? tr("Enabled ") : tr("Disabled")));
     ui->cbxDpiSlot3->setChecked(s->cpi_levels_enabled & 0x04);
+    ui->cbxDpiSlot3->setText(tr("%1").arg( //
+        ui->cbxDpiSlot3->isChecked() ? tr("Enabled ") : tr("Disabled")));
     ui->cbxDpiSlot4->setChecked(s->cpi_levels_enabled & 0x08);
+    ui->cbxDpiSlot4->setText(tr("%1").arg( //
+        ui->cbxDpiSlot4->isChecked() ? tr("Enabled ") : tr("Disabled")));
     ui->cbxDpiSlot5->setChecked(s->cpi_levels_enabled & 0x10);
+    ui->cbxDpiSlot5->setText(tr("%1").arg( //
+        ui->cbxDpiSlot5->isChecked() ? tr("Enabled ") : tr("Disabled")));
 
     ui->cbxDPIActiveSlot->clear();
     for (qint8 i = 0; i < TYON_PROFILE_SETTINGS_CPI_LEVELS_NUM; i++) {
