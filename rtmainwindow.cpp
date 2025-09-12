@@ -41,6 +41,8 @@
 #include <QThread>
 #include <QTimer>
 
+#define COPYRIGHT QStringLiteral("Copyright © 2025 by")
+
 RTMainWindow::RTMainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::RTMainWindow)
@@ -67,6 +69,8 @@ RTMainWindow::RTMainWindow(QWidget *parent)
     qInfo() << "[APPWIN] Screen" << sl;
 
     setWindowTitle(QApplication::applicationDisplayName());
+    statusBar()->showMessage(tr("%1 %2 %3") //
+                                 .arg(COPYRIGHT, QApplication::organizationName(), QApplication::applicationVersion()));
 
     disableUserInterface();
     initializeSettings();
@@ -816,7 +820,9 @@ void RTMainWindow::onProfileIndex(const quint8 pix)
     m_activeProfile = pix;
 
     ui->tableView->setCurrentIndex(m_ctlr->profileIndex(pix));
-    statusBar()->showMessage(tr("Active profile: %1").arg(pix));
+    statusBar()->showMessage(tr("%1 %2 %3 | Active profile: %4") //
+                                 .arg(COPYRIGHT, QApplication::organizationName(), QApplication::applicationVersion())
+                                 .arg(pix));
 }
 
 /* Assign ROCCAT profile settings to UI elements */

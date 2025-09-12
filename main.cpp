@@ -16,6 +16,9 @@
 #include <QStyleFactory>
 #include <QTranslator>
 
+extern const char *GetBundleVersion();
+extern const char *GetBuildNumber();
+
 class RTApplication : public QApplication
 {
 public:
@@ -147,7 +150,7 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName(QStringLiteral("EoF Software Labs"));
     QApplication::setApplicationDisplayName(QStringLiteral("ROCCAT Tyon Control"));
     QApplication::setApplicationName(QStringLiteral("ROCCAT Tyon Control"));
-    QApplication::setApplicationVersion(QStringLiteral("1.x"));
+    QApplication::setApplicationVersion(QStringLiteral("%1.%2").arg(GetBundleVersion(), GetBuildNumber()));
     QApplication::setDesktopSettingsAware(true);
     QApplication::setQuitOnLastWindowClosed(true);
 

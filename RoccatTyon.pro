@@ -98,6 +98,9 @@ mac {
         $$PWD/assets/icns/RoccatTyon_64x64.icns
         icons.path = Contents/Resources/
     QMAKE_BUNDLE_DATA += icons
+
+    OBJECTIVE_SOURCES += $$PWD/rtmacoshelper.mm
+    OBJECTIVE_HEADERS += $$PWD/rtmacoshelper.h
 }
 
 SOURCES += \
