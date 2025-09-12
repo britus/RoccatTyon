@@ -229,10 +229,17 @@ public slots:
     void setAdvancedSenitivity(bool state);
 
     /**
-     * @brief Set sensor poll rate
+     * @brief Set ROCCAT Tyon TalkFX polling rate
      * @param rate
      */
-    void setPollRate(quint8 rate);
+    void setTalkFxPollRate(quint8 rate);
+
+    /**
+     * @brief Return ROCCAT Tyon polling rate
+     * @param Pointer to profile settings structure
+     * @return rate value
+     */
+    quint8 talkFxPollRate(const TyonProfileSettings *settings) const;
 
     /**
      * @brief Enable / disable DPI slot
@@ -292,7 +299,7 @@ public slots:
     void setLightColor(TyonLightType target, const TyonLight &light);
 
     void setTalkFxState(bool state);
-    bool talkFxState() const;
+    bool talkFxState(const TyonProfileSettings *settings) const;
 
     void setDcuState(TyonControlUnitDcu dcuState);
     TyonControlUnitDcu dcuState() const;

@@ -175,10 +175,17 @@ public:
 
     uint sensorMedianOfImage(TyonSensorImage const *image);
 
-    bool talkFxState() const;
+    bool talkFxState(const TyonProfileSettings *settings) const;
     TyonControlUnitDcu dcuState() const;
     TyonControlUnitTcu tcuState() const;
     uint tcuMedian() const;
+
+    /**
+     * @brief Return ROCCAT Tyon polling rate
+     * @param Pointer to profile settings structure
+     * @return rate value
+     */
+    quint8 talkFxPollRate(const TyonProfileSettings *settings) const;
 
 signals:
     void lookupStarted();
@@ -269,7 +276,7 @@ public slots:
      * @brief Set sensor poll rate
      * @param rate
      */
-    void setPollRate(quint8 rate);
+    void setTalkFxPollRate(quint8 rate);
 
     /**
      * @brief Enable / disable DPI slot

@@ -26,6 +26,11 @@
 #define TYON_DEVICE_NAME_WHITE "Tyon White"
 #define TYON_DEVICE_NAME_COMBINED "Tyon Black/White"
 
+typedef enum {
+    ROCCAT_NIBBLE_HIGH = 1,
+    ROCCAT_NIBBLE_LOW = 0,
+} RoccatNibble;
+
 enum {
     TYON_PROFILE_NUM = 5,
     TYON_LIGHTS_NUM = 2,
@@ -621,19 +626,19 @@ typedef enum {
 } TyonTalkEasyaim;
 
 typedef enum {
-    TYON_TALKFX_ZONE_EVENT = 4,
-    TYON_TALKFX_ZONE_AMBIENT = 3,
-} TyonTalkfxZone;
-
-typedef enum {
     ROCCAT_TALKFX_STATE_OFF = 0x00,
     ROCCAT_TALKFX_STATE_ON = 0x01,
     TYON_TALKFX_STATE_UNUSED = 0xff,
 } TyonTalkfxState;
 
 typedef enum {
-    ROCCAT_TALKFX_ZONE_AMBIENT = 0x00,
-    ROCCAT_TALKFX_ZONE_EVENT = 0x01,
+    TYON_TALKFX_ZONE_EVENT = 4,
+    TYON_TALKFX_ZONE_AMBIENT = 3,
+} TyonTalkfxZone;
+
+typedef enum {
+    ROCCAT_TALKFX_ZONE_AMBIENT = 0x01, //EoF-BUFIX: 0x00 -> 0x01
+    ROCCAT_TALKFX_ZONE_EVENT = 0x02,   //EoF-BUFIX: 0x01 -> 0x02
     ROCCAT_TALKFX_ZONE_BIT_MASK = 0x00ff0000,
     ROCCAT_TALKFX_ZONE_BIT_SHIFT = 16,
 } RoccatTalkfxZone;

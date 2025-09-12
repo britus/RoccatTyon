@@ -186,7 +186,7 @@ void RTCalibrateTcuDialog::onTimer()
     if (m_count >= TCU_MAX_TESTS) {
         ui->txInstruction->setText( //
             tr("Calibration complete. Press button 'Apply' to save the "
-               "calibration or press 'Close' to leave unchanged."));
+               "calibration or press 'Cancel' to leave unchanged."));
         ui->progressBar->setVisible(false);
         ui->pbApply->setVisible(true);
         ui->pbApply->setDefault(true);

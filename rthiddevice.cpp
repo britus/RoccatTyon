@@ -1270,17 +1270,6 @@ void RTHidDevice::setAdvancedSenitivity(bool state)
     }
 }
 
-void RTHidDevice::setPollRate(quint8 rate)
-{
-    if (m_profiles.contains(profileIndex())) {
-        TProfile p = m_profiles[profileIndex()];
-        if (p.settings.talkfx_polling_rate != rate) {
-            p.settings.talkfx_polling_rate = rate;
-            updateProfileMap(&p, true);
-        }
-    }
-}
-
 void RTHidDevice::setDpiSlot(quint8 bit, bool state)
 {
     if (m_profiles.contains(profileIndex())) {
@@ -1339,12 +1328,70 @@ void RTHidDevice::setColorFlow(quint8 value)
     }
 }
 
+static inline void _set_nibble8(quint8 *byte, uint nibble, quint8 value)
+{
+    if (nibble == 1)
+        *byte = (*byte & 0x0f) | ((value << 4) & 0xf0);
+    else
+        *byte = (*byte & 0xf0) | (value & 0x0f);
+}
+
+static inline quint8 _get_nibble8(quint8 byte, uint nibble)
+{
+    if (nibble == 1)
+        return (byte & 0xf0) >> 4;
+    else
+        return byte & 0x0f;
+}
+
+quint8 RTHidDevice::talkFxPollRate(const TyonProfileSettings *settings) const
+{
+    quint8 value = 0;
+    if (settings) {
+        value = settings->talkfx_polling_rate;
+        value = _get_nibble8(value, ROCCAT_NIBBLE_LOW);
+    }
+    return value;
+}
+
+void RTHidDevice::setTalkFxPollRate(quint8 rate)
+{
+    if (m_profiles.contains(profileIndex())) {
+        TProfile p = m_profiles[profileIndex()];
+        quint8 value = p.settings.talkfx_polling_rate;
+        _set_nibble8(&value, ROCCAT_NIBBLE_LOW, rate);
+        if (p.settings.talkfx_polling_rate != value) {
+            p.settings.talkfx_polling_rate = value;
+            updateProfileMap(&p, true);
+        }
+    }
+}
+
+bool RTHidDevice::talkFxState(const TyonProfileSettings *settings) const
+{
+    bool state = false;
+    if (m_profiles.contains(profileIndex())) {
+        quint8 value = settings->talkfx_polling_rate;
+        value = _get_nibble8(value, ROCCAT_NIBBLE_HIGH);
+        state = (value == TYON_PROFILE_SETTINGS_TALKFX_ON);
+    }
+    return state;
+}
+
 void RTHidDevice::setTalkFxState(bool state)
 {
-    if (state) {
-        m_talkFx.fx_status |= ROCCAT_TALKFX_STATE_ON;
-    } else {
-        m_talkFx.fx_status &= ~ROCCAT_TALKFX_STATE_ON;
+    if (m_profiles.contains(profileIndex())) {
+        TProfile p = m_profiles[profileIndex()];
+        quint8 value = p.settings.talkfx_polling_rate;
+        if (state) {
+            _set_nibble8(&value, ROCCAT_NIBBLE_HIGH, TYON_PROFILE_SETTINGS_TALKFX_ON);
+        } else {
+            _set_nibble8(&value, ROCCAT_NIBBLE_HIGH, TYON_PROFILE_SETTINGS_TALKFX_OFF);
+        }
+        if (p.settings.talkfx_polling_rate != value) {
+            p.settings.talkfx_polling_rate = value;
+            updateProfileMap(&p, true);
+        }
     }
 }
 
@@ -1461,11 +1508,6 @@ QString RTHidDevice::profileName() const
         return m_profiles[profileIndex()].name;
     }
     return "";
-}
-
-bool RTHidDevice::talkFxState() const
-{
-    return (m_talkFx.fx_status & ROCCAT_TALKFX_STATE_ON);
 }
 
 TyonControlUnitDcu RTHidDevice::dcuState() const

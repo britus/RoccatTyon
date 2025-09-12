@@ -391,16 +391,16 @@ inline void RTMainWindow::connectUiElements()
     });
 
     connect(ui->rbPollRate125, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setPollRate(ROCCAT_POLLING_RATE_125);
+        m_ctlr->setTalkFxPollRate(ROCCAT_POLLING_RATE_125);
     });
     connect(ui->rbPollRate250, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setPollRate(ROCCAT_POLLING_RATE_250);
+        m_ctlr->setTalkFxPollRate(ROCCAT_POLLING_RATE_250);
     });
     connect(ui->rbPollRate500, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setPollRate(ROCCAT_POLLING_RATE_500);
+        m_ctlr->setTalkFxPollRate(ROCCAT_POLLING_RATE_500);
     });
     connect(ui->rbPollRate1000, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setPollRate(ROCCAT_POLLING_RATE_1000);
+        m_ctlr->setTalkFxPollRate(ROCCAT_POLLING_RATE_1000);
     });
 
     connect(ui->cbxDpiSlot1, &QCheckBox::clicked, this, [this](bool checked) { //
@@ -849,10 +849,32 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
         ui->hsYSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
     }
 
-    ui->rbPollRate125->setChecked(s->talkfx_polling_rate == ROCCAT_POLLING_RATE_125);
-    ui->rbPollRate250->setChecked(s->talkfx_polling_rate == ROCCAT_POLLING_RATE_250);
-    ui->rbPollRate500->setChecked(s->talkfx_polling_rate == ROCCAT_POLLING_RATE_500);
-    ui->rbPollRate1000->setChecked(s->talkfx_polling_rate == ROCCAT_POLLING_RATE_1000);
+    ui->cbxTalkFx->setChecked(m_ctlr->talkFxState(s));
+    if (!ui->cbxTalkFx->isChecked()) {
+        ui->rbPollRate125->setEnabled(false);
+        ui->rbPollRate250->setEnabled(false);
+        ui->rbPollRate500->setEnabled(false);
+        ui->rbPollRate1000->setEnabled(false);
+    }
+
+    switch (m_ctlr->talkFxPollRate(s)) {
+        case ROCCAT_POLLING_RATE_125: {
+            ui->rbPollRate125->setChecked(true);
+            break;
+        }
+        case ROCCAT_POLLING_RATE_250: {
+            ui->rbPollRate250->setChecked(true);
+            break;
+        }
+        case ROCCAT_POLLING_RATE_500: {
+            ui->rbPollRate500->setChecked(true);
+            break;
+        }
+        case ROCCAT_POLLING_RATE_1000: {
+            ui->rbPollRate1000->setChecked(true);
+            break;
+        }
+    }
 
     ui->cbxDpiSlot1->setChecked(s->cpi_levels_enabled & 0x01);
     ui->cbxDpiSlot2->setChecked(s->cpi_levels_enabled & 0x02);
@@ -1013,5 +1035,5 @@ void RTMainWindow::onControlUnitChanged(const TyonControlUnit &controlUnit)
 
 void RTMainWindow::onTalkFxChanged(const TyonTalk & /*talkFx*/)
 {
-    ui->cbxTalkFx->setChecked(m_ctlr->talkFxState());
+    //
 }

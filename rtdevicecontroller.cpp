@@ -284,9 +284,14 @@ void RTDeviceController::setAdvancedSenitivity(bool state)
     m_device.setAdvancedSenitivity(state);
 }
 
-void RTDeviceController::setPollRate(quint8 rate)
+void RTDeviceController::setTalkFxPollRate(quint8 rate)
 {
-    m_device.setPollRate(rate);
+    m_device.setTalkFxPollRate(rate);
+}
+
+quint8 RTDeviceController::talkFxPollRate(const TyonProfileSettings *settings) const
+{
+    return m_device.talkFxPollRate(settings);
 }
 
 void RTDeviceController::setDpiSlot(quint8 bit, bool state)
@@ -339,9 +344,9 @@ void RTDeviceController::setTalkFxState(bool state)
     m_device.setTalkFxState(state);
 }
 
-bool RTDeviceController::talkFxState() const
+bool RTDeviceController::talkFxState(const TyonProfileSettings *settings) const
 {
-    return m_device.talkFxState();
+    return m_device.talkFxState(settings);
 }
 
 void RTDeviceController::setDcuState(TyonControlUnitDcu state)

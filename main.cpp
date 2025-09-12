@@ -148,8 +148,8 @@ int main(int argc, char *argv[])
     QApplication::setAttribute(Qt::AA_Use96Dpi);
 
     QApplication::setOrganizationName(QStringLiteral("EoF Software Labs"));
-    QApplication::setApplicationDisplayName(QStringLiteral("ROCCAT Tyon Control"));
     QApplication::setApplicationName(QStringLiteral("ROCCAT Tyon Control"));
+    QApplication::setApplicationDisplayName(QApplication::applicationName());
     QApplication::setApplicationVersion(QStringLiteral("%1.%2").arg(GetBundleVersion(), GetBuildNumber()));
     QApplication::setDesktopSettingsAware(true);
     QApplication::setQuitOnLastWindowClosed(true);
