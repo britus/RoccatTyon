@@ -577,7 +577,7 @@ func_exit:
     lookupDevice();
 }
 
-void RTHidDevice::saveProfilesToDevice()
+void RTHidDevice::updateDevice()
 {
     emit deviceWorkerStarted();
 
@@ -631,11 +631,12 @@ void RTHidDevice::saveProfilesToDevice()
     connect(t, &QThread::started, this, [this, t, writeIndex, writeProfile]() { //
         IOReturn ret;
         foreach (IOHIDDeviceRef device, m_wrkrDevices) {
+#if 0
             /* update Talk FX state */
             if ((ret = talkWriteFxState(device, m_talkFx.fx_status)) != kIOReturnSuccess) {
                 goto thread_exit;
             }
-
+#endif
             /* update TCU / DCU */
             if (m_controlUnit.tcu == TYON_TRACKING_CONTROL_UNIT_OFF) {
                 if ((ret = tcuWriteOff(device, (TyonControlUnitDcu) m_controlUnit.dcu)) != kIOReturnSuccess) {
@@ -1249,14 +1250,14 @@ void RTHidDevice::setYSensitivity(qint16 sensitivity)
     }
 }
 
-void RTHidDevice::setAdvancedSenitivity(quint8 bit, bool state)
+void RTHidDevice::setAdvancedSenitivity(bool state)
 {
     if (m_profiles.contains(profileIndex())) {
         TProfile p = m_profiles[profileIndex()];
         if (state) {
-            p.settings.advanced_sensitivity |= bit;
+            p.settings.advanced_sensitivity |= ROCCAT_SENSITIVITY_ADVANCED_ON;
         } else {
-            p.settings.advanced_sensitivity &= ~bit;
+            p.settings.advanced_sensitivity &= ~ROCCAT_SENSITIVITY_ADVANCED_ON;
         }
         updateProfileMap(&p, true);
     }
@@ -1333,7 +1334,11 @@ void RTHidDevice::setColorFlow(quint8 value)
 
 void RTHidDevice::setTalkFxState(bool state)
 {
-    m_talkFx.fx_status = (state ? ROCCAT_TALKFX_STATE_ON : ROCCAT_TALKFX_STATE_OFF);
+    if (state) {
+        m_talkFx.fx_status |= ROCCAT_TALKFX_STATE_ON;
+    } else {
+        m_talkFx.fx_status &= ~ROCCAT_TALKFX_STATE_ON;
+    }
 }
 
 void RTHidDevice::setDcuState(TyonControlUnitDcu state)
@@ -1341,19 +1346,49 @@ void RTHidDevice::setDcuState(TyonControlUnitDcu state)
     m_controlUnit.dcu = state;
 }
 
-void RTHidDevice::setTcuState(TyonControlUnitTcu state)
+void RTHidDevice::setTcuState(bool state)
 {
-    m_controlUnit.tcu = state;
+    if (state) {
+        m_controlUnit.tcu |= TYON_TRACKING_CONTROL_UNIT_ON;
+    } else {
+        m_controlUnit.tcu &= ~TYON_TRACKING_CONTROL_UNIT_ON;
+    }
 }
 
-void RTHidDevice::setLightsEnabled(quint8 bit, bool state)
+void RTHidDevice::setLightWheelEnabled(bool state)
 {
     if (m_profiles.contains(profileIndex())) {
         TProfile p = m_profiles[profileIndex()];
         if (state) {
-            p.settings.lights_enabled |= bit;
+            p.settings.lights_enabled |= TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_WHEEL;
         } else {
-            p.settings.lights_enabled &= ~bit;
+            p.settings.lights_enabled &= ~TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_WHEEL;
+        }
+        updateProfileMap(&p, true);
+    }
+}
+
+void RTHidDevice::setLightBottomEnabled(bool state)
+{
+    if (m_profiles.contains(profileIndex())) {
+        TProfile p = m_profiles[profileIndex()];
+        if (state) {
+            p.settings.lights_enabled |= TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_BOTTOM;
+        } else {
+            p.settings.lights_enabled &= ~TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_BOTTOM;
+        }
+        updateProfileMap(&p, true);
+    }
+}
+
+void RTHidDevice::setLightCustomColorEnabled(bool state)
+{
+    if (m_profiles.contains(profileIndex())) {
+        TProfile p = m_profiles[profileIndex()];
+        if (state) {
+            p.settings.lights_enabled |= TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR;
+        } else {
+            p.settings.lights_enabled &= ~TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR;
         }
         updateProfileMap(&p, true);
     }

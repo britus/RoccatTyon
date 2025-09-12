@@ -67,5 +67,5 @@ private:
     inline bool doSelectColor(TyonLightType target, TyonLight &color);
     inline bool doSelectFile(QString &file, bool isOpen = true);
     inline void doCalibrateXCelerator();
-    inline void calibrateTcu();
+    inline void doCalibrateTcu();
 };

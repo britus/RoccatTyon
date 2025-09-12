@@ -376,7 +376,7 @@ inline void RTMainWindow::connectUiElements()
     });
 
     connect(ui->cbxSenitivityEnableAdv, &QCheckBox::clicked, this, [this](bool checked) { //
-        m_ctlr->setAdvancedSenitivity(ROCCAT_SENSITIVITY_ADVANCED_ON, checked);
+        m_ctlr->setAdvancedSenitivity(checked);
     });
 
     connect(ui->rbPollRate125, &QRadioButton::clicked, this, [this](bool) { //
@@ -486,12 +486,12 @@ inline void RTMainWindow::connectUiElements()
 
     connect(ui->rbLightPaletteColor, &QRadioButton::clicked, this, [this](bool checked) { //
         if (checked) {
-            m_ctlr->setLightsEnabled(TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR, false);
+            m_ctlr->setLightCustomColorEnabled(false);
         }
     });
     connect(ui->rbLightCustomColor, &QRadioButton::clicked, this, [this](bool checked) { //
         if (checked) {
-            m_ctlr->setLightsEnabled(TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR, true);
+            m_ctlr->setLightCustomColorEnabled(true);
         }
     });
 
@@ -514,7 +514,7 @@ inline void RTMainWindow::connectUiElements()
 
     // -- gbxLightColor
     connect(ui->cbxLightWheel, &QCheckBox::clicked, this, [this](bool checked) { //
-        m_ctlr->setLightsEnabled(TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_WHEEL, checked);
+        m_ctlr->setLightWheelEnabled(checked);
     });
     connect(ui->pbLightColorWheel, &QPushButton::clicked, this, [this]() { //
         TyonLight color;
@@ -523,7 +523,7 @@ inline void RTMainWindow::connectUiElements()
         }
     });
     connect(ui->cbxLightBottom, &QCheckBox::clicked, this, [this](bool checked) { //
-        m_ctlr->setLightsEnabled(TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_BOTTOM, checked);
+        m_ctlr->setLightBottomEnabled(checked);
     });
     connect(ui->pbLightColorBottom, &QPushButton::clicked, this, [this]() { //
         TyonLight color;
@@ -538,11 +538,11 @@ inline void RTMainWindow::connectUiElements()
     });
 
     connect(ui->cbxTcuActivate, &QCheckBox::clicked, this, [this](bool checked) { //
-        m_ctlr->setTcuState(checked ? TYON_TRACKING_CONTROL_UNIT_ON : TYON_TRACKING_CONTROL_UNIT_OFF);
+        m_ctlr->setTcuState(checked);
     });
 
     connect(ui->pbTcuCalibrate, &QPushButton::clicked, this, [this]() { //
-        calibrateTcu();
+        doCalibrateTcu();
     });
 
     connect(ui->rbDcuOff, &QRadioButton::clicked, this, [this](bool) { //
@@ -647,7 +647,7 @@ inline void RTMainWindow::doCalibrateXCelerator()
     d->raise();
 }
 
-inline void RTMainWindow::calibrateTcu()
+inline void RTMainWindow::doCalibrateTcu()
 {
     // dialog destroying on close automatically
     RTCalibrateTcuDialog *d = new RTCalibrateTcuDialog(m_ctlr, this);

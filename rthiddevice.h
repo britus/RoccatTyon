@@ -204,7 +204,7 @@ public slots:
      * @brief Save ROCCAT Tyon profiles to device
      * @return True if success
      */
-    void saveProfilesToDevice();
+    void updateDevice();
 
     /**
      * @brief Save all ROCCAT Tyon profiles to file
@@ -254,10 +254,9 @@ public slots:
 
     /**
      * @brief Set the advanced sensitivity mode
-     * @param bit ROCCAT Tyon selection bits
      * @param state True independent / false X/Y same value
      */
-    void setAdvancedSenitivity(quint8 bit, bool state);
+    void setAdvancedSenitivity(bool state);
 
     /**
      * @brief Set sensor poll rate
@@ -286,11 +285,22 @@ public slots:
     void setDpiLevel(quint8 index, quint16 value);
 
     /**
-     * @brief Enable ROCCAT Tyon lights
-     * @param flag Bit of the light (top / bottom)
+     * @brief Enable ROCCAT Tyon wheel light
      * @param state True enable / False disable
      */
-    void setLightsEnabled(quint8 flag, bool state);
+    void setLightWheelEnabled(bool state);
+
+    /**
+     * @brief Enable ROCCAT Tyon bottom light
+     * @param state True enable / False disable
+     */
+    void setLightBottomEnabled(bool state);
+
+    /**
+     * @brief Enable custom color light
+     * @param state True enable / False disable
+     */
+    void setLightCustomColorEnabled(bool state);
 
     /**
      * @brief Set the light effect mode
@@ -306,7 +316,7 @@ public slots:
 
     void setTalkFxState(bool state);
     void setDcuState(TyonControlUnitDcu state);
-    void setTcuState(TyonControlUnitTcu state);
+    void setTcuState(bool state);
 
     // X-Celerator calibration
     void xcStartCalibration();

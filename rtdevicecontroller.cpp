@@ -272,9 +272,9 @@ void RTDeviceController::setYSensitivity(qint16 sensitivity)
     m_device.setYSensitivity(sensitivity);
 }
 
-void RTDeviceController::setAdvancedSenitivity(quint8 bit, bool state)
+void RTDeviceController::setAdvancedSenitivity(bool state)
 {
-    m_device.setAdvancedSenitivity(bit, state);
+    m_device.setAdvancedSenitivity(state);
 }
 
 void RTDeviceController::setPollRate(quint8 rate)
@@ -297,9 +297,19 @@ void RTDeviceController::setDpiLevel(quint8 index, quint16 value)
     m_device.setDpiLevel(index, value);
 }
 
-void RTDeviceController::setLightsEnabled(quint8 flag, bool state)
+void RTDeviceController::setLightWheelEnabled(bool state)
 {
-    m_device.setLightsEnabled(flag, state);
+    m_device.setLightWheelEnabled(state);
+}
+
+void RTDeviceController::setLightBottomEnabled(bool state)
+{
+    m_device.setLightBottomEnabled(state);
+}
+
+void RTDeviceController::setLightCustomColorEnabled(bool state)
+{
+    m_device.setLightCustomColorEnabled(state);
 }
 
 void RTDeviceController::setLightsEffect(quint8 value)
@@ -337,7 +347,7 @@ TyonControlUnitDcu RTDeviceController::dcuState() const
     return m_device.dcuState();
 }
 
-void RTDeviceController::setTcuState(TyonControlUnitTcu state)
+void RTDeviceController::setTcuState(bool state)
 {
     m_device.setTcuState(state);
 }
@@ -369,7 +379,7 @@ void RTDeviceController::resetProfiles()
 
 void RTDeviceController::saveProfilesToDevice()
 {
-    m_device.saveProfilesToDevice();
+    m_device.updateDevice();
 }
 
 TyonLight RTDeviceController::toDeviceColor(TyonLightType target, const QColor &color) const

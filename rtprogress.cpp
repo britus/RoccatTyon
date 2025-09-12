@@ -1,5 +1,4 @@
-// RTProgress.cpp
-#include "RTProgress.h"
+#include "rtprogress.h"
 #include <QApplication>
 #include <QLabel>
 #include <QProgressBar>
@@ -40,8 +39,12 @@ void RTProgress::present(const QString &message, QWidget *parent)
 {
     //QMutexLocker locker(&mutex);
 
+    if (parent == nullptr) {
+        parent = QApplication::activeWindow();
+    }
+
     if (!instance) {
-        instance = new RTProgress(message, parent ? parent : QApplication::activeWindow());
+        instance = new RTProgress(message, parent);
     }
 
     // Position in Bildschirmmitte
