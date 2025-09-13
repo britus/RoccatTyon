@@ -416,7 +416,7 @@ private:
 
     inline void setModified(quint8 pix, bool changed);
     inline void setModified(TProfile *p, bool changed);
-    inline void updateProfileMap(TProfile *p, bool changed);
+    inline void updateProfile(TProfile &p, bool changed);
 
     inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
     inline int hidWriteRoccatCtl(IOHIDDeviceRef device, uint pix, uint req);

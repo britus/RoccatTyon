@@ -561,7 +561,7 @@ void RTHidDevice::updateDevice()
                     if ((ret = writeProfile(device, p)) != kIOReturnSuccess) {
                         goto thread_exit;
                     }
-                    updateProfileMap(&p, false);
+                    updateProfile(p, false);
                 }
             }
         }
@@ -975,7 +975,7 @@ void RTHidDevice::loadProfilesFromFile(const QString &fileName, bool raiseEvents
                     SafeDelete(profile);
                     goto func_exit;
                 }
-                updateProfileMap(profile, true);
+                updateProfile((*profile), true);
                 SafeDelete(profile);
                 profile = 0L;
                 pfcount++;
@@ -1045,7 +1045,7 @@ void RTHidDevice::assignButton(TyonButtonIndex type, TyonButtonType func, const 
     b->type = func;
     b->modifier = (keymap != nullptr ? mods : 0);
     b->key = (keymap != nullptr ? keymap->uid_key : 0);
-    updateProfileMap(&p, true);
+    updateProfile(p, true);
 }
 
 const QKeySequence RTHidDevice::toKeySequence(const RoccatButton &b) const
@@ -1127,7 +1127,7 @@ void RTHidDevice::setProfileName(const QString &name, quint8 pix)
                 return;
             }
             p.name = name;
-            updateProfileMap(&p, true);
+            updateProfile(p, true);
         }
     }
 }
@@ -1138,7 +1138,7 @@ void RTHidDevice::setXSensitivity(qint16 sensitivity)
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.sensitivity_x != sensitivity) {
             p.settings.sensitivity_x = sensitivity + ROCCAT_SENSITIVITY_CENTER;
-            updateProfileMap(&p, true);
+            updateProfile(p, true);
         }
     }
 }
@@ -1149,7 +1149,7 @@ void RTHidDevice::setYSensitivity(qint16 sensitivity)
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.sensitivity_y != sensitivity) {
             p.settings.sensitivity_y = sensitivity + ROCCAT_SENSITIVITY_CENTER;
-            updateProfileMap(&p, true);
+            updateProfile(p, true);
         }
     }
 }
@@ -1163,7 +1163,7 @@ void RTHidDevice::setAdvancedSenitivity(bool state)
         } else {
             p.settings.advanced_sensitivity &= ~ROCCAT_SENSITIVITY_ADVANCED_ON;
         }
-        updateProfileMap(&p, true);
+        updateProfile(p, true);
     }
 }
 
@@ -1176,7 +1176,7 @@ void RTHidDevice::setDpiSlot(quint8 bit, bool state)
         } else {
             p.settings.cpi_levels_enabled &= ~bit;
         }
-        updateProfileMap(&p, true);
+        updateProfile(p, true);
     }
 }
 
@@ -1186,7 +1186,7 @@ void RTHidDevice::setActiveDpiSlot(quint8 id)
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.cpi_active != id) {
             p.settings.cpi_active = id;
-            updateProfileMap(&p, true);
+            updateProfile(p, true);
         }
     }
 }
@@ -1198,7 +1198,7 @@ void RTHidDevice::setDpiLevel(quint8 index, quint16 value)
         quint8 level = ((value / 200) << 2);
         if (p.settings.cpi_levels[index] != level) {
             p.settings.cpi_levels[index] = level;
-            updateProfileMap(&p, true);
+            updateProfile(p, true);
         }
     }
 }
@@ -1209,7 +1209,7 @@ void RTHidDevice::setLightsEffect(quint8 value)
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.light_effect != value) {
             p.settings.light_effect = value;
-            updateProfileMap(&p, true);
+            updateProfile(p, true);
         }
     }
 }
@@ -1220,7 +1220,7 @@ void RTHidDevice::setColorFlow(quint8 value)
         TProfile p = m_profiles[profileIndex()];
         if (p.settings.color_flow != value) {
             p.settings.color_flow = value;
-            updateProfileMap(&p, true);
+            updateProfile(p, true);
         }
     }
 }
@@ -1259,7 +1259,7 @@ void RTHidDevice::setTalkFxPollRate(quint8 rate)
         _set_nibble8(&value, ROCCAT_NIBBLE_LOW, rate);
         if (p.settings.talkfx_polling_rate != value) {
             p.settings.talkfx_polling_rate = value;
-            updateProfileMap(&p, true);
+            updateProfile(p, true);
         }
     }
 }
@@ -1287,7 +1287,7 @@ void RTHidDevice::setTalkFxState(bool state)
         }
         if (p.settings.talkfx_polling_rate != value) {
             p.settings.talkfx_polling_rate = value;
-            updateProfileMap(&p, true);
+            updateProfile(p, true);
         }
     }
 }
@@ -1315,7 +1315,7 @@ void RTHidDevice::setLightWheelEnabled(bool state)
         } else {
             p.settings.lights_enabled &= ~TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_WHEEL;
         }
-        updateProfileMap(&p, true);
+        updateProfile(p, true);
     }
 }
 
@@ -1328,7 +1328,7 @@ void RTHidDevice::setLightBottomEnabled(bool state)
         } else {
             p.settings.lights_enabled &= ~TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_BOTTOM;
         }
-        updateProfileMap(&p, true);
+        updateProfile(p, true);
     }
 }
 
@@ -1341,7 +1341,7 @@ void RTHidDevice::setLightCustomColorEnabled(bool state)
         } else {
             p.settings.lights_enabled &= ~TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR;
         }
-        updateProfileMap(&p, true);
+        updateProfile(p, true);
     }
 }
 
@@ -1394,7 +1394,7 @@ void RTHidDevice::setLightColor(TyonLightType target, const TyonLight &color)
             p.settings.lights[target].green = color.green;
             p.settings.lights[target].blue = color.blue;
             p.settings.lights[target].unused = color.unused;
-            updateProfileMap(&p, true);
+            updateProfile(p, true);
         }
     }
 }
@@ -1799,7 +1799,7 @@ inline void RTHidDevice::setModified(quint8 pix, bool changed)
 {
     if (m_profiles.contains(pix)) {
         TProfile p = m_profiles[pix];
-        updateProfileMap(&p, changed);
+        updateProfile(p, changed);
     }
 }
 
@@ -1810,19 +1810,19 @@ inline void RTHidDevice::setModified(TProfile *p, bool changed)
     }
 }
 
-inline void RTHidDevice::updateProfileMap(TProfile *p, bool changed)
+inline void RTHidDevice::updateProfile(TProfile &p, bool changed)
 {
-    if (p->index >= TYON_PROFILE_NUM) {
+    if (p.index >= TYON_PROFILE_NUM) {
         raiseError(kIOReturnInvalid, "Invalid profile index.");
         return;
     }
 
-    setModified(p, changed);
-    m_profiles[p->index] = (*p);
+    p.changed = changed;
+    m_profiles[p.index] = p;
 
     // emit event only on active profile
-    if (p->index == profileIndex()) {
-        emit profileChanged((*p));
+    if (p.index == profileIndex()) {
+        emit profileChanged(p);
     }
 }
 
