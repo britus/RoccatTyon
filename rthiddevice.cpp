@@ -591,7 +591,7 @@ void RTHidDevice::resetProfiles()
 
     IOReturn ret = kIOReturnSuccess;
     foreach (IOHIDDeviceRef device, m_wrkrDevices) {
-        if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+        if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
             goto func_exit;
         }
         if ((ret = hidWriteReportAsync(device, buffer, info.size)) != kIOReturnSuccess) {
@@ -620,7 +620,7 @@ void RTHidDevice::updateDevice()
         CFIndex length = sizeof(TyonProfile);
         quint8 *buffer = (quint8 *) &m_activeProfile;
 
-        if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+        if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
             return ret;
         }
         if ((ret = hidWriteReportAsync(device, buffer, length)) != kIOReturnSuccess) {
@@ -639,7 +639,7 @@ void RTHidDevice::updateDevice()
         length = sizeof(TyonProfileSettings);
         buffer = (quint8 *) &p.settings;
 
-        if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+        if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
             return ret;
         }
         if ((ret = hidWriteReportAsync(device, buffer, length)) != kIOReturnSuccess) {
@@ -649,7 +649,7 @@ void RTHidDevice::updateDevice()
         length = sizeof(TyonProfileButtons);
         buffer = (quint8 *) &p.buttons;
 
-        if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+        if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
             return ret;
         }
         if ((ret = hidWriteReportAsync(device, buffer, length)) != kIOReturnSuccess) {
@@ -1988,24 +1988,23 @@ inline int RTHidDevice::readControlUnit(IOHIDDeviceRef device)
 inline int RTHidDevice::setDeviceState(bool state, IOHIDDeviceRef device)
 {
     IOReturn ret;
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
-    TyonDeviceState device_state;
-    device_state.report_id = TYON_REPORT_ID_DEVICE_STATE;
-    device_state.size = sizeof(TyonDeviceState);
-    device_state.state = (state ? 0x01 : 0x00);
+    TyonDeviceState devstate;
+    devstate.report_id = TYON_REPORT_ID_DEVICE_STATE;
+    devstate.size = sizeof(TyonDeviceState);
+    devstate.state = (state ? 0x01 : 0x00);
 
-    const quint8 *buf = (const quint8 *) &device_state;
-    return hidWriteReportAsync(device, buf, device_state.size);
+    return hidWriteReportAsync(device, (const quint8 *) &devstate, devstate.size);
 }
 
 inline int RTHidDevice::tcuWriteTest(IOHIDDeviceRef device, quint8 dcuState, uint median)
 {
     IOReturn ret;
 
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -2016,6 +2015,7 @@ inline int RTHidDevice::tcuWriteTest(IOHIDDeviceRef device, quint8 dcuState, uin
     control.tcu = TYON_TRACKING_CONTROL_UNIT_ON;
     control.median = median;
     control.action = TYON_CONTROL_UNIT_ACTION_CANCEL;
+
     return hidWriteReportAsync(device, (const quint8 *) &control, sizeof(TyonControlUnit));
 }
 
@@ -2023,7 +2023,7 @@ inline int RTHidDevice::tcuWriteAccept(IOHIDDeviceRef device, quint8 dcuState, u
 {
     IOReturn ret;
 
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -2034,6 +2034,7 @@ inline int RTHidDevice::tcuWriteAccept(IOHIDDeviceRef device, quint8 dcuState, u
     control.tcu = TYON_TRACKING_CONTROL_UNIT_ON;
     control.median = median;
     control.action = TYON_CONTROL_UNIT_ACTION_ACCEPT;
+
     return hidWriteReportAsync(device, (const quint8 *) &control, sizeof(TyonControlUnit));
 }
 
@@ -2041,7 +2042,7 @@ inline int RTHidDevice::tcuWriteOff(IOHIDDeviceRef device, quint8 dcuState)
 {
     IOReturn ret;
 
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -2052,6 +2053,7 @@ inline int RTHidDevice::tcuWriteOff(IOHIDDeviceRef device, quint8 dcuState)
     control.tcu = TYON_TRACKING_CONTROL_UNIT_OFF;
     control.median = 0;
     control.action = TYON_CONTROL_UNIT_ACTION_OFF;
+
     return hidWriteReportAsync(device, (const quint8 *) &control, sizeof(TyonControlUnit));
 }
 
@@ -2059,7 +2061,7 @@ inline int RTHidDevice::tcuWriteTry(IOHIDDeviceRef device, quint8 dcuState)
 {
     IOReturn ret;
 
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -2070,6 +2072,7 @@ inline int RTHidDevice::tcuWriteTry(IOHIDDeviceRef device, quint8 dcuState)
     control.tcu = 0xff;
     control.median = 0xff;
     control.action = TYON_CONTROL_UNIT_ACTION_UNDEFINED;
+
     return hidWriteReportAsync(device, (const quint8 *) &control, sizeof(TyonControlUnit));
 }
 
@@ -2077,7 +2080,7 @@ inline int RTHidDevice::tcuWriteCancel(IOHIDDeviceRef device, quint8 dcuState)
 {
     IOReturn ret;
 
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -2088,6 +2091,7 @@ inline int RTHidDevice::tcuWriteCancel(IOHIDDeviceRef device, quint8 dcuState)
     control.tcu = 0xff;
     control.median = 0xff;
     control.action = TYON_CONTROL_UNIT_ACTION_CANCEL;
+
     return hidWriteReportAsync(device, (const quint8 *) &control, sizeof(TyonControlUnit));
 }
 
@@ -2095,7 +2099,7 @@ inline int RTHidDevice::dcuWriteState(IOHIDDeviceRef device, quint8 dcuState)
 {
     IOReturn ret;
 
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -2106,6 +2110,7 @@ inline int RTHidDevice::dcuWriteState(IOHIDDeviceRef device, quint8 dcuState)
     control.tcu = 0xff;
     control.median = 0xff;
     control.action = TYON_CONTROL_UNIT_ACTION_ACCEPT;
+
     return hidWriteReportAsync(device, (const quint8 *) &control, sizeof(TyonControlUnit));
 }
 
@@ -2135,7 +2140,7 @@ inline int RTHidDevice::tcuWriteSensorCommand(IOHIDDeviceRef device, quint8 acti
 {
     IOReturn ret;
 
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -2175,7 +2180,7 @@ inline int RTHidDevice::xcCalibWriteStart(IOHIDDeviceRef device)
 {
     IOReturn ret;
 
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -2189,6 +2194,12 @@ inline int RTHidDevice::xcCalibWriteStart(IOHIDDeviceRef device)
 
 inline int RTHidDevice::xcCalibWriteEnd(IOHIDDeviceRef device)
 {
+    IOReturn ret;
+
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
+        return ret;
+    }
+
     TyonInfo info = {};
     info.report_id = TYON_REPORT_ID_INFO;
     info.size = sizeof(TyonInfo);
@@ -2201,7 +2212,7 @@ inline int RTHidDevice::xcCalibWriteData(IOHIDDeviceRef device, quint8 min, quin
 {
     IOReturn ret;
 
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -2307,7 +2318,7 @@ inline int RTHidDevice::talkWriteReport(IOHIDDeviceRef device, TyonTalk *tyonTal
 {
     IOReturn ret;
 
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -2351,8 +2362,8 @@ inline int RTHidDevice::talkWriteFxData(IOHIDDeviceRef device, TyonTalk *tyonTal
 
 inline int RTHidDevice::talkWriteFx(IOHIDDeviceRef device, quint32 effect, quint32 ambient_color, quint32 event_color)
 {
-    TyonTalk tyonTalk = {};
     uint zone;
+    TyonTalk tyonTalk = {};
     zone = (effect & ROCCAT_TALKFX_ZONE_BIT_MASK) >> ROCCAT_TALKFX_ZONE_BIT_SHIFT;
     tyonTalk.zone = (zone == ROCCAT_TALKFX_ZONE_AMBIENT) ? TYON_TALKFX_ZONE_AMBIENT : TYON_TALKFX_ZONE_EVENT;
     tyonTalk.effect = (effect & ROCCAT_TALKFX_EFFECT_BIT_MASK) >> ROCCAT_TALKFX_EFFECT_BIT_SHIFT;
@@ -2374,20 +2385,20 @@ inline int RTHidDevice::talkWriteFxState(IOHIDDeviceRef device, quint8 state)
     return talkWriteFxData(device, &tyonTalk);
 }
 
-inline int RTHidDevice::roccatControlRead(IOHIDDeviceRef device)
+inline int RTHidDevice::roccatControlCheck(IOHIDDeviceRef device)
 {
     const quint8 rid = TYON_REPORT_ID_CONTROL;
 
+    IOReturn ret = kIOReturnSuccess;
     CFIndex length = sizeof(RoccatControl);
     RoccatControl *buffer = (RoccatControl *) malloc(length);
     memset(buffer, 0x00, length);
 
-    IOReturn ret = kIOReturnSuccess;
     while (ret == kIOReturnSuccess) {
         ret = hidGetReportRaw(device, rid, (quint8 *) buffer, length);
         if (ret != kIOReturnSuccess) {
             raiseError(ret, tr("Unable to read HID device."));
-            goto func_exit;
+            break;
         }
         switch (buffer->value) {
             case ROCCAT_CONTROL_VALUE_STATUS_OK: {
@@ -2421,7 +2432,7 @@ func_exit:
 inline int RTHidDevice::roccatControlWrite(IOHIDDeviceRef device, uint pix, uint req)
 {
     IOReturn ret;
-    if ((ret = roccatControlRead(device)) != kIOReturnSuccess) {
+    if ((ret = roccatControlCheck(device)) != kIOReturnSuccess) {
         return ret;
     }
 
@@ -2429,6 +2440,7 @@ inline int RTHidDevice::roccatControlWrite(IOHIDDeviceRef device, uint pix, uint
     control.report_id = TYON_REPORT_ID_CONTROL;
     control.value = pix;
     control.request = req;
+
     return hidWriteReportAsync(device, (const quint8 *) &control, sizeof(RoccatControl));
 }
 

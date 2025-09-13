@@ -38,6 +38,9 @@ public:
         TyonProfileButtons buttons;
     } TProfile;
 
+    /**
+     * Defines the ROCCAT device light colors
+     */
     typedef struct
     {
         TyonLight deviceColors;
@@ -52,6 +55,11 @@ public:
      * @brief ROCCAT Tyon color index to RGB mapping
      */
     typedef QMap<quint8, TColorItem> TDeviceColors;
+
+    /**
+     * @brief HID report response handler function
+     */
+    typedef std::function<int(const quint8 *, qsizetype)> TReportHandler;
 
     /**
      * @brief Default constructor
@@ -388,7 +396,7 @@ private:
     QMutex m_accessMutex;
     QList<IOHIDDeviceRef> m_wrkrDevices;
     QList<IOHIDDeviceRef> m_miscDevices;
-    QMap<quint8, std::function<int(const quint8 *, qsizetype)>> m_handlers;
+    QMap<quint8, TReportHandler> m_handlers;
     // --
     TDeviceColors m_colors;
     TyonInfo m_info;
@@ -424,7 +432,7 @@ private:
     inline void updateProfile(TProfile &p, bool changed);
 
     inline int roccatControlWrite(IOHIDDeviceRef device, uint pix, uint req);
-    inline int roccatControlRead(IOHIDDeviceRef device);
+    inline int roccatControlCheck(IOHIDDeviceRef device);
 
     inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
     inline int hidGetReportRaw(IOHIDDeviceRef device, quint8 rid, quint8 *buffer, CFIndex size);
