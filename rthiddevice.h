@@ -118,7 +118,7 @@ public:
      * @param func Button function
      * @param QKeyCombination If short function, the shortcut
      */
-    void assignButton(TyonButtonIndex type, TyonButtonType func, const QKeyCombination &kc);
+    void assignButton(TyonButtonIndex type, TyonButtonType func, QKeyCombination kc);
 
     /**
      * @brief Translate ROCCAT Tyon shortcut to QT key sequence

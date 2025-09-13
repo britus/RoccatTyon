@@ -13,6 +13,7 @@
 #include <IOKit/hid/IOHIDManager.h>
 #include <IOKit/hid/IOHIDUsageTables.h>
 #include <dispatch/dispatch.h>
+#include <QApplication>
 #include <QColor>
 #include <QCoreApplication>
 #include <QDeadlineTimer>
@@ -20,7 +21,9 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QInputMethod>
 #include <QKeySequence>
+#include <QLocale>
 #include <QMutexLocker>
 #include <QRgb>
 #include <QRgba64>
@@ -1117,7 +1120,7 @@ func_exit:
     }
 }
 
-void RTHidDevice::assignButton(TyonButtonIndex type, TyonButtonType func, const QKeyCombination &kc)
+void RTHidDevice::assignButton(TyonButtonIndex type, TyonButtonType func, QKeyCombination kc)
 {
     if ((qint8) type > TYON_PROFILE_BUTTON_NUM) {
         return;
@@ -1134,6 +1137,18 @@ void RTHidDevice::assignButton(TyonButtonIndex type, TyonButtonType func, const 
     quint8 mods = 0;
 
     if (func == TYON_BUTTON_TYPE_SHORTCUT) {
+        QLocale locale = QApplication::inputMethod()->locale();
+        if (locale.language() == QLocale::German) {
+            QString language = locale.languageToString(locale.language());
+            qDebug() << "Aktuelle Tastatursprache:" << language;
+            // y -> z & vs.
+            if (kc.key() == Qt::Key_Y) {
+                kc = QKeyCombination(kc.keyboardModifiers(), Qt::Key_Z);
+            } else if (kc.key() == Qt::Key_Z) {
+                kc = QKeyCombination(kc.keyboardModifiers(), Qt::Key_Y);
+            }
+        }
+
         // Translate QT key modifiers to ROCCAT Tyon modifiers
         auto toRoccatKMods = [](const Qt::KeyboardModifiers &km) -> quint8 {
             quint8 mods = 0;
@@ -1196,9 +1211,22 @@ const QKeySequence RTHidDevice::toKeySequence(const RoccatButton &b) const
         return km;
     };
 
+    quint8 _rbk = b.key;
+    QLocale locale = QApplication::inputMethod()->locale();
+    QString language = locale.languageToString(locale.language());
+
+    if (locale.language() == QLocale::German) {
+        // y -> z & vs.
+        if (_rbk == HID_UID_KB_Y) {
+            _rbk = HID_UID_KB_Z;
+        } else if (_rbk == HID_UID_KB_Z) {
+            _rbk = HID_UID_KB_Y;
+        }
+    }
+
     const TUidToQtKeyMap *keymap = nullptr;
     for (const TUidToQtKeyMap *p = uid_2_qtkey; p->uid_key && p->qt_key != Qt::Key_unknown; p++) {
-        if (b.key == p->uid_key) {
+        if (_rbk == p->uid_key) {
             keymap = p;
             break;
         }
