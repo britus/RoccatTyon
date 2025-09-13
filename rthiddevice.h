@@ -177,15 +177,54 @@ public:
      */
     void setLightColor(TyonLightType target, const TyonLight &light);
 
+    /**
+     * @brief Return the X-Celerate minimum
+     * @return Numbers
+     */
     quint8 minimumXCelerate() const;
+
+    /**
+     * @brief Return the X-Celerate maximum
+     * @return Number
+     */
     quint8 maximumXCelerate() const;
+
+    /**
+     * @brief Return the X-Celerate middle value
+     * @return Number
+     */
     quint8 middleXCelerate() const;
 
+    /**
+     * @brief Calculates the surface test median from image data
+     * @param image The surface image
+     * @return Number
+     */
     uint sensorMedianOfImage(TyonSensorImage const *image);
 
+    /**
+     * @brief Return the TalkFX status
+     * @param settings
+     * @return
+     */
     bool talkFxState(const TyonProfileSettings *settings) const;
+
+    /**
+     * @brief Return the state of the distance control unit
+     * @return TyonControlUnitDcu
+     */
     TyonControlUnitDcu dcuState() const;
+
+    /**
+     * @brief Return the state of the tracking control unit
+     * @return TyonControlUnitTcu
+     */
     TyonControlUnitTcu tcuState() const;
+
+    /**
+     * @brief Return the median of the surface test
+     * @return Number
+     */
     uint tcuMedian() const;
 
     /**
@@ -211,10 +250,6 @@ signals:
     void sensorMedianChanged(int median);
     void specialReport(uint reportId, const QByteArray &report);
     void talkFxChanged(const TyonTalk &talkFx);
-
-    //public slots:
-    void reportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
-    void deviceFoundCallback(IOReturn status, IOHIDDeviceRef device);
 
 public slots:
     /**
@@ -358,6 +393,11 @@ protected:
     void onDeviceRemoved(IOHIDDeviceRef device);
     void onSetReport(IOReturn status, uint rid, CFIndex length, uint8_t *report);
     void onSpecialReport(uint rid, CFIndex length, uint8_t *report);
+
+protected:
+    // called from static HID callback functions
+    void doDeviceFoundCallback(IOReturn status, IOHIDDeviceRef device);
+    void doReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
 
 protected:
     // Callback HIDManager level
