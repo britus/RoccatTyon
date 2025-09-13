@@ -25,7 +25,7 @@ RTXCeleratorWidget::RTXCeleratorWidget(QWidget *parent)
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     m_anim = new QPropertyAnimation(this, "animatedValue", this);
-    m_anim->setDuration(200); // ms
+    m_anim->setDuration(300); // ms
     m_anim->setEasingCurve(QEasingCurve::InOutQuad);
 
     m_updateTimer.start();

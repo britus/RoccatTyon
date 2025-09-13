@@ -46,7 +46,7 @@ RTCalibrateXCDialog::RTCalibrateXCDialog(RTDeviceController *controller, QWidget
     , m_isSaved(false)
     , m_stage(0)
     , m_count(0)
-    , m_phaseStart()
+    , m_start()
     , m_last_value(0)
     , m_min(255)
     , m_max(0)
@@ -131,12 +131,9 @@ void RTCalibrateXCDialog::onSpecialReport(uint, const QByteArray &report)
 
     switch (m_stage) {
         case PHASE_MID: {
-#ifdef QT_DEBUG
-            qDebug("[XC-CAL] PHASE_MID m_min=%d m_mid=%d m_max=%d value=%d", m_min, m_mid, m_max, value);
-#endif
             if (inRange(value, m_last_value, 10)) {
+                m_count += 1;
                 m_mid += value;
-                ++m_count;
                 ui->vslXCelerate->setValue(value);
                 if (m_count == validCount) {
                     m_mid = m_mid >> AVERAGE_SHIFT;
@@ -149,12 +146,9 @@ void RTCalibrateXCDialog::onSpecialReport(uint, const QByteArray &report)
             break;
         }
         case PHASE_MAX: {
-#ifdef QT_DEBUG
-            qDebug("[XC-CAL] PHASE_MAX m_min=%d m_mid=%d m_max=%d value=%d", m_min, m_mid, m_max, value);
-#endif
             if (inRange(value, m_last_value, 10)) {
+                m_count += 1;
                 m_max += value;
-                ++m_count;
                 if (value > ui->vslXCelerate->maximum()) {
                     ui->vslXCelerate->setMaximum(value);
                     ui->vslXCelerate->setValue(m_max);
@@ -170,12 +164,9 @@ void RTCalibrateXCDialog::onSpecialReport(uint, const QByteArray &report)
             break;
         }
         case PHASE_MIN: {
-#ifdef QT_DEBUG
-            qDebug("[XC-CAL] PHASE_MIN m_min=%d m_mid=%d m_max=%d value=%d", m_min, m_mid, m_max, value);
-#endif
             if (inRange(value, m_last_value, 10)) {
+                m_count += 1;
                 m_min += value;
-                ++m_count;
                 if (value < ui->vslXCelerate->minimum()) {
                     ui->vslXCelerate->setMinimum(value);
                     ui->vslXCelerate->setValue(value);
@@ -192,36 +183,23 @@ void RTCalibrateXCDialog::onSpecialReport(uint, const QByteArray &report)
         }
         case PHASE_WAIT_TIME_MAX:
         case PHASE_WAIT_TIME_MIN: {
-#ifdef QT_DEBUG
-            qDebug("[XC-CAL] PHASE_WAIT_TIME_MINMAX m_min=%d m_mid=%d m_max=%d value=%d", m_min, m_mid, m_max, value);
-#endif
-            /* 1 sec grace period */
-            int diff = m_phaseStart.msecsTo(QTime::currentTime()) / 1000;
-            if (diff >= 1.0) {
+            /* 1 second grace period */
+            if (m_start.msecsTo(QTime::currentTime()) >= 1000) {
                 nextPhase();
             }
             break;
         }
         case PHASE_WAIT_CHANGE_MAX: { /* values < mid */
-#ifdef QT_DEBUG
-            qDebug("[XC-CAL] PHASE_WAIT_CHANGE_MAX m_min=%d m_mid=%d m_max=%d value=%d", m_min, m_mid, m_max, value);
-#endif
             if ((value + 20) < m_mid)
                 nextPhase();
             break;
         }
         case PHASE_WAIT_CHANGE_MIN: { /* values > mid */
-#ifdef QT_DEBUG
-            qDebug("[XC-CAL] PHASE_WAIT_CHANGE_MIN m_min=%d m_mid=%d m_max=%d value=%d", m_min, m_mid, m_max, value);
-#endif
             if (value > (m_mid + 20))
                 nextPhase();
             break;
         }
         case PHASE_END:
-#ifdef QT_DEBUG
-            qDebug("[XC-CAL] PHASE_END m_min=%d m_mid=%d m_max=%d value=%d", m_min, m_mid, m_max, value);
-#endif
             ui->vslXCelerate->setVisible(false);
             ui->txInstruction->setText(m_instructions[3]);
             ui->pbNextPage->setVisible(false);
@@ -252,13 +230,13 @@ inline bool RTCalibrateXCDialog::inRange(qint32 a, qint32 b, qint32 range)
     return ((a - b) < range || (b - a) < range) ? TRUE : FALSE;
 }
 
-static const uint phaseIndices[] = {0, 1, 1, 1, 2, 2, 2, 3};
 inline void RTCalibrateXCDialog::setPhase(uint phase)
 {
-    m_count = 0;
+    const uint phaseidx[] = {0, 1, 1, 1, 2, 2, 2, 3};
+    m_start = QTime::currentTime();
     m_stage = phase;
-    m_phaseStart = QTime::currentTime();
-    ui->txInstruction->setText(m_instructions[phaseIndices[phase]]);
+    m_count = 0;
+    ui->txInstruction->setText(m_instructions[phaseidx[phase]]);
 }
 
 inline void RTCalibrateXCDialog::nextPhase()

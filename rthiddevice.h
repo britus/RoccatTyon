@@ -362,13 +362,13 @@ protected:
                                        void *,
                                        IOHIDDeviceRef device);
     // Callback per HID device
-    static void _inputReportCallback(void *context, //
-                                     IOReturn result,
-                                     void *device,
-                                     IOHIDReportType /*type*/,
-                                     uint32_t reportID,
-                                     uint8_t *report,
-                                     CFIndex reportLength);
+    static void _inputCallback(void *context, //
+                               IOReturn result,
+                               void *device,
+                               IOHIDReportType /*type*/,
+                               uint32_t reportID,
+                               uint8_t *report,
+                               CFIndex reportLength);
     static void _inputValueCallback(void *context, //
                                     IOReturn result,
                                     void *device,
@@ -395,7 +395,6 @@ private:
     bool m_isCBComplete;
     bool m_initComplete;
     quint8 m_requestedProfile;
-    dispatch_queue_t m_hidQueue;
     TyonTalk m_talkFx;
     TyonSensor m_sensor;
     TyonSensorImage m_sensorImage;
@@ -462,11 +461,11 @@ private:
 
     //--
     inline int readControlUnit(IOHIDDeviceRef device);
-    inline int tcuWriteTest(IOHIDDeviceRef device, TyonControlUnitDcu dcuState, uint median);
-    inline int tcuWriteAccept(IOHIDDeviceRef device, TyonControlUnitDcu dcuState, uint median);
-    inline int tcuWriteCancel(IOHIDDeviceRef device, TyonControlUnitDcu dcuState);
-    inline int tcuWriteOff(IOHIDDeviceRef device, TyonControlUnitDcu dcuState);
-    inline int tcuWriteTry(IOHIDDeviceRef device, TyonControlUnitDcu dcuState);
+    inline int tcuWriteTest(IOHIDDeviceRef device, quint8 dcuState, uint median);
+    inline int tcuWriteAccept(IOHIDDeviceRef device, quint8 dcuState, uint median);
+    inline int tcuWriteCancel(IOHIDDeviceRef device, quint8 dcuState);
+    inline int tcuWriteOff(IOHIDDeviceRef device, quint8 dcuState);
+    inline int tcuWriteTry(IOHIDDeviceRef device, quint8 dcuState);
     inline int tcuReadSensor(IOHIDDeviceRef device);
     inline int tcuReadSensorImage(IOHIDDeviceRef device);
     inline int tcuReadSensorRegister(IOHIDDeviceRef device, quint8 reg);
@@ -474,7 +473,7 @@ private:
     inline int tcuWriteSensorRegister(IOHIDDeviceRef device, quint8 reg, quint8 value);
     inline int tcuWriteSensorImageCapture(IOHIDDeviceRef device);
     // --
-    inline int dcuWriteState(IOHIDDeviceRef device, TyonControlUnitDcu dcuState);
+    inline int dcuWriteState(IOHIDDeviceRef device, quint8 dcuState);
     //--
     inline int talkWriteReport(IOHIDDeviceRef device, TyonTalk *talk);
     inline int talkWriteKey(IOHIDDeviceRef device, quint8 easyshift, quint8 easyshift_lock, quint8 easyaim);

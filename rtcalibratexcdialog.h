@@ -34,7 +34,7 @@ private:
     bool m_isSaved;
     uint m_stage;
     uint m_count;
-    QTime m_phaseStart;
+    QTime m_start;
     qint32 m_last_value;
     qint32 m_min;
     qint32 m_max;
