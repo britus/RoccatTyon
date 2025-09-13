@@ -2544,7 +2544,7 @@ inline int RTHidDevice::hidWriteReportAsync(IOHIDDeviceRef device, const uint8_t
     };
 
 #ifdef QT_DEBUG
-    debugReport("hidWriteWithCB", device, buffer, length);
+    debugReport("hidWriteReportAsync", device, buffer, length);
 #endif
 
     m_isCBComplete = false;
@@ -2560,6 +2560,6 @@ inline int RTHidDevice::hidWriteReportAsync(IOHIDDeviceRef device, const uint8_t
     }
 
     // make sure device MCU is ready for next
-    QThread::msleep(300);
+    QThread::msleep(50);
     return ret;
 }
