@@ -79,6 +79,19 @@ static inline void debugDevice(IOHIDDeviceRef device)
     }
 }
 
+static inline void debugReport(const char *where, IOHIDDeviceRef device, const quint8 *buffer, CFIndex length)
+{
+    QByteArray d((char *) buffer, length);
+    // report ID required at first byte
+    quint8 rid = buffer[0];
+    qDebug("[HIDDEV] %s(%p): [RID:0x%02x LEN:%ld] pl=%s", //
+           where,
+           device,
+           rid,
+           length,
+           qPrintable(d.toHex(' ')));
+}
+
 static inline void debugDevInfo(TyonInfo *p)
 {
     qDebug("[HIDDEV] DEVINFO: SIZE=%d DFU=%d FW=%d", //

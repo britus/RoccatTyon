@@ -59,6 +59,10 @@ RTCalibrateXCDialog::RTCalibrateXCDialog(RTDeviceController *controller, QWidget
     ui->pbNextPage->setDefault(true);
     ui->pbNextPage->setFocus();
 
+    // min/max is inverted
+    ui->vslXCelerate->setMinimum(255);
+    ui->vslXCelerate->setMaximum(0);
+
     //| Qt::WindowStaysOnTopHint| Qt::FramelessWindowHint| Qt::CustomizeWindowHint
     setAttribute(Qt::WA_DeleteOnClose, false);
     setWindowFlags(Qt::Tool);

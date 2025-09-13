@@ -72,7 +72,7 @@ public:
      * @brief Return active profile index
      * @return Profile index
      */
-    inline quint8 profileIndex() const { return m_profile.profile_index; }
+    inline quint8 profileIndex() const { return m_activeProfile.profile_index; }
 
     /**
      * @brief Return number of device profiles
@@ -384,28 +384,33 @@ protected:
 
 private:
     IOHIDManagerRef m_manager;
-    QList<IOHIDDeviceRef> m_wrkrDevices;
-    QList<IOHIDDeviceRef> m_miscDevices;
-    TDeviceColors m_colors;
-    TyonInfo m_info;
-    TyonProfile m_profile;
-    TProfiles m_profiles;
     QMutex m_waitMutex;
     QMutex m_accessMutex;
-    bool m_isCBComplete;
-    bool m_initComplete;
-    quint8 m_requestedProfile;
+    QList<IOHIDDeviceRef> m_wrkrDevices;
+    QList<IOHIDDeviceRef> m_miscDevices;
+    QMap<quint8, std::function<int(const quint8 *, qsizetype)>> m_handlers;
+    // --
+    TDeviceColors m_colors;
+    TyonInfo m_info;
+    TyonProfile m_activeProfile;
+    TProfiles m_profiles;
     TyonTalk m_talkFx;
     TyonSensor m_sensor;
     TyonSensorImage m_sensorImage;
     TyonControlUnit m_controlUnit;
+    // --
+    quint8 m_requestedProfile;
+    bool m_isCBComplete;
+    bool m_initComplete;
 
-    uint8_t m_cbReportBuffer[4096];
-    uint m_cbReportLength = 4096;
+    // for input report callback
+    uint8_t m_inputBuffer[4096];
+    uint m_inputLength = 4096;
 
 private:
     inline void initializeProfiles();
     inline void initializeColorMapping();
+    inline void initializeHandlers();
 
     inline void releaseManager();
     inline void releaseDevices();
@@ -418,13 +423,13 @@ private:
     inline void setModified(TProfile *p, bool changed);
     inline void updateProfile(TProfile &p, bool changed);
 
+    inline int roccatControlWrite(IOHIDDeviceRef device, uint pix, uint req);
+    inline int roccatControlRead(IOHIDDeviceRef device);
+
     inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
-    inline int hidWriteRoccatCtl(IOHIDDeviceRef device, uint pix, uint req);
-    inline int hidCheckWrite(IOHIDDeviceRef device);
-    inline int hidSetReportRaw(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
-    inline int hidWriteReport(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length);
-    inline int hidWriteWithCB(IOHIDDeviceRef device, IOHIDReportType hrt, CFIndex rid, const quint8 *buffer, CFIndex length);
-    inline int hidParseResponse(int reportId, const quint8 *buffer, CFIndex length);
+    inline int hidGetReportRaw(IOHIDDeviceRef device, quint8 rid, quint8 *buffer, CFIndex size);
+    inline int hidWriteReport(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length);
+    inline int hidWriteReportAsync(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
 
     // get state of device
     inline int readDeviceControl(IOHIDDeviceRef device);
@@ -449,15 +454,9 @@ private:
     inline int xcCalibWriteStart(IOHIDDeviceRef device);
     inline int xcCalibWriteEnd(IOHIDDeviceRef device);
     inline int xcCalibWriteData(IOHIDDeviceRef device, quint8 min, quint8 mid, quint8 max);
-    inline int readDeviceSpecial(IOHIDDeviceRef device);
 
     //-
     inline int readTalkFx(IOHIDDeviceRef device);
-
-    //-
-    inline int readDevice0A(IOHIDDeviceRef device);
-    inline int readDevice11(IOHIDDeviceRef device);
-    inline int readDevice1A(IOHIDDeviceRef device);
 
     //--
     inline int readControlUnit(IOHIDDeviceRef device);
