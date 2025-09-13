@@ -1300,9 +1300,9 @@ void RTHidDevice::setDcuState(TyonControlUnitDcu state)
 void RTHidDevice::setTcuState(bool state)
 {
     if (state) {
-        m_controlUnit.tcu |= TYON_TRACKING_CONTROL_UNIT_ON;
+        m_controlUnit.tcu = TYON_TRACKING_CONTROL_UNIT_ON;
     } else {
-        m_controlUnit.tcu &= ~TYON_TRACKING_CONTROL_UNIT_ON;
+        m_controlUnit.tcu = TYON_TRACKING_CONTROL_UNIT_OFF;
     }
 }
 
