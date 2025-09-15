@@ -10,7 +10,7 @@
 #include <rttypedefs.h>
 #include <QPushButton>
 
-RTColorDialog::RTColorDialog(const RTHidDevice::TDeviceColors &colors, QWidget *parent)
+RTColorDialog::RTColorDialog(const RTDeviceController::TDeviceColors &colors, QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::RTColorDialog)
 {

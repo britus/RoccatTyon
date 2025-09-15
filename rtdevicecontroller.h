@@ -6,23 +6,27 @@
 // SPDX-License-Identifier: GPL-3.0
 // ********************************************************************
 #pragma once
-#include "rthiddevice.h"
 #include "rttypedefs.h"
-#include <QKeyCombination>
-#include <QKeySequence>
+#include <IOKit/hid/IOHIDManager.h>
+#include <dispatch/dispatch.h>
+#include <QAbstractItemModel>
+#include <QColor>
 #include <QMap>
+#include <QMutex>
 #include <QObject>
 #include <QPushButton>
-#include <QtCompare>
+#include <QWaitCondition>
+
+#define HIDAPI_MAX_STR 255
 
 #ifndef CB_BIND
 #define CB_BIND(o, x) std::bind(x, o, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
 #endif
 
 /**
- * @brief The RTDeviceController class is a proxy between device and UI
+ * @brief The RTDeviceController class manage the access to the ROCCAT Tyon mouse using the HID protocol
  */
-class RTDeviceController : public QAbstractItemModel
+class RTDeviceController : public QObject
 {
     Q_OBJECT
 
@@ -30,7 +34,7 @@ public:
     /**
      * Callback function to assign ROCCAT Tyon button function
      */
-    typedef std::function<int(TyonButtonIndex, TyonButtonType, const QKeyCombination &)> TSetButtonCallback;
+    typedef std::function<void(TyonButtonIndex, TyonButtonType, QKeyCombination)> TSetButtonCallback;
 
     /**
      * Definition of ROCCAT Tyon physical button
@@ -53,85 +57,135 @@ public:
     } TButtonLink;
 
     /**
+     * Defines the ROCCAT Tyon profile
+     */
+    typedef struct
+    {
+        QString name;
+        quint8 index;
+        bool changed;
+        TyonProfileSettings settings;
+        TyonProfileButtons buttons;
+    } TProfile;
+
+    /**
+     * Defines the ROCCAT device light colors
+     */
+    typedef struct
+    {
+        TyonLight deviceColors;
+    } TColorItem;
+
+    /**
+     * ROCCAT Tyon profiles by profile index
+     */
+    typedef QMap<quint8, TProfile> TProfiles;
+
+    /**
+     * @brief ROCCAT Tyon color index to RGB mapping
+     */
+    typedef QMap<quint8, TColorItem> TDeviceColors;
+
+    /**
+     * @brief HID report response handler function
+     */
+    typedef std::function<int(const quint8 *, qsizetype)> TReportHandler;
+
+    /**
      * @brief Default constructor
      * @param parent NULL or QObject
      */
     explicit RTDeviceController(QObject *parent = nullptr);
 
-    /**
-     * @brief Check device is present
-     * @return true if present
-     */
-    inline bool hasDevice() const { return m_device.hasDevice(); }
+    /** */
+    ~RTDeviceController();
 
     /**
-     * @brief Assign given mouse button to specific function
-     * @param The native mouse button type
-     * @param The native function to be assigned
-     * @return 0 if success
+     * @brief Return true if devices found
+     * @return True or False
      */
-    int assignButton(TyonButtonIndex, TyonButtonType, const QKeyCombination &);
+    inline bool hasDevice() const { return !m_wrkrDevices.isEmpty(); }
 
     /**
-     * @brief Link ROCCAT Tyon button descriptor to UI QPushButton
-     * @param rb ROCCAT button descriptor
-     * @param button UI push button object
+     * @brief Return active profile index
+     * @return Profile index
+     */
+    inline quint8 activeProfileIndex() const { return m_activeProfile.profile_index; }
+
+    /**
+     * @brief Return number of device profiles
+     * @return 5 (TYON_PROFILE_NUM)
+     */
+    inline quint8 profileCount() const { return m_profiles.count(); }
+
+    /**
+     * @brief Return a profile by given profile index
+     * @param pix Profile index 0-4
+     * @param found Return true if found otherwise false
+     * @return A profile structure
+     */
+    inline TProfile profile(quint8 pix, bool &found) const
+    {
+        if (pix > TYON_PROFILE_NUM) {
+            found = false;
+            return {};
+        }
+        if (!m_profiles.contains(pix)) {
+            found = false;
+            return {};
+        }
+        found = true;
+        return m_profiles[pix];
+    }
+
+    /**
+     * @brief Return active profile name
+     * @return QString
+     */
+    QString profileName() const;
+
+    /**
+     * @brief Create button mapping for ROCCAT Tyon mouse button and UI push button
+     * @param rb ROCCAT Tyon mouse button descriptor
+     * @param button QT push button
      */
     void setupButton(const RoccatButton &rb, QPushButton *button);
 
     /**
+     * @brief Assign ROCCAT Tyon button function
+     * @param type Physical button
+     * @param func Button function
+     * @param QKeyCombination If short function, the shortcut
+     */
+    void assignButton(TyonButtonIndex type, TyonButtonType func, QKeyCombination kc);
+
+    /**
      * @brief Translate ROCCAT Tyon shortcut to QT key sequence
-     * @param button ROCCAT button descriptor
+     * @param button ROCCAT Tyon button structure
      * @return QKeySequence object
      */
     const QKeySequence toKeySequence(const RoccatButton &button) const;
 
     /**
-     * @brief Return the model index of given profile index
-     * @param ROCCAT Tyon profile index
-     * @return QModelIndex object
-     */
-    inline QModelIndex profileIndex(uint pix) { return index(pix, 0, {}); }
-
-    /**
-     * @brief Return the descriptor map for the UI menu
-     * @return QMap object
-     */
-    inline const QMap<quint8, QString> &buttonTypes() { return m_buttonTypes; }
-
-    /**
-     * @brief Set active ROCCAT Tyon profile index
-     * @param profileIndex 0 - 4
-     */
-    void selectProfile(quint8 profileIndex);
-
-    /**
-     * @brief Convert ROCCAT Tyon sensitivity X value to UI value
-     * @param settings Pointer to ROCCAT Tyon settings structure
-     * @return
+     * @brief Convert Roccat sensitivity X value to UI value
+     * @param settings A pointer to TyonProfileSettings
+     * @return A value usable by UI
      */
     qint16 toSensitivityXValue(const TyonProfileSettings *settings) const;
 
     /**
-     * @brief Convert ROCCAT Tyon sensitivity Y value to UI value
-     * @param settings Pointer to ROCCAT Tyon settings structure
-     * @return
+     * @brief Convert Roccat sensitivity Y value to UI value
+     * @param settings A pointer to TyonProfileSettings
+     * @return A value usable by UI
      */
     qint16 toSensitivityYValue(const TyonProfileSettings *settings) const;
 
     /**
-     * @brief Convert ROCCAT Tyon DPI level to UI value
-     * @param settings Pointer to ROCCAT Tyon settings structure
-     * @param index DPI level index
-     * @return DPI value for the UI
+     * @brief Convert Roccat DPI level to UI value
+     * @param settings A pointer to TyonProfileSettings
+     * @return A value usable by UI
      */
     quint16 toDpiLevelValue(const TyonProfileSettings *settings, quint8 index) const;
-
-    /**
-     * @brief Return the name of the active profile
-     * @return QString
-     */
-    QString profileName() const;
 
     /**
      * @brief Translte QT color to ROCCAT Tyon light info
@@ -153,30 +207,94 @@ public:
      * @brief Return ROCCAT Tyon light color table
      * @return A mapping of color index to RGB
      */
-    inline const RTHidDevice::TDeviceColors &deviceColors() const { return m_device.deviceColors(); }
+    inline const TDeviceColors &deviceColors() const { return m_colors; }
 
+    /**
+     * @brief Return the descriptor map for the UI menu
+     * @return QMap object
+     */
+    inline const QMap<quint8, QString> &buttonTypes() { return m_buttonTypes; }
+
+    /**
+     * @brief Set the color for the wheel or bottom light
+     * @param target 0=Wheel or 1=Bottom
+     * @param light Tyon light info type
+     */
+    void setLightColor(TyonLightType target, const TyonLight &light);
+
+    /**
+     * @brief Return the X-Celerate minimum
+     * @return Numbers
+     */
     quint8 minimumXCelerate() const;
+
+    /**
+     * @brief Return the X-Celerate maximum
+     * @return Number
+     */
     quint8 maximumXCelerate() const;
+
+    /**
+     * @brief Return the X-Celerate middle value
+     * @return Number
+     */
     quint8 middleXCelerate() const;
+
+    /**
+     * @brief Calculates the surface test median from image data
+     * @param image The surface image
+     * @return Number
+     */
+    uint sensorMedianOfImage(TyonSensorImage const *image);
+
+    /**
+     * @brief Return the TalkFX status
+     * @param settings
+     * @return True or false
+     */
+    bool talkFxState(const TyonProfileSettings *settings) const;
+
+    /**
+     * @brief Return the state of the distance control unit
+     * @return TyonControlUnitDcu
+     */
+    TyonControlUnitDcu dcuState() const;
+
+    /**
+     * @brief Return the state of the tracking control unit
+     * @return TyonControlUnitTcu
+     */
+    TyonControlUnitTcu tcuState() const;
+
+    /**
+     * @brief Return the median of the surface test
+     * @return Number
+     */
     uint tcuMedian() const;
 
-    /* ------------------------------------------------------
-     * QAbstractItemModel interface
-     * ------------------------------------------------------ */
+    /**
+     * @brief Return ROCCAT Tyon polling rate
+     * @param Pointer to profile settings structure
+     * @return Rate value
+     */
+    quint8 talkFxPollRate(const TyonProfileSettings *settings) const;
 
-    // Header:
-    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
-
-    // Basic functionality:
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
-    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
-    QModelIndex parent(const QModelIndex &index) const override;
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-
-    // Editable:
-    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
-    Qt::ItemFlags flags(const QModelIndex &index) const override;
+signals:
+    void lookupStarted();
+    void deviceWorkerStarted();
+    void deviceWorkerFinished();
+    void deviceFound();
+    void deviceRemoved();
+    void deviceError(int error, const QString &message);
+    void deviceInfo(const TyonInfo &info);
+    void profileIndexChanged(const quint8 pix);
+    void profileChanged(const RTDeviceController::TProfile &profile);
+    void controlUnitChanged(const TyonControlUnit &controlUnit);
+    void sensorChanged(const TyonSensor &sensor);
+    void sensorImageChanged(const TyonSensorImage &image);
+    void sensorMedianChanged(int median);
+    void specialReport(uint reportId, const QByteArray &report);
+    void talkFxChanged(const TyonTalk &talkFx);
 
 public slots:
     /**
@@ -185,30 +303,44 @@ public slots:
     void lookupDevice();
 
     /**
-     * @brief Load all ROCCAT Tyon profiles from file
-     * @param fileName The file name
-     * @return true if success
+     * @brief Save ROCCAT Tyon profiles to device
+     * @return True if success
      */
-    void loadProfilesFromFile(const QString &fileName);
+    void updateDevice();
 
     /**
      * @brief Save all ROCCAT Tyon profiles to file
      * @param fileName The file name
-     * @return true if success
+     * @return True if success
      */
     void saveProfilesToFile(const QString &fileName);
 
     /**
-     * @brief Save all modified ROCCAT Tyon profiles to device
-     * @return true if success
+     * @brief Load all ROCCAT Tyon profiles from file
+     * @param fileName The file name
+     * @param raiseEvents True to raise profile change event
+     * @return True if success
      */
-    void saveProfilesToDevice();
+    void loadProfilesFromFile(const QString &fileName, bool raiseEvents = true);
 
     /**
-     * @brief Reset all ROCCAT Tyon profiles to device defaults
-     * @return true if success
+     * @brief ROCCAT Tyon device to defaults
+     * @return True if success
      */
     void resetProfiles();
+
+    /**
+     * @brief Set active profile index
+     * @param index A Value of 0 - 4
+     */
+    void setActiveProfile(quint8 index);
+
+    /**
+     * @brief Set the profile name for given profile index
+     * @param name The name of the profile
+     * @param index A Value of 0 - 4
+     */
+    void setProfileName(const QString &name, quint8 profileIndex);
 
     /**
      * @brief Set the mouse X sensitivity
@@ -229,17 +361,10 @@ public slots:
     void setAdvancedSenitivity(bool state);
 
     /**
-     * @brief Set ROCCAT Tyon TalkFX polling rate
+     * @brief Set sensor poll rate
      * @param rate
      */
     void setTalkFxPollRate(quint8 rate);
-
-    /**
-     * @brief Return ROCCAT Tyon polling rate
-     * @param Pointer to profile settings structure
-     * @return rate value
-     */
-    quint8 talkFxPollRate(const TyonProfileSettings *settings) const;
 
     /**
      * @brief Enable / disable DPI slot
@@ -291,26 +416,16 @@ public slots:
      */
     void setColorFlow(quint8 value);
 
-    /**
-     * @brief Set the color for the wheel or bottom light
-     * @param target 0=Wheel or 1=Bottom
-     * @param light Tyon light info type
-     */
-    void setLightColor(TyonLightType target, const TyonLight &light);
-
     void setTalkFxState(bool state);
-    bool talkFxState(const TyonProfileSettings *settings) const;
-
-    void setDcuState(TyonControlUnitDcu dcuState);
-    TyonControlUnitDcu dcuState() const;
-
+    void setDcuState(TyonControlUnitDcu state);
     void setTcuState(bool state);
-    TyonControlUnitTcu tcuState() const;
 
+    // X-Celerator calibration
     void xcStartCalibration();
     void xcStopCalibration();
     void xcApplyCalibration(quint8 min, quint8 mid, quint8 max);
 
+    // TCU calibration
     void tcuSensorTest(TyonControlUnitDcu dcuState, uint median);
     void tcuSensorAccept(TyonControlUnitDcu dcuState, uint median);
     void tcuSensorCancel(TyonControlUnitDcu dcuState);
@@ -318,52 +433,164 @@ public slots:
     void tcuSensorReadImage();
     int tcuSensorReadMedian(TyonSensorImage *image);
 
-signals:
-    void lookupStarted();
-    void deviceWorkerStarted();
-    void deviceWorkerFinished();
-    void deviceFound();
-    void deviceRemoved();
-    void deviceError(int error, const QString &message);
-    void deviceInfoChanged(const TyonInfo &info);
-    void profileIndexChanged(quint8 index);
-    void settingsChanged(const TyonProfileSettings &settings);
-    void buttonsChanged(const TyonProfileButtons &buttons);
-    void controlUnitChanged(const TyonControlUnit &controlUnit);
-    void specialReport(uint reportId, const QByteArray &report);
-    void sensorChanged(const TyonSensor &sensor);
-    void sensorImageChanged(const TyonSensorImage &image);
-    void sensorMedianChanged(int median);
-    void talkFxChanged(const TyonTalk &talkFx);
+protected:
+    void onDeviceFound(IOHIDDeviceRef device);
+    void onDeviceRemoved(IOHIDDeviceRef device);
+    void onSetReport(IOReturn status, uint rid, CFIndex length, uint8_t *report);
+    void onSpecialReport(uint rid, CFIndex length, uint8_t *report);
 
-private slots:
-    void onLookupStarted();
-    void onDeviceWorkerStarted();
-    void onDeviceWorkerFinished();
-    void onDeviceError(int error, const QString &message);
-    void onDeviceFound();
-    void onDeviceRemoved();
-    void onDeviceInfo(const TyonInfo &info);
-    void onProfileIndexChanged(const quint8 pix);
-    void onProfileChanged(const RTHidDevice::TProfile &profile);
-    void onControlUnitChanged(const TyonControlUnit &controlUnit);
-    void onSensorChanged(const TyonSensor &sensor);
-    void onSensorImageChanged(const TyonSensorImage &image);
-    void onSensorMedianChanged(int median);
-    void onSpecialReport(uint reportId, const QByteArray &report);
-    void onTalkFxChanged(const TyonTalk &talkFx);
+protected:
+    // called from static HID callback functions
+    void doDeviceFoundCallback(IOReturn status, IOHIDDeviceRef device);
+    void doReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
+
+protected:
+    // Callback HIDManager level
+    static void _deviceAttachedCallback(void *context, //
+                                        IOReturn,
+                                        void *,
+                                        IOHIDDeviceRef device);
+    static void _deviceRemovedCallback(void *context, //
+                                       IOReturn,
+                                       void *,
+                                       IOHIDDeviceRef device);
+    // Callback per HID device
+    static void _inputCallback(void *context, //
+                               IOReturn result,
+                               void *device,
+                               IOHIDReportType /*type*/,
+                               uint32_t reportID,
+                               uint8_t *report,
+                               CFIndex reportLength);
+    static void _inputValueCallback(void *context, //
+                                    IOReturn result,
+                                    void *device,
+                                    IOHIDValueRef value);
+    // Callback per HID report (hidWriteAsync)
+    static void _reportCallback(void *context, //
+                                IOReturn result,
+                                void *device,
+                                IOHIDReportType type,
+                                uint32_t reportID,
+                                uint8_t *report,
+                                CFIndex reportLength);
 
 private:
-    RTHidDevice m_device;
+    IOHIDManagerRef m_manager;
+    // --
+    QMutex m_waitMutex;
+    QMutex m_accessMutex;
+    // --
+    QList<IOHIDDeviceRef> m_wrkrDevices;
+    QList<IOHIDDeviceRef> m_miscDevices;
+    // --
+    QMap<quint8, TReportHandler> m_handlers;
+    // --
+    TDeviceColors m_colors;
+    TyonInfo m_info;
+    TyonProfile m_activeProfile;
+    TProfiles m_profiles;
+    TyonTalk m_talkFx;
+    TyonSensor m_sensor;
+    TyonSensorImage m_sensorImage;
+    TyonControlUnit m_controlUnit;
+    // --
+    quint8 m_requestedProfile;
+    bool m_isCBComplete;
+    bool m_initComplete;
+    // for input report callback
+    uint8_t m_inputBuffer[4096];
+    uint m_inputLength = 4096;
+    // --
     QMap<quint8, QString> m_buttonTypes;
     QMap<quint8, RTDeviceController::TPhysicalButton> m_physButtons;
 
 private:
+    inline void releaseManager();
+    inline void releaseDevices();
+    // --
+    inline int raiseError(int error, const QString &message);
+    // --
+    inline void initializeProfiles();
+    inline void initializeColorMapping();
+    inline void initializeHandlers();
     inline void initButtonTypes();
     inline void initPhysicalButtons();
     inline void setButtonType(const QString &name, quint8 type);
     inline void setPhysicalButton(quint8 index, TPhysicalButton pb);
+    // --
+    inline void internalSaveProfiles();
+    // --
+    inline void setModified(quint8 pix, bool changed);
+    inline void setModified(TProfile *p, bool changed);
+    inline void updateProfile(TProfile &p, bool changed);
+    // --
+    inline int roccatControlWrite(IOHIDDeviceRef device, uint pix, uint req);
+    inline int roccatControlCheck(IOHIDDeviceRef device);
+    // get state of device
+    inline int readDeviceControl(IOHIDDeviceRef device);
+    inline int setDeviceState(bool state, IOHIDDeviceRef device = nullptr);
+    // get firmware,DFU,X-Celerator min/max info
+    inline int readDeviceInfo(IOHIDDeviceRef device);
+    // get and set device profiles
+    inline int readActiveProfile(IOHIDDeviceRef device);
+    inline int readProfiles(IOHIDDeviceRef device, quint8 pix);
+    inline int selectProfileSettings(IOHIDDeviceRef device, uint pix);
+    inline int readProfileSettings(IOHIDDeviceRef device);
+    inline int selectProfileButtons(IOHIDDeviceRef device, uint pix);
+    inline int readProfileButtons(IOHIDDeviceRef device);
+    // get and set button macros
+    inline int selectMacro(IOHIDDeviceRef device, uint pix, uint dix, uint bix);
+    inline int readButtonMacro(IOHIDDeviceRef device, uint pix, uint bix);
+    // X-Celerator calibration
+    inline int xcCalibWriteStart(IOHIDDeviceRef device);
+    inline int xcCalibWriteEnd(IOHIDDeviceRef device);
+    inline int xcCalibWriteData(IOHIDDeviceRef device, quint8 min, quint8 mid, quint8 max);
+    // TCU calibration
+    inline int readControlUnit(IOHIDDeviceRef device);
+    inline int tcuReadSensor(IOHIDDeviceRef device);
+    inline int tcuReadSensorImage(IOHIDDeviceRef device);
+    inline int tcuReadSensorRegister(IOHIDDeviceRef device, quint8 reg);
+    inline int tcuWriteTest(IOHIDDeviceRef device, quint8 dcuState, uint median);
+    inline int tcuWriteAccept(IOHIDDeviceRef device, quint8 dcuState, uint median);
+    inline int tcuWriteCancel(IOHIDDeviceRef device, quint8 dcuState);
+    inline int tcuWriteOff(IOHIDDeviceRef device, quint8 dcuState);
+    inline int tcuWriteTry(IOHIDDeviceRef device, quint8 dcuState);
+    inline int tcuWriteSensorCommand(IOHIDDeviceRef device, quint8 action, quint8 reg, quint8 value);
+    inline int tcuWriteSensorRegister(IOHIDDeviceRef device, quint8 reg, quint8 value);
+    inline int tcuWriteSensorImageCapture(IOHIDDeviceRef device);
+    // --
+    inline int dcuWriteState(IOHIDDeviceRef device, quint8 dcuState);
+    // --
+    inline int talkRead(IOHIDDeviceRef device);
+    inline int talkWriteReport(IOHIDDeviceRef device, TyonTalk *talk);
+    inline int talkWriteKey(IOHIDDeviceRef device, quint8 easyshift, quint8 easyshift_lock, quint8 easyaim);
+    inline int talkWriteEasyshift(IOHIDDeviceRef device, quint8 state);
+    inline int talkWriteEasyshiftLock(IOHIDDeviceRef device, quint8 state);
+    inline int talkWriteEasyAim(IOHIDDeviceRef device, quint8 state);
+    inline int talkWriteFxData(IOHIDDeviceRef device, TyonTalk *tyonTalk);
+    inline int talkWriteFx(IOHIDDeviceRef device, quint32 effect, quint32 ambient_color, quint32 event_color);
+    inline int talkWriteFxState(IOHIDDeviceRef device, quint8 state);
+    // HID low level
+    inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
+    inline int hidGetReportRaw(IOHIDDeviceRef device, quint8 rid, quint8 *buffer, CFIndex size);
+    inline int hidWriteReport(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length);
+    inline int hidWriteReportAsync(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
 };
 
+Q_DECLARE_METATYPE(TyonInfo);
+Q_DECLARE_METATYPE(TyonLight);
+Q_DECLARE_METATYPE(TyonProfileSettings);
+Q_DECLARE_METATYPE(TyonProfileButtons);
+Q_DECLARE_METATYPE(TyonButtonIndex);
+Q_DECLARE_METATYPE(TyonButtonType);
+Q_DECLARE_METATYPE(TyonControlUnit);
+Q_DECLARE_METATYPE(TyonSensor);
+Q_DECLARE_METATYPE(TyonSensorImage);
+Q_DECLARE_METATYPE(TyonTalk);
+Q_DECLARE_METATYPE(RTDeviceController::TProfile);
+Q_DECLARE_METATYPE(RTDeviceController::TProfiles);
+Q_DECLARE_METATYPE(RTDeviceController::TColorItem);
+Q_DECLARE_METATYPE(RTDeviceController::TDeviceColors);
 Q_DECLARE_METATYPE(RTDeviceController::TPhysicalButton);
 Q_DECLARE_METATYPE(RTDeviceController::TButtonLink);

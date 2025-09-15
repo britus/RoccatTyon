@@ -7,6 +7,7 @@
 // ********************************************************************
 #pragma once
 #include "rtdevicecontroller.h"
+#include "rtprofiletablemodel.h"
 #include <QAction>
 #include <QActionGroup>
 #include <QMainWindow>
@@ -35,8 +36,7 @@ private slots:
     void onDeviceError(uint error, const QString &message);
     void onDeviceInfo(const TyonInfo &info);
     void onProfileIndex(const quint8 pix);
-    void onSettingsChanged(const TyonProfileSettings &settings);
-    void onButtonsChanged(const TyonProfileButtons &buttons);
+    void onProfileChanged(const RTDeviceController::TProfile &profile);
     void onControlUnitChanged(const TyonControlUnit &controlUnit);
     void onTalkFxChanged(const TyonTalk &talkFx);
     void onDeviceWorkerStarted();
@@ -44,16 +44,16 @@ private slots:
 
 private:
     Ui::RTMainWindow *ui;
-    /* ROCCAT Tyon controller */
-    RTDeviceController *m_ctlr;
+    /* ROCCAT Tyon device */
+    RTDeviceController *m_device;
+    /* Profile table model */
+    RTProfileTableModel *m_model;
     /* Function groups which contains button menu action.
      * Each menu action has a property named 'button':
      * The property contains the calling push button */
     QMap<QString, QActionGroup *> m_actions;
     /* Link UI push button to button type and setup handler */
     QMap<QPushButton *, RTDeviceController::TButtonLink> m_buttons;
-    /* Active profile of the device */
-    quint8 m_activeProfile;
     /* UI settings */
     QSettings *m_settings;
     /* last export file name */
@@ -71,6 +71,8 @@ private:
     inline void disableUserInterface();
     inline void linkButton(QPushButton *pb, const QMap<QString, QActionGroup *> &actions);
     inline QAction *linkAction(QAction *action, TyonButtonType function);
+    inline void loadSettings(const TyonProfileSettings *settings);
+    inline void loadButtons(const TyonProfileButtons *buttons);
     inline bool doSelectColor(TyonLightType target, TyonLight &color);
     inline bool doSelectFile(QString &file, bool isOpen = true);
     inline void doCalibrateXCelerator();

@@ -20,7 +20,7 @@ class RTCalibrateXCDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit RTCalibrateXCDialog(RTDeviceController *controller, QWidget *parent = nullptr);
+    explicit RTCalibrateXCDialog(RTDeviceController *device, QWidget *parent = nullptr);
     ~RTCalibrateXCDialog();
 
 private slots:
@@ -29,13 +29,13 @@ private slots:
 
 private:
     Ui::RTCalibrateXCDialog *ui;
-    RTDeviceController *m_ctlr;
+    RTDeviceController *m_device;
     QStringList m_instructions;
     bool m_isSaved;
     uint m_stage;
     uint m_count;
     QTime m_start;
-    qint32 m_last_value;
+    qint32 m_lastValue;
     qint32 m_min;
     qint32 m_max;
     qint32 m_mid;

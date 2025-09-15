@@ -9,7 +9,7 @@
 #include "rtcalibratetcudialog.h"
 #include "rtcalibratexcdialog.h"
 #include "rtcolordialog.h"
-#include "rtdevicecontroller.h"
+#include "rtprofiletablemodel.h"
 #include "rtprogress.h"
 #include "rtshortcutdialog.h"
 #include "rttypedefs.h"
@@ -46,7 +46,8 @@
 RTMainWindow::RTMainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::RTMainWindow)
-    , m_ctlr(new RTDeviceController(this))
+    , m_device(new RTDeviceController(parent))
+    , m_model(new RTProfileTableModel(m_device, parent))
     , m_buttons()
     , m_settings(nullptr)
     , m_rtpfFileName(QStringLiteral("Tyon-Profiles.rtpf"))
@@ -65,12 +66,16 @@ RTMainWindow::RTMainWindow(QWidget *parent)
 
     QStringList sl;
     sl << tr("res:%3x%4").arg(r.size().width()).arg(r.size().height());
-    sl << tr("dpi:%1x%2").arg((uint) scn->logicalDotsPerInchX()).arg((uint) scn->logicalDotsPerInchY());
+    sl << tr("dpi:%1x%2")
+              .arg((uint) scn->logicalDotsPerInchX()) //
+              .arg((uint) scn->logicalDotsPerInchY());
     qInfo() << "[APPWIN] Screen" << sl;
 
     setWindowTitle(QApplication::applicationDisplayName());
-    statusBar()->showMessage(tr("%1 %2 %3") //
-                                 .arg(COPYRIGHT, QApplication::organizationName(), QApplication::applicationVersion()));
+    statusBar()->showMessage(tr("%1 %2 %3")      //
+                                 .arg(COPYRIGHT, //
+                                      QApplication::organizationName(),
+                                      QApplication::applicationVersion()));
 
     disableUserInterface();
     initializeSettings();
@@ -80,7 +85,7 @@ RTMainWindow::RTMainWindow(QWidget *parent)
     connectUiElements();
     connectActions();
 
-    m_ctlr->lookupDevice();
+    m_device->lookupDevice();
 }
 
 RTMainWindow::~RTMainWindow()
@@ -91,7 +96,6 @@ RTMainWindow::~RTMainWindow()
 
 inline void RTMainWindow::enableUserInterface()
 {
-    //qDebug("     enableUserInterface");
     ui->pnlLeft->setEnabled(true);
     ui->tabWidget->setEnabled(true);
     ui->pbSave->setEnabled(true);
@@ -100,7 +104,6 @@ inline void RTMainWindow::enableUserInterface()
 
 inline void RTMainWindow::disableUserInterface()
 {
-    //qDebug("     disableUserInterface");
     ui->pnlLeft->setEnabled(false);
     ui->tabWidget->setEnabled(false);
     ui->pbSave->setEnabled(false);
@@ -163,7 +166,7 @@ inline void RTMainWindow::initializeUiElements()
     const Qt::FindChildOption fco = Qt::FindChildrenRecursively;
 
     ui->cbxDPIActiveSlot->setMaxVisibleItems(15);
-    ui->tableView->setModel(m_ctlr);
+    ui->tableView->setModel(m_model);
 
     QSlider *s;
     foreach (QSpinBox *c, ui->pnlSensorDpi->findChildren<QSpinBox *>(fco)) {
@@ -188,42 +191,42 @@ inline void RTMainWindow::initializeUiElements()
     }
 
     // Standard
-    m_buttons[ui->pbMBStdTopLeft] = {TYON_BUTTON_INDEX_LEFT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopRight] = {TYON_BUTTON_INDEX_RIGHT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopWScrollUp] = {TYON_BUTTON_INDEX_WHEEL_UP, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopWScrollDown] = {TYON_BUTTON_INDEX_WHEEL_DOWN, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopWClick] = {TYON_BUTTON_INDEX_MIDDLE, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopPushLeft] = {TYON_BUTTON_INDEX_FIN_LEFT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopPushRight] = {TYON_BUTTON_INDEX_FIN_RIGHT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopAction2] = {TYON_BUTTON_INDEX_LEFT_BACK, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopAction1] = {TYON_BUTTON_INDEX_LEFT_FORWARD, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopAction4] = {TYON_BUTTON_INDEX_RIGHT_BACK, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopAction3] = {TYON_BUTTON_INDEX_RIGHT_FORWARD, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopLeft] = {TYON_BUTTON_INDEX_LEFT, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopRight] = {TYON_BUTTON_INDEX_RIGHT, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopWScrollUp] = {TYON_BUTTON_INDEX_WHEEL_UP, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopWScrollDown] = {TYON_BUTTON_INDEX_WHEEL_DOWN, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopWClick] = {TYON_BUTTON_INDEX_MIDDLE, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopPushLeft] = {TYON_BUTTON_INDEX_FIN_LEFT, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopPushRight] = {TYON_BUTTON_INDEX_FIN_RIGHT, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopAction2] = {TYON_BUTTON_INDEX_LEFT_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopAction1] = {TYON_BUTTON_INDEX_LEFT_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopAction4] = {TYON_BUTTON_INDEX_RIGHT_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopAction3] = {TYON_BUTTON_INDEX_RIGHT_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
 
-    m_buttons[ui->pbMBStdSideForward] = {TYON_BUTTON_INDEX_THUMB_FORWARD, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdSideBackward] = {TYON_BUTTON_INDEX_THUMB_BACK, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdSidePushUp] = {TYON_BUTTON_INDEX_THUMB_PADDLE_UP, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdSidePushDown] = {TYON_BUTTON_INDEX_THUMB_PADDLE_DOWN, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdSideEasyShfit] = {TYON_BUTTON_INDEX_THUMB_PEDAL, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdSideForward] = {TYON_BUTTON_INDEX_THUMB_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdSideBackward] = {TYON_BUTTON_INDEX_THUMB_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdSidePushUp] = {TYON_BUTTON_INDEX_THUMB_PADDLE_UP, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdSidePushDown] = {TYON_BUTTON_INDEX_THUMB_PADDLE_DOWN, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdSideEasyShfit] = {TYON_BUTTON_INDEX_THUMB_PEDAL, CB_BIND(m_device, &RTDeviceController::assignButton)};
 
     // EasyShift //
-    m_buttons[ui->pbMBESTopLeft] = {TYON_BUTTON_INDEX_SHIFT_LEFT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopRight] = {TYON_BUTTON_INDEX_SHIFT_RIGHT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopWScrollUp] = {TYON_BUTTON_INDEX_SHIFT_WHEEL_UP, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopWScrollDown] = {TYON_BUTTON_INDEX_SHIFT_WHEEL_DOWN, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopWClick] = {TYON_BUTTON_INDEX_SHIFT_MIDDLE, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopPushLeft] = {TYON_BUTTON_INDEX_SHIFT_FIN_LEFT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopPushRight] = {TYON_BUTTON_INDEX_SHIFT_FIN_RIGHT, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopAction2] = {TYON_BUTTON_INDEX_SHIFT_LEFT_BACK, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopAction1] = {TYON_BUTTON_INDEX_SHIFT_LEFT_FORWARD, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopAction4] = {TYON_BUTTON_INDEX_SHIFT_RIGHT_BACK, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopAction3] = {TYON_BUTTON_INDEX_SHIFT_RIGHT_FORWARD, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopLeft] = {TYON_BUTTON_INDEX_SHIFT_LEFT, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopRight] = {TYON_BUTTON_INDEX_SHIFT_RIGHT, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopWScrollUp] = {TYON_BUTTON_INDEX_SHIFT_WHEEL_UP, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopWScrollDown] = {TYON_BUTTON_INDEX_SHIFT_WHEEL_DOWN, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopWClick] = {TYON_BUTTON_INDEX_SHIFT_MIDDLE, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopPushLeft] = {TYON_BUTTON_INDEX_SHIFT_FIN_LEFT, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopPushRight] = {TYON_BUTTON_INDEX_SHIFT_FIN_RIGHT, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopAction2] = {TYON_BUTTON_INDEX_SHIFT_LEFT_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopAction1] = {TYON_BUTTON_INDEX_SHIFT_LEFT_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopAction4] = {TYON_BUTTON_INDEX_SHIFT_RIGHT_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopAction3] = {TYON_BUTTON_INDEX_SHIFT_RIGHT_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
 
-    m_buttons[ui->pbMBESSideForward] = {TYON_BUTTON_INDEX_SHIFT_THUMB_FORWARD, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESSideBackward] = {TYON_BUTTON_INDEX_SHIFT_THUMB_BACK, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESSidePushUp] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PADDLE_UP, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESSidePushDown] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PADDLE_DOWN, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESSideEasyShift_na] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PEDAL, CB_BIND(m_ctlr, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESSideForward] = {TYON_BUTTON_INDEX_SHIFT_THUMB_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESSideBackward] = {TYON_BUTTON_INDEX_SHIFT_THUMB_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESSidePushUp] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PADDLE_UP, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESSidePushDown] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PADDLE_DOWN, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESSideEasyShift_na] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PEDAL, CB_BIND(m_device, &RTDeviceController::assignButton)};
 
     QActionGroup *agMBBasics = new QActionGroup(this);
     agMBBasics->addAction(linkAction(ui->maAssignMBLeftClick, TYON_BUTTON_TYPE_CLICK));
@@ -297,19 +300,18 @@ inline void RTMainWindow::initializeUiElements()
 
 inline void RTMainWindow::connectController()
 {
-    Qt::ConnectionType ct = Qt::DirectConnection;
-    connect(m_ctlr, &RTDeviceController::deviceWorkerStarted, this, &RTMainWindow::onDeviceWorkerStarted, ct);
-    connect(m_ctlr, &RTDeviceController::deviceWorkerFinished, this, &RTMainWindow::onDeviceWorkerFinished, ct);
-    connect(m_ctlr, &RTDeviceController::lookupStarted, this, &RTMainWindow::onLookupStarted, ct);
-    connect(m_ctlr, &RTDeviceController::deviceFound, this, &RTMainWindow::onDeviceFound, ct);
-    connect(m_ctlr, &RTDeviceController::deviceRemoved, this, &RTMainWindow::onDeviceRemoved, ct);
-    connect(m_ctlr, &RTDeviceController::deviceError, this, &RTMainWindow::onDeviceError, ct);
-    connect(m_ctlr, &RTDeviceController::deviceInfoChanged, this, &RTMainWindow::onDeviceInfo, ct);
-    connect(m_ctlr, &RTDeviceController::profileIndexChanged, this, &RTMainWindow::onProfileIndex);
-    connect(m_ctlr, &RTDeviceController::settingsChanged, this, &RTMainWindow::onSettingsChanged, ct);
-    connect(m_ctlr, &RTDeviceController::buttonsChanged, this, &RTMainWindow::onButtonsChanged, ct);
-    connect(m_ctlr, &RTDeviceController::controlUnitChanged, this, &RTMainWindow::onControlUnitChanged, ct);
-    connect(m_ctlr, &RTDeviceController::talkFxChanged, this, &RTMainWindow::onTalkFxChanged, ct);
+    Qt::ConnectionType ct = Qt::QueuedConnection;
+    connect(m_device, &RTDeviceController::deviceWorkerStarted, this, &RTMainWindow::onDeviceWorkerStarted, ct);
+    connect(m_device, &RTDeviceController::deviceWorkerFinished, this, &RTMainWindow::onDeviceWorkerFinished, ct);
+    connect(m_device, &RTDeviceController::lookupStarted, this, &RTMainWindow::onLookupStarted, ct);
+    connect(m_device, &RTDeviceController::deviceFound, this, &RTMainWindow::onDeviceFound, ct);
+    connect(m_device, &RTDeviceController::deviceRemoved, this, &RTMainWindow::onDeviceRemoved, ct);
+    connect(m_device, &RTDeviceController::deviceError, this, &RTMainWindow::onDeviceError, ct);
+    connect(m_device, &RTDeviceController::deviceInfo, this, &RTMainWindow::onDeviceInfo, ct);
+    connect(m_device, &RTDeviceController::profileIndexChanged, this, &RTMainWindow::onProfileIndex);
+    connect(m_device, &RTDeviceController::profileChanged, this, &RTMainWindow::onProfileChanged);
+    connect(m_device, &RTDeviceController::controlUnitChanged, this, &RTMainWindow::onControlUnitChanged, ct);
+    connect(m_device, &RTDeviceController::talkFxChanged, this, &RTMainWindow::onTalkFxChanged, ct);
 }
 
 inline void RTMainWindow::connectActions()
@@ -318,14 +320,14 @@ inline void RTMainWindow::connectActions()
         QString fileName;
         if (doSelectFile(fileName, true)) {
             disableUserInterface();
-            m_ctlr->loadProfilesFromFile(fileName);
+            m_device->loadProfilesFromFile(fileName);
         }
     });
     connect(ui->pbExport, &QPushButton::clicked, this, [this](bool) { //
         QString fileName;
         if (doSelectFile(fileName, false)) {
             disableUserInterface();
-            m_ctlr->saveProfilesToFile(fileName);
+            m_device->saveProfilesToFile(fileName);
         }
     });
     connect(ui->pbReset, &QPushButton::clicked, this, [this](bool) { //
@@ -334,7 +336,7 @@ inline void RTMainWindow::connectActions()
                                "Do you want to reset ROCCAT Tyon?\n");
         if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
             disableUserInterface();
-            m_ctlr->resetProfiles();
+            m_device->resetProfiles();
         }
     });
     connect(ui->pbSave, &QPushButton::clicked, this, [this](bool) { //
@@ -342,7 +344,7 @@ inline void RTMainWindow::connectActions()
         const QString msg = tr("Do you want to update ROCCAT Tyon?\n");
         if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
             disableUserInterface();
-            m_ctlr->saveProfilesToDevice();
+            m_device->updateDevice();
         }
     });
 }
@@ -350,7 +352,7 @@ inline void RTMainWindow::connectActions()
 inline void RTMainWindow::connectUiElements()
 {
     connect(ui->tableView, &QTableView::clicked, this, [this](const QModelIndex &index) { //
-        m_ctlr->selectProfile(index.row());
+        m_device->setActiveProfile(index.row());
     });
     connect(ui->tableView, &QTableView::activated, this, [](const QModelIndex &) { //
         // double click ...
@@ -362,77 +364,77 @@ inline void RTMainWindow::connectUiElements()
         if (!ui->cbxSenitivityEnableAdv->isChecked()) {
             ui->edYSensitivity->setValue(position); // trigers slider too
         }
-        m_ctlr->setXSensitivity(position);
+        m_device->setXSensitivity(position);
     });
     connect(ui->edXSensitivity, &QSpinBox::valueChanged, this, [this](int position) { //
         ui->hsXSensitivity->setValue(position);
         if (!ui->cbxSenitivityEnableAdv->isChecked()) {
             ui->hsYSensitivity->setValue(position); // trigers slider too
         }
-        m_ctlr->setXSensitivity(position);
+        m_device->setXSensitivity(position);
     });
     connect(ui->hsYSensitivity, &QSlider::valueChanged, this, [this](int position) { //
         ui->edYSensitivity->setValue(position);
         if (!ui->cbxSenitivityEnableAdv->isChecked()) {
             ui->edXSensitivity->setValue(position); // trigers slider too
         }
-        m_ctlr->setYSensitivity(position);
+        m_device->setYSensitivity(position);
     });
     connect(ui->edYSensitivity, &QSpinBox::valueChanged, this, [this](int position) { //
         ui->hsYSensitivity->setValue(position);
         if (!ui->cbxSenitivityEnableAdv->isChecked()) {
             ui->hsXSensitivity->setValue(position); // trigers slider too
         }
-        m_ctlr->setYSensitivity(position);
+        m_device->setYSensitivity(position);
     });
 
     connect(ui->cbxSenitivityEnableAdv, &QCheckBox::clicked, this, [this](bool checked) { //
-        m_ctlr->setAdvancedSenitivity(checked);
+        m_device->setAdvancedSenitivity(checked);
     });
 
     connect(ui->rbPollRate125, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setTalkFxPollRate(ROCCAT_POLLING_RATE_125);
+        m_device->setTalkFxPollRate(ROCCAT_POLLING_RATE_125);
     });
     connect(ui->rbPollRate250, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setTalkFxPollRate(ROCCAT_POLLING_RATE_250);
+        m_device->setTalkFxPollRate(ROCCAT_POLLING_RATE_250);
     });
     connect(ui->rbPollRate500, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setTalkFxPollRate(ROCCAT_POLLING_RATE_500);
+        m_device->setTalkFxPollRate(ROCCAT_POLLING_RATE_500);
     });
     connect(ui->rbPollRate1000, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setTalkFxPollRate(ROCCAT_POLLING_RATE_1000);
+        m_device->setTalkFxPollRate(ROCCAT_POLLING_RATE_1000);
     });
 
     connect(ui->cbxDpiSlot1, &QCheckBox::clicked, this, [this](bool checked) { //
         ui->edDpiSlot1->setEnabled(checked);
         ui->hsDpiSlot1->setEnabled(checked);
-        m_ctlr->setDpiSlot(0x01, checked);
+        m_device->setDpiSlot(0x01, checked);
     });
     connect(ui->cbxDpiSlot2, &QCheckBox::clicked, this, [this](bool checked) { //
         ui->edDpiSlot2->setEnabled(checked);
         ui->hsDpiSlot2->setEnabled(checked);
-        m_ctlr->setDpiSlot(0x02, checked);
+        m_device->setDpiSlot(0x02, checked);
     });
     connect(ui->cbxDpiSlot3, &QCheckBox::clicked, this, [this](bool checked) { //
         ui->edDpiSlot3->setEnabled(checked);
         ui->hsDpiSlot3->setEnabled(checked);
-        m_ctlr->setDpiSlot(0x04, checked);
+        m_device->setDpiSlot(0x04, checked);
     });
     connect(ui->cbxDpiSlot4, &QCheckBox::clicked, this, [this](bool checked) { //
         ui->edDpiSlot4->setEnabled(checked);
         ui->hsDpiSlot4->setEnabled(checked);
-        m_ctlr->setDpiSlot(0x08, checked);
+        m_device->setDpiSlot(0x08, checked);
     });
     connect(ui->cbxDpiSlot5, &QCheckBox::clicked, this, [this](bool checked) { //
         ui->edDpiSlot5->setEnabled(checked);
         ui->hsDpiSlot5->setEnabled(checked);
-        m_ctlr->setDpiSlot(0x10, checked);
+        m_device->setDpiSlot(0x10, checked);
     });
 
     connect(ui->cbxDPIActiveSlot, &QComboBox::activated, this, [this](int index) { //
         QVariant v = ui->cbxDPIActiveSlot->itemData(index, Qt::UserRole);
         if (!v.isNull() && v.isValid()) {
-            m_ctlr->setActiveDpiSlot(v.toUInt());
+            m_device->setActiveDpiSlot(v.toUInt());
         }
     });
 
@@ -444,7 +446,7 @@ inline void RTMainWindow::connectUiElements()
             if (v.isValid() && (s = v.value<QSlider *>())) {
                 s->setValue(value);
             }
-            m_ctlr->setDpiLevel(sbIndex, value);
+            m_device->setDpiLevel(sbIndex, value);
         });
         sbIndex++;
     }
@@ -457,99 +459,99 @@ inline void RTMainWindow::connectUiElements()
             if (v.isValid() && (b = v.value<QSpinBox *>())) {
                 b->setValue(value);
             }
-            m_ctlr->setDpiLevel(hsIndex, value);
+            m_device->setDpiLevel(hsIndex, value);
         });
         hsIndex++;
     }
 
     connect(ui->edDpiSlot2, &QSpinBox::valueChanged, this, [this](int value) { //
         ui->hsDpiSlot2->setValue(value);
-        m_ctlr->setDpiLevel(1, value);
+        m_device->setDpiLevel(1, value);
     });
     connect(ui->edDpiSlot3, &QSpinBox::valueChanged, this, [this](int value) { //
         ui->hsDpiSlot3->setValue(value);
-        m_ctlr->setDpiLevel(2, value);
+        m_device->setDpiLevel(2, value);
     });
     connect(ui->edDpiSlot4, &QSpinBox::valueChanged, this, [this](int value) { //
         ui->hsDpiSlot4->setValue(value);
-        m_ctlr->setDpiLevel(3, value);
+        m_device->setDpiLevel(3, value);
     });
     connect(ui->edDpiSlot5, &QSpinBox::valueChanged, this, [this](int value) { //
         ui->hsDpiSlot5->setValue(value);
-        m_ctlr->setDpiLevel(4, value);
+        m_device->setDpiLevel(4, value);
     });
 
     connect(ui->rbLightsOff, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setLightsEffect(TYON_PROFILE_SETTINGS_LIGHT_EFFECT_ALL_OFF);
+        m_device->setLightsEffect(TYON_PROFILE_SETTINGS_LIGHT_EFFECT_ALL_OFF);
     });
     connect(ui->rbLightFullOn, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setLightsEffect(TYON_PROFILE_SETTINGS_LIGHT_EFFECT_FULLY_LIGHTED);
+        m_device->setLightsEffect(TYON_PROFILE_SETTINGS_LIGHT_EFFECT_FULLY_LIGHTED);
     });
     connect(ui->rbLightBlink, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setLightsEffect(TYON_PROFILE_SETTINGS_LIGHT_EFFECT_BLINKING);
+        m_device->setLightsEffect(TYON_PROFILE_SETTINGS_LIGHT_EFFECT_BLINKING);
     });
     connect(ui->rbLightBreath, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setLightsEffect(TYON_PROFILE_SETTINGS_LIGHT_EFFECT_BREATHING);
+        m_device->setLightsEffect(TYON_PROFILE_SETTINGS_LIGHT_EFFECT_BREATHING);
     });
     connect(ui->rbLightBeat, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setLightsEffect(TYON_PROFILE_SETTINGS_LIGHT_EFFECT_HEARTBEAT);
+        m_device->setLightsEffect(TYON_PROFILE_SETTINGS_LIGHT_EFFECT_HEARTBEAT);
     });
 
     connect(ui->rbLightPaletteColor, &QRadioButton::clicked, this, [this](bool checked) { //
         if (checked) {
-            m_ctlr->setLightCustomColorEnabled(false);
+            m_device->setLightCustomColorEnabled(false);
         }
     });
     connect(ui->rbLightCustomColor, &QRadioButton::clicked, this, [this](bool checked) { //
         if (checked) {
-            m_ctlr->setLightCustomColorEnabled(true);
+            m_device->setLightCustomColorEnabled(true);
         }
     });
 
     connect(ui->rbColorNoFlow, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_OFF);
+        m_device->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_OFF);
         ui->gbxLightColor->setEnabled(true);
     });
     connect(ui->rbColorAllLights, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_SIMULTANEOUSLY);
+        m_device->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_SIMULTANEOUSLY);
         ui->gbxLightColor->setEnabled(false);
     });
     connect(ui->rbColorDirUp, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_UP);
+        m_device->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_UP);
         ui->gbxLightColor->setEnabled(false);
     });
     connect(ui->rbColorDirDown, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_DOWN);
+        m_device->setColorFlow(TYON_PROFILE_SETTINGS_COLOR_FLOW_DOWN);
         ui->gbxLightColor->setEnabled(false);
     });
 
     // -- gbxLightColor
     connect(ui->cbxLightWheel, &QCheckBox::clicked, this, [this](bool checked) { //
-        m_ctlr->setLightWheelEnabled(checked);
+        m_device->setLightWheelEnabled(checked);
     });
     connect(ui->pbLightColorWheel, &QPushButton::clicked, this, [this]() { //
         TyonLight color;
         if (doSelectColor(TYON_LIGHT_WHEEL, color)) {
-            m_ctlr->setLightColor(TYON_LIGHT_WHEEL, color);
+            m_device->setLightColor(TYON_LIGHT_WHEEL, color);
         }
     });
     connect(ui->cbxLightBottom, &QCheckBox::clicked, this, [this](bool checked) { //
-        m_ctlr->setLightBottomEnabled(checked);
+        m_device->setLightBottomEnabled(checked);
     });
     connect(ui->pbLightColorBottom, &QPushButton::clicked, this, [this]() { //
         TyonLight color;
         if (doSelectColor(TYON_LIGHT_BOTTOM, color)) {
-            m_ctlr->setLightColor(TYON_LIGHT_BOTTOM, color);
+            m_device->setLightColor(TYON_LIGHT_BOTTOM, color);
         }
     });
 
     // --
     connect(ui->cbxTalkFx, &QCheckBox::clicked, this, [this](bool checked) { //
-        m_ctlr->setTalkFxState(checked);
+        m_device->setTalkFxState(checked);
     });
 
     connect(ui->cbxTcuActivate, &QCheckBox::clicked, this, [this](bool checked) { //
-        m_ctlr->setTcuState(checked);
+        m_device->setTcuState(checked);
     });
 
     connect(ui->pbTcuCalibrate, &QPushButton::clicked, this, [this]() { //
@@ -557,19 +559,19 @@ inline void RTMainWindow::connectUiElements()
     });
 
     connect(ui->rbDcuOff, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setDcuState(TYON_DISTANCE_CONTROL_UNIT_OFF);
+        m_device->setDcuState(TYON_DISTANCE_CONTROL_UNIT_OFF);
     });
 
     connect(ui->rbDcuExtraLow, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setDcuState(TYON_DISTANCE_CONTROL_UNIT_EXTRA_LOW);
+        m_device->setDcuState(TYON_DISTANCE_CONTROL_UNIT_EXTRA_LOW);
     });
 
     connect(ui->rbDcuLow, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setDcuState(TYON_DISTANCE_CONTROL_UNIT_LOW);
+        m_device->setDcuState(TYON_DISTANCE_CONTROL_UNIT_LOW);
     });
 
     connect(ui->rbDcuNormal, &QRadioButton::clicked, this, [this](bool) { //
-        m_ctlr->setDcuState(TYON_DISTANCE_CONTROL_UNIT_NORMAL);
+        m_device->setDcuState(TYON_DISTANCE_CONTROL_UNIT_NORMAL);
     });
 
     connect(ui->pbXCelCalibrate, &QPushButton::clicked, this, [this](bool) { //
@@ -584,12 +586,12 @@ inline bool RTMainWindow::doSelectColor(TyonLightType target, TyonLight &color)
         d.setOption(QColorDialog::ColorDialogOption::DontUseNativeDialog);
         d.setTabletTracking(this->hasTabletTracking());
         if (d.exec() == QColorDialog::Accepted) {
-            color = m_ctlr->toDeviceColor(target, d.selectedColor());
+            color = m_device->toDeviceColor(target, d.selectedColor());
             return true;
         }
     } else {
         // show ROCCAT Tyon colors
-        RTColorDialog d(m_ctlr->deviceColors(), this);
+        RTColorDialog d(m_device->deviceColors(), this);
         if (d.exec() == RTColorDialog::Accepted) {
             color = d.selectedColor();
             return true;
@@ -648,7 +650,7 @@ inline void RTMainWindow::doCalibrateXCelerator()
     disableUserInterface();
 
     // dialog destroying on close automatically
-    RTCalibrateXCDialog *d = new RTCalibrateXCDialog(m_ctlr, this);
+    RTCalibrateXCDialog *d = new RTCalibrateXCDialog(m_device, this);
     connect(d, &RTCalibrateXCDialog::finished, this, [this, d](int) { //
         enableUserInterface();
         d->deleteLater();
@@ -661,7 +663,7 @@ inline void RTMainWindow::doCalibrateXCelerator()
 inline void RTMainWindow::doCalibrateTcu()
 {
     // dialog destroying on close automatically
-    RTCalibrateTcuDialog *d = new RTCalibrateTcuDialog(m_ctlr, this);
+    RTCalibrateTcuDialog *d = new RTCalibrateTcuDialog(m_device, this);
     connect(d, &RTCalibrateTcuDialog::finished, this, [this, d](int) { //
         enableUserInterface();
         d->deleteLater();
@@ -743,13 +745,11 @@ inline void RTMainWindow::linkButton(QPushButton *pb, const QMap<QString, QActio
 
 void RTMainWindow::onLookupStarted()
 {
-    qDebug("$$$ onLookupStarted");
-
     RTProgress::present(tr("Searching ROCCAT Tyon..."), this);
 
     // timeout timer
     QTimer::singleShot(15000, this, [this]() {
-        if (!m_ctlr->hasDevice()) {
+        if (!m_device->hasDevice()) {
             RTProgress::dismiss();
             QMessageBox::warning( //
                 this,
@@ -765,7 +765,6 @@ void RTMainWindow::onLookupStarted()
 
 void RTMainWindow::onDeviceFound()
 {
-    qDebug("**** onDeviceFound");
     RTProgress::dismiss();
     enableUserInterface();
 }
@@ -795,13 +794,11 @@ void RTMainWindow::onDeviceError(uint error, const QString &message)
 
 void RTMainWindow::onDeviceWorkerStarted()
 {
-    qDebug("++++ onDeviceWorkerStarted");
     RTProgress::present(tr("Please wait..."), this);
 }
 
 void RTMainWindow::onDeviceWorkerFinished()
 {
-    qDebug("---- onDeviceWorkerFinished");
     RTProgress::dismiss();
     enableUserInterface();
 }
@@ -817,39 +814,44 @@ void RTMainWindow::onDeviceInfo(const TyonInfo &info)
 
 void RTMainWindow::onProfileIndex(const quint8 pix)
 {
-    m_activeProfile = pix;
-
-    ui->tableView->setCurrentIndex(m_ctlr->profileIndex(pix));
+    ui->tableView->setCurrentIndex(m_model->index(pix, 0, {}));
     statusBar()->showMessage(tr("%1 %2 %3 | Active profile: %4") //
                                  .arg(COPYRIGHT, QApplication::organizationName(), QApplication::applicationVersion())
                                  .arg(pix));
 }
 
-/* Assign ROCCAT profile settings to UI elements */
-void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
+void RTMainWindow::onProfileChanged(const RTDeviceController::TProfile &profile)
 {
-    const TyonProfileSettings *s = &settings;
+    if (profile.settings.size && profile.settings.profile_index == m_device->activeProfileIndex()) {
+        loadSettings(&profile.settings);
+    }
+    if (profile.buttons.size && profile.settings.profile_index == m_device->activeProfileIndex()) {
+        loadButtons(&profile.buttons);
+    }
+}
 
+inline void RTMainWindow::loadSettings(const TyonProfileSettings *s)
+{
     /* skip */
-    if (s->profile_index != m_activeProfile) {
+    if (s->profile_index != m_device->activeProfileIndex()) {
         return;
     }
 
     ui->cbxSenitivityEnableAdv->setChecked(s->advanced_sensitivity & ROCCAT_SENSITIVITY_ADVANCED_ON);
 
     if (ui->cbxSenitivityEnableAdv->isChecked()) {
-        ui->edXSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
-        ui->hsXSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
-        ui->edYSensitivity->setValue(m_ctlr->toSensitivityYValue(s));
-        ui->hsYSensitivity->setValue(m_ctlr->toSensitivityYValue(s));
+        ui->edXSensitivity->setValue(m_device->toSensitivityXValue(s));
+        ui->hsXSensitivity->setValue(m_device->toSensitivityXValue(s));
+        ui->edYSensitivity->setValue(m_device->toSensitivityYValue(s));
+        ui->hsYSensitivity->setValue(m_device->toSensitivityYValue(s));
     } else {
-        ui->edXSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
-        ui->hsXSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
-        ui->edYSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
-        ui->hsYSensitivity->setValue(m_ctlr->toSensitivityXValue(s));
+        ui->edXSensitivity->setValue(m_device->toSensitivityXValue(s));
+        ui->hsXSensitivity->setValue(m_device->toSensitivityXValue(s));
+        ui->edYSensitivity->setValue(m_device->toSensitivityXValue(s));
+        ui->hsYSensitivity->setValue(m_device->toSensitivityXValue(s));
     }
 
-    ui->cbxTalkFx->setChecked(m_ctlr->talkFxState(s));
+    ui->cbxTalkFx->setChecked(m_device->talkFxState(s));
     if (!ui->cbxTalkFx->isChecked()) {
         ui->rbPollRate125->setEnabled(false);
         ui->rbPollRate250->setEnabled(false);
@@ -857,7 +859,7 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
         ui->rbPollRate1000->setEnabled(false);
     }
 
-    switch (m_ctlr->talkFxPollRate(s)) {
+    switch (m_device->talkFxPollRate(s)) {
         case ROCCAT_POLLING_RATE_125: {
             ui->rbPollRate125->setChecked(true);
             break;
@@ -899,28 +901,28 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
         }
         switch (i) {
             case 0: {
-                ui->edDpiSlot1->setValue(m_ctlr->toDpiLevelValue(s, i));
-                ui->hsDpiSlot1->setValue(m_ctlr->toDpiLevelValue(s, i));
+                ui->edDpiSlot1->setValue(m_device->toDpiLevelValue(s, i));
+                ui->hsDpiSlot1->setValue(m_device->toDpiLevelValue(s, i));
                 break;
             }
             case 1: {
-                ui->edDpiSlot2->setValue(m_ctlr->toDpiLevelValue(s, i));
-                ui->hsDpiSlot2->setValue(m_ctlr->toDpiLevelValue(s, i));
+                ui->edDpiSlot2->setValue(m_device->toDpiLevelValue(s, i));
+                ui->hsDpiSlot2->setValue(m_device->toDpiLevelValue(s, i));
                 break;
             }
             case 2: {
-                ui->edDpiSlot3->setValue(m_ctlr->toDpiLevelValue(s, i));
-                ui->hsDpiSlot3->setValue(m_ctlr->toDpiLevelValue(s, i));
+                ui->edDpiSlot3->setValue(m_device->toDpiLevelValue(s, i));
+                ui->hsDpiSlot3->setValue(m_device->toDpiLevelValue(s, i));
                 break;
             }
             case 3: {
-                ui->edDpiSlot4->setValue(m_ctlr->toDpiLevelValue(s, i));
-                ui->hsDpiSlot4->setValue(m_ctlr->toDpiLevelValue(s, i));
+                ui->edDpiSlot4->setValue(m_device->toDpiLevelValue(s, i));
+                ui->hsDpiSlot4->setValue(m_device->toDpiLevelValue(s, i));
                 break;
             }
             case 4: {
-                ui->edDpiSlot5->setValue(m_ctlr->toDpiLevelValue(s, i));
-                ui->hsDpiSlot5->setValue(m_ctlr->toDpiLevelValue(s, i));
+                ui->edDpiSlot5->setValue(m_device->toDpiLevelValue(s, i));
+                ui->hsDpiSlot5->setValue(m_device->toDpiLevelValue(s, i));
                 break;
             }
         }
@@ -935,7 +937,7 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
         QTimer::singleShot(50, this, [this, index]() { //
             QVariant v = ui->cbxDPIActiveSlot->itemData(index, Qt::UserRole);
             if (!v.isNull() && v.isValid()) {
-                m_ctlr->setActiveDpiSlot(v.toUInt());
+                m_device->setActiveDpiSlot(v.toUInt());
             }
         });
     }
@@ -957,7 +959,7 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
     ui->rbColorDirDown->setChecked(s->color_flow == TYON_PROFILE_SETTINGS_COLOR_FLOW_DOWN);
 
     for (qint8 i = 0; i < TYON_LIGHTS_NUM; i++) {
-        QColor color = m_ctlr->toScreenColor(s->lights[i], ui->rbLightCustomColor->isChecked());
+        QColor color = m_device->toScreenColor(s->lights[i], ui->rbLightCustomColor->isChecked());
         switch (i) {
             case 0: {
                 ui->pbLightColorWheel->setStyleSheet(        //
@@ -979,18 +981,11 @@ void RTMainWindow::onSettingsChanged(const TyonProfileSettings &settings)
     }
 }
 
-/* Assign ROCCAT button actions to UI push buttons */
-void RTMainWindow::onButtonsChanged(const TyonProfileButtons &buttons)
+inline void RTMainWindow::loadButtons(const TyonProfileButtons *b)
 {
-    /* skip */
-    if (buttons.profile_index != m_activeProfile) {
-        return;
-    }
-
     /* physical buttons and with EasyShift combined. 32 buttons (16x2) */
     const quint8 idxStart = TYON_BUTTON_INDEX_LEFT;
     const quint8 idxCount = TYON_PROFILE_BUTTON_NUM;
-    const TyonProfileButtons *b = &buttons;
 
     auto toPushButton = [this](quint8 index) -> QPushButton * {
         const QList<QPushButton *> pbkeys = m_buttons.keys();
@@ -1006,7 +1001,7 @@ void RTMainWindow::onButtonsChanged(const TyonProfileButtons &buttons)
     QPushButton *pb = nullptr;
     for (quint8 index = idxStart; index < idxCount; index++) {
         if ((pb = toPushButton(index)) != nullptr) {
-            m_ctlr->setupButton(b->buttons[index], pb);
+            m_device->setupButton(b->buttons[index], pb);
         }
     }
 }

@@ -38,16 +38,16 @@ static const uint next_phases[] = {
 #define AVERAGE_SHIFT 7;
 static uint const validCount = 1 << AVERAGE_SHIFT;
 
-RTCalibrateXCDialog::RTCalibrateXCDialog(RTDeviceController *controller, QWidget *parent)
+RTCalibrateXCDialog::RTCalibrateXCDialog(RTDeviceController *device, QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::RTCalibrateXCDialog)
-    , m_ctlr(controller)
+    , m_device(device)
     , m_instructions()
     , m_isSaved(false)
     , m_stage(0)
     , m_count(0)
     , m_start()
-    , m_last_value(0)
+    , m_lastValue(0)
     , m_min(255)
     , m_max(0)
     , m_mid(0)
@@ -72,13 +72,13 @@ RTCalibrateXCDialog::RTCalibrateXCDialog(RTDeviceController *controller, QWidget
     m_instructions.append(tr("Please push the paddle all the way downwards and hold it until the next step is displayed."));
     m_instructions.append(tr("Calibration completed.\n\nClick button 'Apply' to save the calibration or button 'Cancel' to close without saving."));
 
-    connect(m_ctlr, &RTDeviceController::deviceError, this, &RTCalibrateXCDialog::onDeviceError, Qt::DirectConnection);
-    connect(m_ctlr, &RTDeviceController::specialReport, this, &RTCalibrateXCDialog::onSpecialReport, Qt::DirectConnection);
+    connect(m_device, &RTDeviceController::deviceError, this, &RTCalibrateXCDialog::onDeviceError, Qt::QueuedConnection);
+    connect(m_device, &RTDeviceController::specialReport, this, &RTCalibrateXCDialog::onSpecialReport, Qt::QueuedConnection);
 
     connect(ui->pbNextPage, &QPushButton::clicked, this, [this, parent]() { //
         ui->swWizzard->setCurrentIndex(1);
         ui->pbNextPage->setVisible(false);
-        m_ctlr->xcStartCalibration();
+        m_device->xcStartCalibration();
         setParentEnabled(parent, false);
     });
 
@@ -88,7 +88,7 @@ RTCalibrateXCDialog::RTCalibrateXCDialog(RTDeviceController *controller, QWidget
         ui->pbApply->setVisible(false);
         if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
             ui->txInstruction->setText(tr("Well done! Click 'Close' button."));
-            m_ctlr->xcApplyCalibration(m_min, m_mid, m_max);
+            m_device->xcApplyCalibration(m_min, m_mid, m_max);
             m_isSaved = true;
         } else {
             ui->txInstruction->setText(tr("X-Celerator calibration not saved! Click 'Close' button."));
@@ -97,11 +97,11 @@ RTCalibrateXCDialog::RTCalibrateXCDialog(RTDeviceController *controller, QWidget
         setParentEnabled(parent, true);
         ui->pbCancel->setText(tr("Close"));
         ui->pbCancel->setDefault(true);
-        m_ctlr->xcStopCalibration();
+        m_device->xcStopCalibration();
     });
 
     connect(ui->pbCancel, &QPushButton::clicked, this, [this, parent]() { //
-        m_ctlr->xcStopCalibration();
+        m_device->xcStopCalibration();
         setParentEnabled(parent, true);
         if (!m_isSaved) {
             reject();
@@ -113,7 +113,7 @@ RTCalibrateXCDialog::RTCalibrateXCDialog(RTDeviceController *controller, QWidget
 
 RTCalibrateXCDialog::~RTCalibrateXCDialog()
 {
-    m_ctlr->disconnect(this);
+    m_device->disconnect(this);
     delete ui;
 }
 
@@ -135,7 +135,7 @@ void RTCalibrateXCDialog::onSpecialReport(uint, const QByteArray &report)
 
     switch (m_stage) {
         case PHASE_MID: {
-            if (inRange(value, m_last_value, 10)) {
+            if (inRange(value, m_lastValue, 10)) {
                 m_count += 1;
                 m_mid += value;
                 ui->vslXCelerate->setValue(value);
@@ -150,7 +150,7 @@ void RTCalibrateXCDialog::onSpecialReport(uint, const QByteArray &report)
             break;
         }
         case PHASE_MAX: {
-            if (inRange(value, m_last_value, 10)) {
+            if (inRange(value, m_lastValue, 10)) {
                 m_count += 1;
                 m_max += value;
                 if (value > ui->vslXCelerate->maximum()) {
@@ -168,7 +168,7 @@ void RTCalibrateXCDialog::onSpecialReport(uint, const QByteArray &report)
             break;
         }
         case PHASE_MIN: {
-            if (inRange(value, m_last_value, 10)) {
+            if (inRange(value, m_lastValue, 10)) {
                 m_count += 1;
                 m_min += value;
                 if (value < ui->vslXCelerate->minimum()) {

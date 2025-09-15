@@ -109,8 +109,8 @@ SOURCES += \
     rtcalibratexcdialog.cpp \
     rtcolordialog.cpp \
     rtdevicecontroller.cpp \
-    rthiddevice.cpp \
     rtmainwindow.cpp \
+    rtprofiletablemodel.cpp \
     rtprogress.cpp \
     rtshortcutdialog.cpp \
     rttcuimagewidget.cpp \
@@ -122,9 +122,9 @@ HEADERS += \
     rtcalibratexcdialog.h \
     rtcolordialog.h \
     rtdevicecontroller.h \
-    rthiddevice.h \
     rthiddevicedbg.hpp \
     rtmainwindow.h \
+    rtprofiletablemodel.h \
     rtprogress.h \
     rtshortcutdialog.h \
     rttcuimagewidget.h \

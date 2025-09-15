@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: GPL-3.0
 // ********************************************************************
 #pragma once
-#include "rthiddevice.h"
+#include "rtdevicecontroller.h"
 #include "rttypedefs.h"
 #include <QObject>
 
@@ -105,7 +105,7 @@ static inline void debugDevInfo(TyonInfo *p)
     qDebug("[HIDDEV] DEVINFO: FUNCTION=%d", p->function);
 }
 
-static inline void debugSettings(const RTHidDevice::TProfile profile, quint8 currentPix)
+static inline void debugSettings(const RTDeviceController::TProfile profile, quint8 currentPix)
 {
     const TyonProfileSettings *s = &profile.settings;
 
@@ -145,7 +145,7 @@ static inline void debugSettings(const RTHidDevice::TProfile profile, quint8 cur
     }
 }
 
-static inline void debugButtons(const RTHidDevice::TProfile profile, quint8 currentPix)
+static inline void debugButtons(const RTDeviceController::TProfile profile, quint8 currentPix)
 {
     const TyonProfileButtons *b = &profile.buttons;
 

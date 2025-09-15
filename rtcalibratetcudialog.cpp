@@ -12,10 +12,10 @@
 
 #define TCU_MAX_TESTS 40
 
-RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTDeviceController *controller, QWidget *parent)
+RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTDeviceController *device, QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::RTCalibrateTcuDialog)
-    , m_ctlr(controller)
+    , m_device(device)
     , m_timer()
     , m_image()
     , m_sensor()
@@ -48,14 +48,14 @@ RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTDeviceController *controller, QWidg
     m_timer.setTimerType(Qt::PreciseTimer);
     m_timer.setInterval(300);
 
-    m_median = m_ctlr->tcuMedian();
-    m_dcu = m_ctlr->dcuState();
-    m_tcu = m_ctlr->tcuState();
+    m_median = m_device->tcuMedian();
+    m_dcu = m_device->dcuState();
+    m_tcu = m_device->tcuState();
 
     connect(&m_timer, &QTimer::timeout, this, &RTCalibrateTcuDialog::onTimer);
-    connect(m_ctlr, &RTDeviceController::deviceError, this, &RTCalibrateTcuDialog::onDeviceError, Qt::DirectConnection);
-    connect(m_ctlr, &RTDeviceController::sensorChanged, this, &RTCalibrateTcuDialog::onSensorChanged, Qt::DirectConnection);
-    connect(m_ctlr, &RTDeviceController::sensorImageChanged, this, &RTCalibrateTcuDialog::onSensorImageChanged, Qt::DirectConnection);
+    connect(m_device, &RTDeviceController::deviceError, this, &RTCalibrateTcuDialog::onDeviceError, Qt::QueuedConnection);
+    connect(m_device, &RTDeviceController::sensorChanged, this, &RTCalibrateTcuDialog::onSensorChanged, Qt::QueuedConnection);
+    connect(m_device, &RTDeviceController::sensorImageChanged, this, &RTCalibrateTcuDialog::onSensorImageChanged, Qt::QueuedConnection);
 
     connect(ui->pbNextPage, &QPushButton::clicked, this, [this, parent]() { //
         ui->swWizzard->setCurrentIndex(1);
@@ -68,7 +68,7 @@ RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTDeviceController *controller, QWidg
     connect(ui->pbCancel, &QPushButton::clicked, this, [this, parent]() { //
         setParentEnabled(parent, true);
         if (!m_isSaved) {
-            m_ctlr->tcuSensorCancel(m_dcu);
+            m_device->tcuSensorCancel(m_dcu);
             reject();
         } else {
             accept();
@@ -81,12 +81,12 @@ RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTDeviceController *controller, QWidg
 
         ui->pbApply->setVisible(false);
 
-        m_ctlr->tcuSensorTest(m_dcu, m_median);
+        m_device->tcuSensorTest(m_dcu, m_median);
 
         if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
             ui->txInstruction->setText(tr("Well done! Click 'Close' button."));
             if (!m_hasError) {
-                m_ctlr->tcuSensorAccept(m_dcu, m_median);
+                m_device->tcuSensorAccept(m_dcu, m_median);
                 m_isSaved = !m_hasError;
             }
         } else {
@@ -104,6 +104,7 @@ RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTDeviceController *controller, QWidg
 
 RTCalibrateTcuDialog::~RTCalibrateTcuDialog()
 {
+    m_device->disconnect(this);
     delete ui;
 }
 
@@ -165,8 +166,8 @@ void RTCalibrateTcuDialog::onTimer()
         return;
     }
 
-    m_ctlr->tcuSensorCaptureImage();
-    m_ctlr->tcuSensorReadImage();
+    m_device->tcuSensorCaptureImage();
+    m_device->tcuSensorReadImage();
 
     ++m_count;
     ui->progressBar->setValue(m_count);
@@ -178,7 +179,7 @@ void RTCalibrateTcuDialog::onTimer()
     }
     ui->tcuImage->setImageData(data, imgSize);
 
-    m_median = m_ctlr->tcuSensorReadMedian(&m_image);
+    m_median = m_device->tcuSensorReadMedian(&m_image);
 
     ++m_count;
     ui->progressBar->setValue(m_count);

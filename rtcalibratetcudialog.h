@@ -20,7 +20,7 @@ class RTCalibrateTcuDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit RTCalibrateTcuDialog(RTDeviceController *controller, QWidget *parent = nullptr);
+    explicit RTCalibrateTcuDialog(RTDeviceController *device, QWidget *parent = nullptr);
     ~RTCalibrateTcuDialog();
 
 private slots:
@@ -32,7 +32,7 @@ private slots:
 
 private:
     Ui::RTCalibrateTcuDialog *ui;
-    RTDeviceController *m_ctlr;
+    RTDeviceController *m_device;
     QTimer m_timer;
     TyonSensorImage m_image;
     TyonSensor m_sensor;
