@@ -41,7 +41,7 @@
 	<key>CFBundleIconFile</key>
 	<string>RoccatTyon.icns</string>
 	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<string>org.eof.tools.RoccatTyon</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -49,7 +49,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>11</string>
+	<string>12</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

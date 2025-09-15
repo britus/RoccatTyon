@@ -463,8 +463,8 @@ inline void RTController::initializeHandlers()
         if (!checkLength(length, sizeof(RoccatControl))) {
             return kIOReturnIOError;
         }
-        RoccatControl *p = (RoccatControl *) buffer;
 #ifdef QT_DEBUG
+        RoccatControl *p = (RoccatControl *) buffer;
         qDebug("[HIDDEV] TYON_REPORT_ID_CONTROL: reqest=0x%02x value=0x%02x", p->request, p->value);
 #endif
         return kIOReturnSuccess;
