@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: GPL-3.0
 // ********************************************************************
 #pragma once
-#include "rtdevicecontroller.h"
+#include "rtcontroller.h"
 #include <QKeyCombination>
 #include <QKeySequence>
 #include <QMap>
@@ -15,14 +15,14 @@
 #include <QtCompare>
 
 /**
- * @brief The RTProfileTableModel class is a proxy between device and UI
+ * @brief The RTTableModel class used for profile table widget
  */
-class RTProfileTableModel : public QAbstractItemModel
+class RTTableModel : public QAbstractItemModel
 {
     Q_OBJECT
 
 public:
-    explicit RTProfileTableModel(RTDeviceController *device, QObject *parent = nullptr);
+    explicit RTTableModel(RTController *device, QObject *parent = nullptr);
 
     // Header:
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
@@ -30,7 +30,7 @@ public:
     // Basic functionality:
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
-    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
+    QModelIndex index(int row, int column = 0, const QModelIndex &parent = QModelIndex()) const override;
     QModelIndex parent(const QModelIndex &index) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
@@ -43,5 +43,5 @@ private slots:
     void onDeviceRemoved();
 
 private:
-    RTDeviceController *m_device;
+    RTController *m_device;
 };

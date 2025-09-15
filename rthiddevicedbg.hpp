@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: GPL-3.0
 // ********************************************************************
 #pragma once
-#include "rtdevicecontroller.h"
+#include "rtcontroller.h"
 #include "rttypedefs.h"
 #include <QObject>
 
@@ -27,32 +27,32 @@ static inline void debugDevice(IOHIDDeviceRef device)
         }
         CFTypeID typeID = CFGetTypeID(value);
         if (typeID == CFStringGetTypeID()) {
-            qDebug("[HIDDEV] %s =  %s", //
+            qDebug("[HIDDEV] %s: %s", //
                    qPrintable(keyStr),
                    qPrintable(QString::fromCFString((CFStringRef) value)));
         } else if (typeID == CFNumberGetTypeID()) {
             long num;
             CFNumberGetValue((CFNumberRef) value, kCFNumberLongType, &num);
-            qDebug("[HIDDEV] %s = %ld (0x%lx)", //
+            qDebug("[HIDDEV] %s: %ld (0x%lx)", //
                    qPrintable(keyStr),
                    num,
                    num);
         } else if (typeID == CFBooleanGetTypeID()) {
             bool b = CFBooleanGetValue((CFBooleanRef) value);
-            qDebug("[HIDDEV] %s = %s", //
+            qDebug("[HIDDEV] %s: %s", //
                    qPrintable(keyStr),
                    (b ? "true" : "false"));
         } else {
             // For unsupported types, use CFCopyDescription
             CFStringRef desc = CFCopyDescription(value);
-            qDebug("[HIDDEV] %s = %s", //
+            qDebug("[HIDDEV] %s: %s", //
                    qPrintable(keyStr),
                    qPrintable(QString::fromCFString(desc)));
             CFRelease(desc);
         }
     };
 
-    qDebug("[Device found ----------------------------------------]");
+    qDebug("[HIDDEV] Device found ----------------------------------------");
     qDebug("[HIDDEV] Device: %p", device);
 
     // List of common property keys to query
@@ -105,7 +105,7 @@ static inline void debugDevInfo(TyonInfo *p)
     qDebug("[HIDDEV] DEVINFO: FUNCTION=%d", p->function);
 }
 
-static inline void debugSettings(const RTDeviceController::TProfile profile, quint8 currentPix)
+static inline void debugSettings(const RTController::TProfile profile, quint8 currentPix)
 {
     const TyonProfileSettings *s = &profile.settings;
 
@@ -145,7 +145,7 @@ static inline void debugSettings(const RTDeviceController::TProfile profile, qui
     }
 }
 
-static inline void debugButtons(const RTDeviceController::TProfile profile, quint8 currentPix)
+static inline void debugButtons(const RTController::TProfile profile, quint8 currentPix)
 {
     const TyonProfileButtons *b = &profile.buttons;
 

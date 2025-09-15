@@ -12,7 +12,7 @@
 
 #define TCU_MAX_TESTS 40
 
-RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTDeviceController *device, QWidget *parent)
+RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTController *device, QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::RTCalibrateTcuDialog)
     , m_device(device)
@@ -53,9 +53,9 @@ RTCalibrateTcuDialog::RTCalibrateTcuDialog(RTDeviceController *device, QWidget *
     m_tcu = m_device->tcuState();
 
     connect(&m_timer, &QTimer::timeout, this, &RTCalibrateTcuDialog::onTimer);
-    connect(m_device, &RTDeviceController::deviceError, this, &RTCalibrateTcuDialog::onDeviceError, Qt::QueuedConnection);
-    connect(m_device, &RTDeviceController::sensorChanged, this, &RTCalibrateTcuDialog::onSensorChanged, Qt::QueuedConnection);
-    connect(m_device, &RTDeviceController::sensorImageChanged, this, &RTCalibrateTcuDialog::onSensorImageChanged, Qt::QueuedConnection);
+    connect(m_device, &RTController::deviceError, this, &RTCalibrateTcuDialog::onDeviceError, Qt::QueuedConnection);
+    connect(m_device, &RTController::sensorChanged, this, &RTCalibrateTcuDialog::onSensorChanged, Qt::QueuedConnection);
+    connect(m_device, &RTController::sensorImageChanged, this, &RTCalibrateTcuDialog::onSensorImageChanged, Qt::QueuedConnection);
 
     connect(ui->pbNextPage, &QPushButton::clicked, this, [this, parent]() { //
         ui->swWizzard->setCurrentIndex(1);

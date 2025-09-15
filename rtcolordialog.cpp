@@ -6,11 +6,11 @@
 // SPDX-License-Identifier: GPL-3.0
 // ********************************************************************
 #include "rtcolordialog.h"
+#include "rttypedefs.h"
 #include "ui_rtcolordialog.h"
-#include <rttypedefs.h>
 #include <QPushButton>
 
-RTColorDialog::RTColorDialog(const RTDeviceController::TDeviceColors &colors, QWidget *parent)
+RTColorDialog::RTColorDialog(const RTController::TDeviceColors &colors, QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::RTColorDialog)
 {

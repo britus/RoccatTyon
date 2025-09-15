@@ -44,7 +44,7 @@ mac {
     QMAKE_MACOSX_DEPLOYMENT_TARGET = 13.5
 
     # Important for the App with embedded frameworks and libs
-    QMAKE_RPATHDIR += @executable_path/../Frameworks
+    #QMAKE_RPATHDIR += @executable_path/../Frameworks
     QMAKE_RPATHDIR += @executable_path/../PlugIns
     QMAKE_RPATHDIR += @executable_path/../lib
 
@@ -108,11 +108,11 @@ SOURCES += \
     rtcalibratetcudialog.cpp \
     rtcalibratexcdialog.cpp \
     rtcolordialog.cpp \
-    rtdevicecontroller.cpp \
+    rtcontroller.cpp \
     rtmainwindow.cpp \
-    rtprofiletablemodel.cpp \
     rtprogress.cpp \
     rtshortcutdialog.cpp \
+    rttablemodel.cpp \
     rttcuimagewidget.cpp \
     rtxceleratorwidget.cpp
 
@@ -121,12 +121,12 @@ HEADERS += \
     rtcalibratetcudialog.h \
     rtcalibratexcdialog.h \
     rtcolordialog.h \
-    rtdevicecontroller.h \
+    rtcontroller.h \
     rthiddevicedbg.hpp \
     rtmainwindow.h \
-    rtprofiletablemodel.h \
     rtprogress.h \
     rtshortcutdialog.h \
+    rttablemodel.h \
     rttcuimagewidget.h \
     rttypedefs.h \
     rtxceleratorwidget.h

@@ -9,9 +9,9 @@
 #include "rtcalibratetcudialog.h"
 #include "rtcalibratexcdialog.h"
 #include "rtcolordialog.h"
-#include "rtprofiletablemodel.h"
 #include "rtprogress.h"
 #include "rtshortcutdialog.h"
+#include "rttablemodel.h"
 #include "rttypedefs.h"
 #include "ui_rtmainwindow.h"
 #include <QAction>
@@ -46,8 +46,8 @@
 RTMainWindow::RTMainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::RTMainWindow)
-    , m_device(new RTDeviceController(parent))
-    , m_model(new RTProfileTableModel(m_device, parent))
+    , m_device(new RTController(parent))
+    , m_model(new RTTableModel(m_device, parent))
     , m_buttons()
     , m_settings(nullptr)
     , m_rtpfFileName(QStringLiteral("Tyon-Profiles.rtpf"))
@@ -57,14 +57,9 @@ RTMainWindow::RTMainWindow(QWidget *parent)
     // --
     ui->setupUi(this);
 
-    QProcessEnvironment pe = QProcessEnvironment::systemEnvironment();
+    QStringList sl;
     QScreen *scn = qApp->primaryScreen();
     QRect r = scn->availableGeometry();
-
-    //bool isXWindow;
-    //isXWindow |= (pe.contains("DISPLAY") || pe.contains("XDG_SESSION_DESKTOP"));
-
-    QStringList sl;
     sl << tr("res:%3x%4").arg(r.size().width()).arg(r.size().height());
     sl << tr("dpi:%1x%2")
               .arg((uint) scn->logicalDotsPerInchX()) //
@@ -72,25 +67,32 @@ RTMainWindow::RTMainWindow(QWidget *parent)
     qInfo() << "[APPWIN] Screen" << sl;
 
     setWindowTitle(QApplication::applicationDisplayName());
-    statusBar()->showMessage(tr("%1 %2 %3")      //
-                                 .arg(COPYRIGHT, //
-                                      QApplication::organizationName(),
-                                      QApplication::applicationVersion()));
-
+    statusBar()->showMessage( //
+        tr("%1 %2 %3")        //
+            .arg(COPYRIGHT,   //
+                 QApplication::organizationName(),
+                 QApplication::applicationVersion()));
     disableUserInterface();
     initializeSettings();
     initializeUiElements();
     loadSettings(m_settings);
-    connectController();
     connectUiElements();
-    connectActions();
-
+    connectController();
     m_device->lookupDevice();
 }
 
 RTMainWindow::~RTMainWindow()
 {
     saveSettings(m_settings);
+    m_model->disconnect(this);
+    m_device->disconnect(this);
+    ui->tableView->setModel(nullptr);
+    if (m_model) {
+        delete m_model;
+    }
+    if (m_device) {
+        delete m_device;
+    }
     delete ui;
 }
 
@@ -191,42 +193,42 @@ inline void RTMainWindow::initializeUiElements()
     }
 
     // Standard
-    m_buttons[ui->pbMBStdTopLeft] = {TYON_BUTTON_INDEX_LEFT, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopRight] = {TYON_BUTTON_INDEX_RIGHT, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopWScrollUp] = {TYON_BUTTON_INDEX_WHEEL_UP, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopWScrollDown] = {TYON_BUTTON_INDEX_WHEEL_DOWN, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopWClick] = {TYON_BUTTON_INDEX_MIDDLE, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopPushLeft] = {TYON_BUTTON_INDEX_FIN_LEFT, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopPushRight] = {TYON_BUTTON_INDEX_FIN_RIGHT, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopAction2] = {TYON_BUTTON_INDEX_LEFT_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopAction1] = {TYON_BUTTON_INDEX_LEFT_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopAction4] = {TYON_BUTTON_INDEX_RIGHT_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdTopAction3] = {TYON_BUTTON_INDEX_RIGHT_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdTopLeft] = {TYON_BUTTON_INDEX_LEFT, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdTopRight] = {TYON_BUTTON_INDEX_RIGHT, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdTopWScrollUp] = {TYON_BUTTON_INDEX_WHEEL_UP, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdTopWScrollDown] = {TYON_BUTTON_INDEX_WHEEL_DOWN, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdTopWClick] = {TYON_BUTTON_INDEX_MIDDLE, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdTopPushLeft] = {TYON_BUTTON_INDEX_FIN_LEFT, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdTopPushRight] = {TYON_BUTTON_INDEX_FIN_RIGHT, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdTopAction2] = {TYON_BUTTON_INDEX_LEFT_BACK, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdTopAction1] = {TYON_BUTTON_INDEX_LEFT_FORWARD, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdTopAction4] = {TYON_BUTTON_INDEX_RIGHT_BACK, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdTopAction3] = {TYON_BUTTON_INDEX_RIGHT_FORWARD, CB_BIND(m_device, &RTController::assignButton)};
 
-    m_buttons[ui->pbMBStdSideForward] = {TYON_BUTTON_INDEX_THUMB_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdSideBackward] = {TYON_BUTTON_INDEX_THUMB_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdSidePushUp] = {TYON_BUTTON_INDEX_THUMB_PADDLE_UP, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdSidePushDown] = {TYON_BUTTON_INDEX_THUMB_PADDLE_DOWN, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBStdSideEasyShfit] = {TYON_BUTTON_INDEX_THUMB_PEDAL, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBStdSideForward] = {TYON_BUTTON_INDEX_THUMB_FORWARD, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdSideBackward] = {TYON_BUTTON_INDEX_THUMB_BACK, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdSidePushUp] = {TYON_BUTTON_INDEX_THUMB_PADDLE_UP, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdSidePushDown] = {TYON_BUTTON_INDEX_THUMB_PADDLE_DOWN, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBStdSideEasyShfit] = {TYON_BUTTON_INDEX_THUMB_PEDAL, CB_BIND(m_device, &RTController::assignButton)};
 
     // EasyShift //
-    m_buttons[ui->pbMBESTopLeft] = {TYON_BUTTON_INDEX_SHIFT_LEFT, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopRight] = {TYON_BUTTON_INDEX_SHIFT_RIGHT, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopWScrollUp] = {TYON_BUTTON_INDEX_SHIFT_WHEEL_UP, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopWScrollDown] = {TYON_BUTTON_INDEX_SHIFT_WHEEL_DOWN, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopWClick] = {TYON_BUTTON_INDEX_SHIFT_MIDDLE, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopPushLeft] = {TYON_BUTTON_INDEX_SHIFT_FIN_LEFT, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopPushRight] = {TYON_BUTTON_INDEX_SHIFT_FIN_RIGHT, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopAction2] = {TYON_BUTTON_INDEX_SHIFT_LEFT_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopAction1] = {TYON_BUTTON_INDEX_SHIFT_LEFT_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopAction4] = {TYON_BUTTON_INDEX_SHIFT_RIGHT_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESTopAction3] = {TYON_BUTTON_INDEX_SHIFT_RIGHT_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESTopLeft] = {TYON_BUTTON_INDEX_SHIFT_LEFT, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESTopRight] = {TYON_BUTTON_INDEX_SHIFT_RIGHT, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESTopWScrollUp] = {TYON_BUTTON_INDEX_SHIFT_WHEEL_UP, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESTopWScrollDown] = {TYON_BUTTON_INDEX_SHIFT_WHEEL_DOWN, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESTopWClick] = {TYON_BUTTON_INDEX_SHIFT_MIDDLE, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESTopPushLeft] = {TYON_BUTTON_INDEX_SHIFT_FIN_LEFT, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESTopPushRight] = {TYON_BUTTON_INDEX_SHIFT_FIN_RIGHT, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESTopAction2] = {TYON_BUTTON_INDEX_SHIFT_LEFT_BACK, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESTopAction1] = {TYON_BUTTON_INDEX_SHIFT_LEFT_FORWARD, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESTopAction4] = {TYON_BUTTON_INDEX_SHIFT_RIGHT_BACK, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESTopAction3] = {TYON_BUTTON_INDEX_SHIFT_RIGHT_FORWARD, CB_BIND(m_device, &RTController::assignButton)};
 
-    m_buttons[ui->pbMBESSideForward] = {TYON_BUTTON_INDEX_SHIFT_THUMB_FORWARD, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESSideBackward] = {TYON_BUTTON_INDEX_SHIFT_THUMB_BACK, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESSidePushUp] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PADDLE_UP, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESSidePushDown] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PADDLE_DOWN, CB_BIND(m_device, &RTDeviceController::assignButton)};
-    m_buttons[ui->pbMBESSideEasyShift_na] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PEDAL, CB_BIND(m_device, &RTDeviceController::assignButton)};
+    m_buttons[ui->pbMBESSideForward] = {TYON_BUTTON_INDEX_SHIFT_THUMB_FORWARD, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESSideBackward] = {TYON_BUTTON_INDEX_SHIFT_THUMB_BACK, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESSidePushUp] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PADDLE_UP, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESSidePushDown] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PADDLE_DOWN, CB_BIND(m_device, &RTController::assignButton)};
+    m_buttons[ui->pbMBESSideEasyShift_na] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PEDAL, CB_BIND(m_device, &RTController::assignButton)};
 
     QActionGroup *agMBBasics = new QActionGroup(this);
     agMBBasics->addAction(linkAction(ui->maAssignMBLeftClick, TYON_BUTTON_TYPE_CLICK));
@@ -301,20 +303,20 @@ inline void RTMainWindow::initializeUiElements()
 inline void RTMainWindow::connectController()
 {
     Qt::ConnectionType ct = Qt::QueuedConnection;
-    connect(m_device, &RTDeviceController::deviceWorkerStarted, this, &RTMainWindow::onDeviceWorkerStarted, ct);
-    connect(m_device, &RTDeviceController::deviceWorkerFinished, this, &RTMainWindow::onDeviceWorkerFinished, ct);
-    connect(m_device, &RTDeviceController::lookupStarted, this, &RTMainWindow::onLookupStarted, ct);
-    connect(m_device, &RTDeviceController::deviceFound, this, &RTMainWindow::onDeviceFound, ct);
-    connect(m_device, &RTDeviceController::deviceRemoved, this, &RTMainWindow::onDeviceRemoved, ct);
-    connect(m_device, &RTDeviceController::deviceError, this, &RTMainWindow::onDeviceError, ct);
-    connect(m_device, &RTDeviceController::deviceInfo, this, &RTMainWindow::onDeviceInfo, ct);
-    connect(m_device, &RTDeviceController::profileIndexChanged, this, &RTMainWindow::onProfileIndex);
-    connect(m_device, &RTDeviceController::profileChanged, this, &RTMainWindow::onProfileChanged);
-    connect(m_device, &RTDeviceController::controlUnitChanged, this, &RTMainWindow::onControlUnitChanged, ct);
-    connect(m_device, &RTDeviceController::talkFxChanged, this, &RTMainWindow::onTalkFxChanged, ct);
+    connect(m_device, &RTController::deviceWorkerStarted, this, &RTMainWindow::onDeviceWorkerStarted, ct);
+    connect(m_device, &RTController::deviceWorkerFinished, this, &RTMainWindow::onDeviceWorkerFinished, ct);
+    connect(m_device, &RTController::lookupStarted, this, &RTMainWindow::onLookupStarted, ct);
+    connect(m_device, &RTController::deviceFound, this, &RTMainWindow::onDeviceFound, ct);
+    connect(m_device, &RTController::deviceRemoved, this, &RTMainWindow::onDeviceRemoved, ct);
+    connect(m_device, &RTController::deviceError, this, &RTMainWindow::onDeviceError, ct);
+    connect(m_device, &RTController::deviceInfo, this, &RTMainWindow::onDeviceInfo, ct);
+    connect(m_device, &RTController::profileIndexChanged, this, &RTMainWindow::onProfileIndex);
+    connect(m_device, &RTController::profileChanged, this, &RTMainWindow::onProfileChanged);
+    connect(m_device, &RTController::controlUnitChanged, this, &RTMainWindow::onControlUnitChanged, ct);
+    connect(m_device, &RTController::talkFxChanged, this, &RTMainWindow::onTalkFxChanged, ct);
 }
 
-inline void RTMainWindow::connectActions()
+inline void RTMainWindow::connectUiElements()
 {
     connect(ui->pbImport, &QPushButton::clicked, this, [this](bool) { //
         QString fileName;
@@ -347,10 +349,7 @@ inline void RTMainWindow::connectActions()
             m_device->updateDevice();
         }
     });
-}
 
-inline void RTMainWindow::connectUiElements()
-{
     connect(ui->tableView, &QTableView::clicked, this, [this](const QModelIndex &index) { //
         m_device->setActiveProfile(index.row());
     });
@@ -694,9 +693,9 @@ inline QAction *RTMainWindow::linkAction(QAction *action, TyonButtonType functio
         //qDebug() << "[APPWIN] triggered():" << function << action;
         //qDebug() << "[APPWIN] triggered():" << pb << pb->text();
 
-        RTDeviceController::TSetButtonCallback handler;
+        RTController::TSetButtonCallback handler;
         if (m_buttons.contains(pb)) {
-            const RTDeviceController::TButtonLink bl = m_buttons[pb];
+            const RTController::TButtonLink bl = m_buttons[pb];
             if ((handler = bl.handler) != nullptr) {
                 if (function != TYON_BUTTON_TYPE_SHORTCUT) {
                     handler(bl.index, function, {});
@@ -814,19 +813,24 @@ void RTMainWindow::onDeviceInfo(const TyonInfo &info)
 
 void RTMainWindow::onProfileIndex(const quint8 pix)
 {
-    ui->tableView->setCurrentIndex(m_model->index(pix, 0, {}));
-    statusBar()->showMessage(tr("%1 %2 %3 | Active profile: %4") //
-                                 .arg(COPYRIGHT, QApplication::organizationName(), QApplication::applicationVersion())
-                                 .arg(pix));
+    ui->tableView->setCurrentIndex(m_model->index(pix));
 }
 
-void RTMainWindow::onProfileChanged(const RTDeviceController::TProfile &profile)
+void RTMainWindow::onProfileChanged(const RTController::TProfile &profile)
 {
-    if (profile.settings.size && profile.settings.profile_index == m_device->activeProfileIndex()) {
-        loadSettings(&profile.settings);
-    }
-    if (profile.buttons.size && profile.settings.profile_index == m_device->activeProfileIndex()) {
-        loadButtons(&profile.buttons);
+    if (profile.settings.profile_index == m_device->activeProfileIndex()) {
+        statusBar()->showMessage(               //
+            tr("%1 %2 %3 | Active profile: %4") //
+                .arg(COPYRIGHT,
+                     QApplication::organizationName(), //
+                     QApplication::applicationVersion())
+                .arg(profile.name));
+        if (profile.settings.size) {
+            loadSettings(&profile.settings);
+        }
+        if (profile.buttons.size) {
+            loadButtons(&profile.buttons);
+        }
     }
 }
 
@@ -990,7 +994,7 @@ inline void RTMainWindow::loadButtons(const TyonProfileButtons *b)
     auto toPushButton = [this](quint8 index) -> QPushButton * {
         const QList<QPushButton *> pbkeys = m_buttons.keys();
         foreach (QPushButton *pb, pbkeys) {
-            RTDeviceController::TButtonLink link = m_buttons[pb];
+            RTController::TButtonLink link = m_buttons[pb];
             if (link.index == index) {
                 return pb;
             }

@@ -7,7 +7,7 @@
 // ********************************************************************
 #pragma once
 
-#include "rtdevicecontroller.h"
+#include "rtcontroller.h"
 #include <QDialog>
 #include <QTime>
 
@@ -20,7 +20,7 @@ class RTCalibrateXCDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit RTCalibrateXCDialog(RTDeviceController *device, QWidget *parent = nullptr);
+    explicit RTCalibrateXCDialog(RTController *device, QWidget *parent = nullptr);
     ~RTCalibrateXCDialog();
 
 private slots:
@@ -29,7 +29,7 @@ private slots:
 
 private:
     Ui::RTCalibrateXCDialog *ui;
-    RTDeviceController *m_device;
+    RTController *m_device;
     QStringList m_instructions;
     bool m_isSaved;
     uint m_stage;

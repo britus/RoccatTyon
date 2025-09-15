@@ -24,9 +24,9 @@
 #endif
 
 /**
- * @brief The RTDeviceController class manage the access to the ROCCAT Tyon mouse using the HID protocol
+ * @brief The RTController class manage the access to the ROCCAT Tyon mouse using the HID protocol
  */
-class RTDeviceController : public QObject
+class RTController : public QObject
 {
     Q_OBJECT
 
@@ -95,16 +95,16 @@ public:
      * @brief Default constructor
      * @param parent NULL or QObject
      */
-    explicit RTDeviceController(QObject *parent = nullptr);
+    explicit RTController(QObject *parent = nullptr);
 
     /** */
-    ~RTDeviceController();
+    ~RTController();
 
     /**
      * @brief Return true if devices found
      * @return True or False
      */
-    inline bool hasDevice() const { return !m_wrkrDevices.isEmpty(); }
+    inline bool hasDevice() const { return m_ctrlDevice != nullptr; }
 
     /**
      * @brief Return active profile index
@@ -288,7 +288,7 @@ signals:
     void deviceError(int error, const QString &message);
     void deviceInfo(const TyonInfo &info);
     void profileIndexChanged(const quint8 pix);
-    void profileChanged(const RTDeviceController::TProfile &profile);
+    void profileChanged(const RTController::TProfile &profile);
     void controlUnitChanged(const TyonControlUnit &controlUnit);
     void sensorChanged(const TyonSensor &sensor);
     void sensorImageChanged(const TyonSensorImage &image);
@@ -476,13 +476,30 @@ protected:
                                 CFIndex reportLength);
 
 private:
+    typedef struct
+    {
+        QString transport;     // USB
+        uint vendorId;         //  7805 (0x1e7d)
+        uint vendorIdSource;   //  null
+        uint productId;        //  11850 (0x2e4a)
+        uint versionNumber;    //  256 (0x100)
+        QString manufacturer;  //  ROCCAT
+        QString product;       //  ROCCAT Tyon Black
+        QString serialNumber;  //  ROC-11-850
+        uint countryCode;      //  0 (0x0)
+        uint locationId;       //  1048576 (0x100000)
+        QString deviceUsage;   //  null
+        uint primaryUsage;     //  Mouse = 0x04 or Misc = 0x00
+        uint primaryUsagePage; //  Mouse = 0x01 or Misc = 0x0a
+    } THidDeviceInfo;
+
     IOHIDManagerRef m_manager;
     // --
     QMutex m_waitMutex;
     QMutex m_accessMutex;
     // --
-    QList<IOHIDDeviceRef> m_wrkrDevices;
-    QList<IOHIDDeviceRef> m_miscDevices;
+    IOHIDDeviceRef m_ctrlDevice;
+    IOHIDDeviceRef m_inputDevice;
     // --
     QMap<quint8, TReportHandler> m_handlers;
     // --
@@ -503,7 +520,7 @@ private:
     uint m_inputLength = 4096;
     // --
     QMap<quint8, QString> m_buttonTypes;
-    QMap<quint8, RTDeviceController::TPhysicalButton> m_physButtons;
+    QMap<quint8, RTController::TPhysicalButton> m_physButtons;
 
 private:
     inline void releaseManager();
@@ -572,6 +589,7 @@ private:
     inline int talkWriteFx(IOHIDDeviceRef device, quint32 effect, quint32 ambient_color, quint32 event_color);
     inline int talkWriteFxState(IOHIDDeviceRef device, quint8 state);
     // HID low level
+    inline void hidDeviceProperties(IOHIDDeviceRef device, THidDeviceInfo *info) const;
     inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
     inline int hidGetReportRaw(IOHIDDeviceRef device, quint8 rid, quint8 *buffer, CFIndex size);
     inline int hidWriteReport(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length);
@@ -588,9 +606,9 @@ Q_DECLARE_METATYPE(TyonControlUnit);
 Q_DECLARE_METATYPE(TyonSensor);
 Q_DECLARE_METATYPE(TyonSensorImage);
 Q_DECLARE_METATYPE(TyonTalk);
-Q_DECLARE_METATYPE(RTDeviceController::TProfile);
-Q_DECLARE_METATYPE(RTDeviceController::TProfiles);
-Q_DECLARE_METATYPE(RTDeviceController::TColorItem);
-Q_DECLARE_METATYPE(RTDeviceController::TDeviceColors);
-Q_DECLARE_METATYPE(RTDeviceController::TPhysicalButton);
-Q_DECLARE_METATYPE(RTDeviceController::TButtonLink);
+Q_DECLARE_METATYPE(RTController::TProfile);
+Q_DECLARE_METATYPE(RTController::TProfiles);
+Q_DECLARE_METATYPE(RTController::TColorItem);
+Q_DECLARE_METATYPE(RTController::TDeviceColors);
+Q_DECLARE_METATYPE(RTController::TPhysicalButton);
+Q_DECLARE_METATYPE(RTController::TButtonLink);

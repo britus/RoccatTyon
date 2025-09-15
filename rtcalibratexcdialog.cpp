@@ -38,7 +38,7 @@ static const uint next_phases[] = {
 #define AVERAGE_SHIFT 7;
 static uint const validCount = 1 << AVERAGE_SHIFT;
 
-RTCalibrateXCDialog::RTCalibrateXCDialog(RTDeviceController *device, QWidget *parent)
+RTCalibrateXCDialog::RTCalibrateXCDialog(RTController *device, QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::RTCalibrateXCDialog)
     , m_device(device)
@@ -72,8 +72,8 @@ RTCalibrateXCDialog::RTCalibrateXCDialog(RTDeviceController *device, QWidget *pa
     m_instructions.append(tr("Please push the paddle all the way downwards and hold it until the next step is displayed."));
     m_instructions.append(tr("Calibration completed.\n\nClick button 'Apply' to save the calibration or button 'Cancel' to close without saving."));
 
-    connect(m_device, &RTDeviceController::deviceError, this, &RTCalibrateXCDialog::onDeviceError, Qt::QueuedConnection);
-    connect(m_device, &RTDeviceController::specialReport, this, &RTCalibrateXCDialog::onSpecialReport, Qt::QueuedConnection);
+    connect(m_device, &RTController::deviceError, this, &RTCalibrateXCDialog::onDeviceError, Qt::QueuedConnection);
+    connect(m_device, &RTController::specialReport, this, &RTCalibrateXCDialog::onSpecialReport, Qt::QueuedConnection);
 
     connect(ui->pbNextPage, &QPushButton::clicked, this, [this, parent]() { //
         ui->swWizzard->setCurrentIndex(1);

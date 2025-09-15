@@ -7,7 +7,7 @@
 // ********************************************************************
 #pragma once
 
-#include "rtdevicecontroller.h"
+#include "rtcontroller.h"
 #include "rttypedefs.h"
 #include <QDialog>
 
@@ -20,7 +20,7 @@ class RTColorDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit RTColorDialog(const RTDeviceController::TDeviceColors &colors, QWidget *parent = nullptr);
+    explicit RTColorDialog(const RTController::TDeviceColors &colors, QWidget *parent = nullptr);
     ~RTColorDialog();
     inline const TyonLight &selectedColor() const { return m_selected; }
 

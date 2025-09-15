@@ -6,8 +6,8 @@
 // SPDX-License-Identifier: GPL-3.0
 // ********************************************************************
 #pragma once
-#include "rtdevicecontroller.h"
-#include "rtprofiletablemodel.h"
+#include "rtcontroller.h"
+#include "rttablemodel.h"
 #include <QAction>
 #include <QActionGroup>
 #include <QMainWindow>
@@ -36,7 +36,7 @@ private slots:
     void onDeviceError(uint error, const QString &message);
     void onDeviceInfo(const TyonInfo &info);
     void onProfileIndex(const quint8 pix);
-    void onProfileChanged(const RTDeviceController::TProfile &profile);
+    void onProfileChanged(const RTController::TProfile &profile);
     void onControlUnitChanged(const TyonControlUnit &controlUnit);
     void onTalkFxChanged(const TyonTalk &talkFx);
     void onDeviceWorkerStarted();
@@ -45,15 +45,15 @@ private slots:
 private:
     Ui::RTMainWindow *ui;
     /* ROCCAT Tyon device */
-    RTDeviceController *m_device;
+    RTController *m_device;
     /* Profile table model */
-    RTProfileTableModel *m_model;
+    RTTableModel *m_model;
     /* Function groups which contains button menu action.
      * Each menu action has a property named 'button':
      * The property contains the calling push button */
     QMap<QString, QActionGroup *> m_actions;
     /* Link UI push button to button type and setup handler */
-    QMap<QPushButton *, RTDeviceController::TButtonLink> m_buttons;
+    QMap<QPushButton *, RTController::TButtonLink> m_buttons;
     /* UI settings */
     QSettings *m_settings;
     /* last export file name */
@@ -64,7 +64,6 @@ private:
     inline void initializeSettings();
     inline void connectController();
     inline void connectUiElements();
-    inline void connectActions();
     inline void loadSettings(QSettings *settings);
     inline void saveSettings(QSettings *settings);
     inline void enableUserInterface();
