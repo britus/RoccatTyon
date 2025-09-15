@@ -270,7 +270,8 @@ mac {
         $$PWD/assets/icns/RoccatTyon_256x256.icns \
         $$PWD/assets/icns/RoccatTyon_32x32.icns \
         $$PWD/assets/icns/RoccatTyon_512x512.icns \
-        $$PWD/assets/icns/RoccatTyon_64x64.icns
+        $$PWD/assets/icns/RoccatTyon_64x64.icns \
+        $$PWD/assets/icns/RoccatTyon.icns
         icons.path = Contents/Resources/
     QMAKE_BUNDLE_DATA += icons
 }
