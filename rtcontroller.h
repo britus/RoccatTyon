@@ -476,6 +476,11 @@ protected:
                                 CFIndex reportLength);
 
 private:
+    const uint kHIDUsageMouse = 0x04;
+    const uint kHIDPageMouse = 0x00;
+    const uint kHIDUsageMisc = 0x00;
+    const uint kHIDPageMisc = 0x0a;
+
     typedef struct
     {
         QString transport;     // USB

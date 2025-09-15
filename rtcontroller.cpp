@@ -1953,24 +1953,24 @@ inline void RTController::hidDeviceProperties(IOHIDDeviceRef device, THidDeviceI
                 info->deviceUsage = QString::fromCFString((CFStringRef) value);
             }
         } else if (typeID == CFNumberGetTypeID()) {
-            long num;
+            CFOptionFlags num;
             CFNumberGetValue((CFNumberRef) value, kCFNumberLongType, &num);
             if (keyStr == kIOHIDVendorIDKey) {
-                info->vendorId = num;
+                info->vendorId = static_cast<uint>(num);
             } else if (keyStr == kIOHIDVendorIDSourceKey) {
-                info->vendorIdSource = num;
+                info->vendorIdSource = static_cast<uint>(num);
             } else if (keyStr == kIOHIDProductIDKey) {
-                info->productId = num;
+                info->productId = static_cast<uint>(num);
             } else if (keyStr == kIOHIDVersionNumberKey) {
-                info->versionNumber = num;
+                info->versionNumber = static_cast<uint>(num);
             } else if (keyStr == kIOHIDCountryCodeKey) {
-                info->countryCode = num;
+                info->countryCode = static_cast<uint>(num);
             } else if (keyStr == kIOHIDLocationIDKey) {
-                info->locationId = num;
+                info->locationId = static_cast<uint>(num);
             } else if (keyStr == kIOHIDPrimaryUsageKey) {
-                info->primaryUsage = num;
+                info->primaryUsage = static_cast<uint>(num);
             } else if (keyStr == kIOHIDPrimaryUsagePageKey) {
-                info->primaryUsagePage = num;
+                info->primaryUsagePage = static_cast<uint>(num);
             }
         } else if (typeID == CFBooleanGetTypeID()) {
             //bool b = CFBooleanGetValue((CFBooleanRef) value);
@@ -2014,7 +2014,7 @@ void RTController::onDeviceFound(IOHIDDeviceRef device)
     hidDeviceProperties(device, &info);
 
     // handle Mouse = 0x04 and Misc = 00 device only
-    if ((info.primaryUsage != 0x04) && (info.primaryUsage != 0x00)) {
+    if ((info.primaryUsage != kHIDUsageMouse) && (info.primaryUsage != kHIDUsageMisc)) {
 #ifdef QT_DEBUG
         qDebug("[HIDDEV] Skip device: %p", device);
 #endif
@@ -2036,7 +2036,7 @@ void RTController::onDeviceFound(IOHIDDeviceRef device)
 #endif
 
         // ROCCAT Tyon input device for X-Celerator calibration
-        if (info.primaryUsage == 0x00 && info.primaryUsagePage == 0x0a) {
+        if (info.primaryUsage == kHIDUsageMisc && info.primaryUsagePage == kHIDPageMisc) {
             // register device input callback to get special report for X-Celerator calibration
             IOHIDDeviceRegisterInputReportCallback(device, m_inputBuffer, m_inputLength, _inputCallback, this);
             m_inputDevice = device;
