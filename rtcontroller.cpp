@@ -1928,7 +1928,7 @@ void RTController::xcApplyCalibration(quint8 min, quint8 mid, quint8 max)
 
 inline void RTController::hidDeviceProperties(IOHIDDeviceRef device, THidDeviceInfo *info) const
 {
-    if (!info) {
+    if (!device || !info) {
         return;
     }
 
