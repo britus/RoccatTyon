@@ -852,7 +852,7 @@ void RTController::saveProfilesToFile(const QString &fileName)
 {
     QFile f(fileName);
     if (!f.open(QFile::Truncate | QFile::WriteOnly)) {
-        emit deviceError(EIO, tr("Unable to save file: %1").arg(fileName));
+        emit deviceError(kIOReturnIOError, tr("Unable to save file: %1").arg(fileName));
         return;
     }
 

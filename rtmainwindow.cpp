@@ -230,52 +230,135 @@ inline void RTMainWindow::initializeUiElements()
     m_buttons[ui->pbMBESSidePushDown] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PADDLE_DOWN, CB_BIND(m_device, &RTController::assignButton)};
     m_buttons[ui->pbMBESSideEasyShift_na] = {TYON_BUTTON_INDEX_SHIFT_THUMB_PEDAL, CB_BIND(m_device, &RTController::assignButton)};
 
-    QActionGroup *agMBBasics = new QActionGroup(this);
-    agMBBasics->addAction(linkAction(ui->maAssignMBLeftClick, TYON_BUTTON_TYPE_CLICK));
-    agMBBasics->addAction(linkAction(ui->maAssignMBRightCick, TYON_BUTTON_TYPE_MENU));
-    agMBBasics->addAction(linkAction(ui->maAssignMBUniScrolling, TYON_BUTTON_TYPE_UNIVERSAL_SCROLLING));
-    agMBBasics->addAction(linkAction(ui->maAssignScrollUp, TYON_BUTTON_TYPE_SCROLL_UP));
-    agMBBasics->addAction(linkAction(ui->maAssignScrollDown, TYON_BUTTON_TYPE_SCROLL_DOWN));
-    agMBBasics->addAction(linkAction(ui->maAssignDoubleClick, TYON_BUTTON_TYPE_DOUBLE_CLICK));
-    agMBBasics->addAction(linkAction(ui->maAssignNavForward, TYON_BUTTON_TYPE_BROWSER_FORWARD));
-    agMBBasics->addAction(linkAction(ui->maAssignNavBackward, TYON_BUTTON_TYPE_BROWSER_BACKWARD));
-    agMBBasics->addAction(linkAction(ui->maAssignTiltLeft, TYON_BUTTON_TYPE_TILT_LEFT));
-    agMBBasics->addAction(linkAction(ui->maAssignTiltRight, TYON_BUTTON_TYPE_TILT_RIGHT));
-    agMBBasics->addAction(linkAction(ui->maAssignReset, TYON_BUTTON_TYPE_UNUSED));
-    m_actions[tr("1 General")] = agMBBasics;
+    QMap<QString, QList<TyonButtonType>> groups;
+    groups[tr("1 General")] =                   //
+        QList<TyonButtonType>()                 //
+        << TYON_BUTTON_TYPE_CLICK               //
+        << TYON_BUTTON_TYPE_MENU                //
+        << TYON_BUTTON_TYPE_UNIVERSAL_SCROLLING //
+        << TYON_BUTTON_TYPE_SCROLL_UP           //
+        << TYON_BUTTON_TYPE_SCROLL_DOWN         //
+        << TYON_BUTTON_TYPE_DOUBLE_CLICK        //
+        << TYON_BUTTON_TYPE_BROWSER_FORWARD     //
+        << TYON_BUTTON_TYPE_BROWSER_BACKWARD    //
+        << TYON_BUTTON_TYPE_TILT_LEFT           //
+        << TYON_BUTTON_TYPE_TILT_RIGHT          //
+        << TYON_BUTTON_TYPE_HOME                //
+        << TYON_BUTTON_TYPE_END                 //
+        << TYON_BUTTON_TYPE_PAGE_UP             //
+        << TYON_BUTTON_TYPE_PAGE_DOWN           //
+        << TYON_BUTTON_TYPE_L_CTRL              //
+        << TYON_BUTTON_TYPE_L_ALT               //
+        << TYON_BUTTON_TYPE_UNUSED;
 
-    QActionGroup *agShortcut = new QActionGroup(this);
-    agShortcut->addAction(linkAction(ui->maAssignShortcut, TYON_BUTTON_TYPE_SHORTCUT));
-    agShortcut->addAction(linkAction(ui->maAssignReset, TYON_BUTTON_TYPE_UNUSED));
-    m_actions[tr("2 Shortcut")] = agShortcut;
+    groups[tr("2 Shortcut")] =       //
+        QList<TyonButtonType>()      //
+        << TYON_BUTTON_TYPE_SHORTCUT //
+        << TYON_BUTTON_TYPE_UNUSED;
 
-    QActionGroup *agDPICycle = new QActionGroup(this);
-    agDPICycle->addAction(linkAction(ui->maAssignDPIUp, TYON_BUTTON_TYPE_CPI_UP));
-    agDPICycle->addAction(linkAction(ui->maAssignDPIDown, TYON_BUTTON_TYPE_CPI_DOWN));
-    agDPICycle->addAction(linkAction(ui->maAssignDPICycle, TYON_BUTTON_TYPE_CPI_CYCLE));
-    m_actions[tr("3 Sensor DPI")] = agDPICycle;
+    groups[tr("3 Sensor")] =         //
+        QList<TyonButtonType>()      //
+        << TYON_BUTTON_TYPE_CPI_UP   //
+        << TYON_BUTTON_TYPE_CPI_DOWN //
+        << TYON_BUTTON_TYPE_CPI_CYCLE;
 
-    QActionGroup *agSensitivity = new QActionGroup(this);
-    agSensitivity->addAction(linkAction(ui->maAssignSensitivityUp, TYON_BUTTON_TYPE_SENSITIVITY_UP));
-    agSensitivity->addAction(linkAction(ui->maAssignSensitivityDown, TYON_BUTTON_TYPE_SENSITIVITY_DOWN));
-    agSensitivity->addAction(linkAction(ui->maAssignSensitivityCycle, TYON_BUTTON_TYPE_SENSITIVITY_CYCLE));
-    m_actions[tr("4 Sensitivity")] = agSensitivity;
+    groups[tr("4 Sensitivity")] =            //
+        QList<TyonButtonType>()              //
+        << TYON_BUTTON_TYPE_SENSITIVITY_UP   //
+        << TYON_BUTTON_TYPE_SENSITIVITY_DOWN //
+        << TYON_BUTTON_TYPE_SENSITIVITY_CYCLE;
 
-    QActionGroup *agMultimedia = new QActionGroup(this);
-    agMultimedia->addAction(linkAction(ui->maAssignMMOpen, TYON_BUTTON_TYPE_OPEN_PLAYER));
-    agMultimedia->addAction(linkAction(ui->maAssignMMNextTrack, TYON_BUTTON_TYPE_PREV_TRACK));
-    agMultimedia->addAction(linkAction(ui->maAssignMMPreviousTrack, TYON_BUTTON_TYPE_NEXT_TRACK));
-    agMultimedia->addAction(linkAction(ui->maAssignMMPlay, TYON_BUTTON_TYPE_PLAY_PAUSE));
-    agMultimedia->addAction(linkAction(ui->maAssignMMStop, TYON_BUTTON_TYPE_STOP));
-    agMultimedia->addAction(linkAction(ui->maAssignMMMute, TYON_BUTTON_TYPE_MUTE));
-    agMultimedia->addAction(linkAction(ui->maAssignMMVolumeUp, TYON_BUTTON_TYPE_VOLUME_UP));
-    agMultimedia->addAction(linkAction(ui->maAssignMMVolumeDown, TYON_BUTTON_TYPE_VOLUME_DOWN));
-    m_actions[tr("5 Multimedia")] = agMultimedia;
+    groups[tr("5 Multimedia")] =        //
+        QList<TyonButtonType>()         //
+        << TYON_BUTTON_TYPE_OPEN_PLAYER //
+        << TYON_BUTTON_TYPE_PREV_TRACK  //
+        << TYON_BUTTON_TYPE_NEXT_TRACK  //
+        << TYON_BUTTON_TYPE_PLAY_PAUSE  //
+        << TYON_BUTTON_TYPE_STOP        //
+        << TYON_BUTTON_TYPE_MUTE        //
+        << TYON_BUTTON_TYPE_VOLUME_UP   //
+        << TYON_BUTTON_TYPE_VOLUME_DOWN;
 
-    QActionGroup *agProfile = new QActionGroup(this);
-    agProfile->addAction(linkAction(ui->maAssignProfileUp, TYON_BUTTON_TYPE_PROFILE_UP));
-    agProfile->addAction(linkAction(ui->maAssignProfileDown, TYON_BUTTON_TYPE_PROFILE_DOWN));
-    m_actions[tr("6 Profiles")] = agProfile;
+    groups[tr("6 Profiles")] =             //
+        QList<TyonButtonType>()            //
+        << TYON_BUTTON_TYPE_PROFILE_UP     //
+        << TYON_BUTTON_TYPE_PROFILE_DOWN   //
+        << TYON_BUTTON_TYPE_PROFILE_CYCLE; //
+
+    groups[tr("7 XInput")] =               //
+        QList<TyonButtonType>()            //
+        << TYON_BUTTON_TYPE_XINPUT_1       //
+        << TYON_BUTTON_TYPE_XINPUT_2       //
+        << TYON_BUTTON_TYPE_XINPUT_3       //
+        << TYON_BUTTON_TYPE_XINPUT_4       //
+        << TYON_BUTTON_TYPE_XINPUT_5       //
+        << TYON_BUTTON_TYPE_XINPUT_6       //
+        << TYON_BUTTON_TYPE_XINPUT_7       //
+        << TYON_BUTTON_TYPE_XINPUT_8       //
+        << TYON_BUTTON_TYPE_XINPUT_9       //
+        << TYON_BUTTON_TYPE_XINPUT_10      //
+        << TYON_BUTTON_TYPE_XINPUT_RX_UP   //
+        << TYON_BUTTON_TYPE_XINPUT_RX_DOWN //
+        << TYON_BUTTON_TYPE_XINPUT_RY_UP   //
+        << TYON_BUTTON_TYPE_XINPUT_RY_DOWN //
+        << TYON_BUTTON_TYPE_XINPUT_X_UP    //
+        << TYON_BUTTON_TYPE_XINPUT_X_DOWN  //
+        << TYON_BUTTON_TYPE_XINPUT_Y_UP    //
+        << TYON_BUTTON_TYPE_XINPUT_Y_DOWN  //
+        << TYON_BUTTON_TYPE_XINPUT_Z_UP    //
+        << TYON_BUTTON_TYPE_XINPUT_Z_DOWN;
+
+    groups[tr("8 DInput")] =              //
+        QList<TyonButtonType>()           //
+        << TYON_BUTTON_TYPE_DINPUT_1      //
+        << TYON_BUTTON_TYPE_DINPUT_2      //
+        << TYON_BUTTON_TYPE_DINPUT_3      //
+        << TYON_BUTTON_TYPE_DINPUT_4      //
+        << TYON_BUTTON_TYPE_DINPUT_5      //
+        << TYON_BUTTON_TYPE_DINPUT_6      //
+        << TYON_BUTTON_TYPE_DINPUT_7      //
+        << TYON_BUTTON_TYPE_DINPUT_8      //
+        << TYON_BUTTON_TYPE_DINPUT_9      //
+        << TYON_BUTTON_TYPE_DINPUT_10     //
+        << TYON_BUTTON_TYPE_DINPUT_11     //
+        << TYON_BUTTON_TYPE_DINPUT_12     //
+        << TYON_BUTTON_TYPE_DINPUT_X_UP   //
+        << TYON_BUTTON_TYPE_DINPUT_X_DOWN //
+        << TYON_BUTTON_TYPE_DINPUT_Y_UP   //
+        << TYON_BUTTON_TYPE_DINPUT_Y_DOWN //
+        << TYON_BUTTON_TYPE_DINPUT_Z_UP   //
+        << TYON_BUTTON_TYPE_DINPUT_Z_DOWN;
+
+    groups[tr("9 Tyon")] =                         //
+        QList<TyonButtonType>()                    //
+        << TYON_BUTTON_TYPE_EASYAIM_1              //
+        << TYON_BUTTON_TYPE_EASYAIM_2              //
+        << TYON_BUTTON_TYPE_EASYAIM_3              //
+        << TYON_BUTTON_TYPE_EASYAIM_4              //
+        << TYON_BUTTON_TYPE_EASYAIM_5              //
+        << TYON_BUTTON_TYPE_EASYSHIFT_SELF         //
+        << TYON_BUTTON_TYPE_EASYWHEEL_SENSITIVITY  //
+        << TYON_BUTTON_TYPE_EASYWHEEL_PROFILE      //
+        << TYON_BUTTON_TYPE_EASYWHEEL_CPI          //
+        << TYON_BUTTON_TYPE_EASYWHEEL_VOLUME       //
+        << TYON_BUTTON_TYPE_EASYWHEEL_ALT_TAB      //
+        << TYON_BUTTON_TYPE_EASYWHEEL_AERO_FLIP_3D //
+        << TYON_BUTTON_TYPE_EASYSHIFT_OTHER        //
+        << TYON_BUTTON_TYPE_EASYSHIFT_LOCK_OTHER   //
+        << TYON_BUTTON_TYPE_EASYSHIFT_ALL;
+
+    foreach (QString key, groups.keys()) {
+        QList<TyonButtonType> btl = groups[key];
+        if (btl.isEmpty()) {
+            continue;
+        }
+        QActionGroup *ag = new QActionGroup(this);
+        foreach (TyonButtonType bt, btl) {
+            QString name = m_device->buttonTypes().value(bt);
+            ag->addAction(linkAction(new QAction(name, this), bt));
+        }
+        m_actions[key] = ag;
+    }
 
     QPushButton *pb;
     foreach (auto o, ui->pnlTopButtons->children()) {
@@ -688,10 +771,6 @@ inline QAction *RTMainWindow::linkAction(QAction *action, TyonButtonType functio
         if (!pb) {
             return;
         }
-
-        //qDebug() << "--------------------------";
-        //qDebug() << "[APPWIN] triggered():" << function << action;
-        //qDebug() << "[APPWIN] triggered():" << pb << pb->text();
 
         RTController::TSetButtonCallback handler;
         if (m_buttons.contains(pb)) {
