@@ -355,7 +355,7 @@ inline void RTMainWindow::initializeUiElements()
         QActionGroup *ag = new QActionGroup(this);
         foreach (TyonButtonType bt, btl) {
             QString name = m_device->buttonTypes().value(bt);
-            ag->addAction(linkAction(new QAction(name, this), bt));
+            ag->addAction(linkAction(new QAction(name, ag), bt));
         }
         m_actions[key] = ag;
     }
