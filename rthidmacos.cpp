@@ -1,0 +1,529 @@
+#include "rthidmacos.h"
+#include <IOKit/hid/IOHIDManager.h>
+#include <dispatch/dispatch.h>
+#include <QCoreApplication>
+#include <QMutexLocker>
+#include <QThread>
+
+Q_DECLARE_OPAQUE_POINTER(IOHIDDeviceRef)
+
+static const uint kHIDUsageMouse = 0x04;
+static const uint kHIDPageMouse = 0x00;
+
+static const uint kHIDUsageMisc = 0x00;
+static const uint kHIDPageMisc = 0x0a;
+
+#ifdef QT_DEBUG
+static inline void debugDevice(IOHIDDeviceRef device)
+{
+    // Function to print a property based on its key and type
+    auto printProperty = [](CFStringRef key, CFTypeRef value) {
+        QString keyStr = QString::fromCFString(key);
+        if (!value) {
+            qWarning("[HIDDEV] %s: null", qPrintable(keyStr));
+            return;
+        }
+        CFTypeID typeID = CFGetTypeID(value);
+        if (typeID == CFStringGetTypeID()) {
+            qDebug("[HIDDEV] %s: %s", //
+                   qPrintable(keyStr),
+                   qPrintable(QString::fromCFString((CFStringRef) value)));
+        } else if (typeID == CFNumberGetTypeID()) {
+            long num;
+            CFNumberGetValue((CFNumberRef) value, kCFNumberLongType, &num);
+            qDebug("[HIDDEV] %s: %ld (0x%lx)", //
+                   qPrintable(keyStr),
+                   num,
+                   num);
+        } else if (typeID == CFBooleanGetTypeID()) {
+            bool b = CFBooleanGetValue((CFBooleanRef) value);
+            qDebug("[HIDDEV] %s: %s", //
+                   qPrintable(keyStr),
+                   (b ? "true" : "false"));
+        } else {
+            // For unsupported types, use CFCopyDescription
+            CFStringRef desc = CFCopyDescription(value);
+            qDebug("[HIDDEV] %s: %s", //
+                   qPrintable(keyStr),
+                   qPrintable(QString::fromCFString(desc)));
+            CFRelease(desc);
+        }
+    };
+
+    qDebug("[HIDDEV] Device found ----------------------------------------");
+    qDebug("[HIDDEV] Device: %p", device);
+
+    // List of common property keys to query
+    CFStringRef keys[] = //
+        {CFSTR(kIOHIDTransportKey),
+         CFSTR(kIOHIDVendorIDKey),
+         CFSTR(kIOHIDVendorIDSourceKey),
+         CFSTR(kIOHIDProductIDKey),
+         CFSTR(kIOHIDVersionNumberKey),
+         CFSTR(kIOHIDManufacturerKey),
+         CFSTR(kIOHIDProductKey),
+         CFSTR(kIOHIDSerialNumberKey),
+         CFSTR(kIOHIDCountryCodeKey),
+         CFSTR(kIOHIDLocationIDKey),
+         CFSTR(kIOHIDDeviceUsageKey),
+         CFSTR(kIOHIDPrimaryUsageKey),
+         CFSTR(kIOHIDPrimaryUsagePageKey)};
+
+    CFTypeRef value;
+    size_t numKeys = sizeof(keys) / sizeof(keys[0]);
+    for (size_t j = 0; j < numKeys; j++) {
+        value = IOHIDDeviceGetProperty(device, keys[j]);
+        printProperty(keys[j], value);
+    }
+}
+
+static inline void debugReport(const char *where, IOHIDDeviceRef device, quint32 rid, const quint8 *buffer, CFIndex length)
+{
+    const QByteArray d((char *) buffer, length);
+    qDebug("[HIDDEV] %s(%p): [RID:0x%02x LEN:%ld] pl=%s", where, device, rid, length, qPrintable(d.toHex(' ')));
+}
+#endif
+
+RTHidMacOS::RTHidMacOS(QObject *parent)
+    : RTAbstractDevice(parent)
+{
+    //..
+}
+
+RTHidMacOS::~RTHidMacOS()
+{
+    releaseManager();
+}
+
+// -------------------------------------------------------------
+//
+
+void RTHidMacOS::_deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
+{
+    if (!device || !context) {
+        qCritical("[HIDDEV] _deviceAttachedCallback: NULL pointer in required parameters!");
+        return;
+    }
+
+#ifdef QT_DEBUG
+    debugDevice(device);
+#endif
+
+    RTHidMacOS *ctx;
+    ctx = static_cast<RTHidMacOS *>(context);
+    ctx->doDeviceFound(device);
+}
+
+void RTHidMacOS::doDeviceFound(IOHIDDeviceRef device)
+{
+    //
+}
+
+void RTHidMacOS::_deviceRemovedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
+{
+    if (!device || !context) {
+        qCritical("[HIDDEV] _deviceRemovedCallback: NULL pointer in required parameters!");
+        return;
+    }
+
+#ifdef QT_DEBUG
+    qDebug("[HIDDEV] _deviceRemovedCallback: device '%p' removed", device);
+#endif
+
+    RTHidMacOS *ctx;
+    ctx = static_cast<RTHidMacOS *>(context);
+    ctx->doDeviceRemoved(device);
+}
+
+void RTHidMacOS::doDeviceRemoved(IOHIDDeviceRef device)
+{
+    //
+}
+
+// Callback for IOHIDDeviceRegisterInputReportCallback
+void RTHidMacOS::_inputCallback(void *context, IOReturn, void *device, IOHIDReportType /*type*/, uint32_t reportID, uint8_t *report, CFIndex reportLength)
+{
+    if (!device || !context || !report) {
+        qCritical("[HIDDEV] _inputCallback: NULL pointer in required parameters!");
+        return;
+    }
+
+#ifdef QT_DEBUG
+    debugReport("_inputCallback", (IOHIDDeviceRef) device, reportID, (const quint8 *) report, reportLength);
+#endif
+
+    RTHidMacOS *ctx;
+    ctx = static_cast<RTHidMacOS *>(context);
+    ctx->doDeviceInput(reportID, reportLength, report);
+}
+
+void RTHidMacOS::doDeviceInput(quint32 rid, qsizetype length, quint8 *report)
+{
+    //
+}
+
+// Callback for IOHIDDeviceSetReportWithCallback
+void RTHidMacOS::_reportCallback(void *context, IOReturn result, void *device, IOHIDReportType type, uint32_t reportID, uint8_t *report, CFIndex reportLength)
+{
+    if (!context || !device || !report) {
+        qCritical("[HIDDEV] _deviceAttachedCallback: NULL pointer in required parameters!");
+        return;
+    }
+
+#ifdef QT_DEBUG
+    qDebug("[HIDDEV] _reportCallback: CTX=%p device=%p result=%d HRT=%d RID=%d SIZE=%ld ", context, device, result, type, reportID, reportLength);
+#else
+    Q_UNUSED(type)
+#endif
+
+    RTHidMacOS *ctx = static_cast<RTHidMacOS *>(context);
+    ctx->doReportSent(result, reportID, reportLength, report);
+}
+
+void RTHidMacOS::doReportSent(IOReturn status, quint32 rid, qsizetype length, quint8 *report)
+{
+    //
+}
+
+bool RTHidMacOS::lookupDevices(quint32 vendorId, QList<quint32> productIds)
+{
+    IOReturn result;
+
+    emit lookupStarted();
+
+    // cleanup last findings
+    releaseManager();
+
+    // start from top
+    m_manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+    if (!m_manager) {
+        raiseError(kIOReturnIOError, tr("Failed to create HID manager."));
+        return false;
+    }
+
+    // Set up matching dictionary for Roccat Tyon devices
+    CFMutableArrayRef filter = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+
+    auto createMatching = [this](uint32_t vendorId, uint32_t productId) -> CFMutableDictionaryRef {
+        CFMutableDictionaryRef dict = CFDictionaryCreateMutable( //
+            kCFAllocatorDefault,
+            0,
+            &kCFTypeDictionaryKeyCallBacks,
+            &kCFTypeDictionaryValueCallBacks);
+        if (!dict) {
+            raiseError(kIOReturnIOError, tr("Failed to create dictionary."));
+            return nullptr;
+        }
+
+        CFNumberRef vendorIdRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &vendorId);
+        CFNumberRef productIdRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &productId);
+
+        if (vendorIdRef) {
+            CFDictionarySetValue(dict, CFSTR(kIOHIDVendorIDKey), vendorIdRef);
+            CFRelease(vendorIdRef);
+        }
+
+        if (productIdRef) {
+            CFDictionarySetValue(dict, CFSTR(kIOHIDProductIDKey), productIdRef);
+            CFRelease(productIdRef);
+        }
+
+        return dict;
+    };
+
+    CFMutableDictionaryRef dict;
+    foreach (auto productId, productIds) {
+        if (!(dict = createMatching(vendorId, productId))) {
+            CFRelease(m_manager);
+            m_manager = nullptr;
+            return false;
+        }
+        CFArrayAppendValue(filter, dict);
+        CFRelease(dict);
+    }
+
+    IOHIDManagerSetDeviceMatchingMultiple(m_manager, filter);
+    CFRelease(filter);
+
+    // Register for device attached and removed callbacks and schedule in runloop
+    IOHIDManagerRegisterDeviceMatchingCallback(m_manager, _deviceAttachedCallback, this);
+    IOHIDManagerRegisterDeviceRemovalCallback(m_manager, _deviceRemovedCallback, this);
+    IOHIDManagerScheduleWithRunLoop(m_manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+
+    // Open HID manager -536870174
+    // kernel[0:1b4e77] (IOHIDFamily) IOHIDLibUserClient:0x0
+    // [RoccatTyon] Entitlements 0 privilegedClient : No
+    result = IOHIDManagerOpen(m_manager, kIOHIDOptionsTypeSeizeDevice);
+    if (result != kIOReturnSuccess          //
+        && result != kIOReturnNotPrivileged //
+        && result != kIOReturnNotPermitted) //
+    {
+        raiseError(result, tr("Failed to open HID manager."));
+        CFRelease(m_manager);
+        m_manager = nullptr;
+        return false;
+    }
+
+    // hold loop in separated thread for monitoring
+    std::thread([]() { CFRunLoopRun(); }).detach();
+
+    return true;
+}
+
+/**
+     * @brief Register HID report handlers
+     * @param handlers A map of reportId / handler function
+     */
+void RTHidMacOS::registerHandlers(const QMap<quint8, TReportHandler> &handlers)
+{
+    m_handlers.clear();
+    m_handlers = handlers;
+}
+
+bool RTHidMacOS::readHidMessage(quint8 reportId, qsizetype length)
+{
+    if (!m_ctrlDevice) {
+        raiseError(kIOReturnNoDevice, "No HID device connected.");
+        return false;
+    }
+    return hidReportById(m_ctrlDevice, reportId, length) == kIOReturnSuccess;
+}
+
+bool RTHidMacOS::writeHidMessage(quint8 reportId, quint8 *buffer, qsizetype length)
+{
+    if (!m_ctrlDevice) {
+        raiseError(kIOReturnNoDevice, "No HID device connected.");
+        return false;
+    }
+    return hidWriteReport(m_ctrlDevice, reportId, buffer, length) == kIOReturnSuccess;
+}
+
+bool RTHidMacOS::writeHidAsync(quint8 reportId, quint8 *buffer, qsizetype length)
+{
+    if (!m_ctrlDevice) {
+        raiseError(kIOReturnNoDevice, "No HID device connected.");
+        return false;
+    }
+    if (reportId != buffer[0]) {
+        raiseError(kIOReturnBadArgument, "HID report identifier does not match with buffer.");
+        return false;
+    }
+    return hidWriteAsync(m_ctrlDevice, buffer, length) == kIOReturnSuccess;
+}
+
+inline int RTHidMacOS::raiseError(int error, const QString &message)
+{
+    qCritical("[HIDDEV] Error 0x%08x: %s", error, qPrintable(message));
+    emit errorOccured(error, message);
+    return error;
+}
+
+inline void RTHidMacOS::releaseDevices()
+{
+    if (m_ctrlDevice != nullptr) {
+        IOHIDDeviceClose(m_ctrlDevice, kIOHIDOptionsTypeSeizeDevice);
+        m_ctrlDevice = nullptr;
+    }
+    if (m_inputDevice != nullptr) {
+        IOHIDDeviceClose(m_inputDevice, kIOHIDOptionsTypeSeizeDevice);
+        m_inputDevice = nullptr;
+    }
+}
+
+inline void RTHidMacOS::releaseManager()
+{
+    releaseDevices();
+
+    if (m_manager) {
+        IOHIDManagerUnscheduleFromRunLoop(m_manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+        IOHIDManagerClose(m_manager, kIOHIDOptionsTypeNone);
+        CFRelease(m_manager);
+        m_manager = nullptr;
+    }
+}
+
+inline void RTHidMacOS::hidDeviceProperties(IOHIDDeviceRef device, THidDeviceInfo *info) const
+{
+    if (!device || !info) {
+        return;
+    }
+
+    // Function to print a property based on its key and type
+    auto printProperty = [](const CFStringRef key, CFTypeRef value, THidDeviceInfo *info) {
+        QString keyStr = QString::fromCFString(key);
+        if (!value) {
+            //qWarning("[HIDDEV] HID device property '%s' null value", qPrintable(keyStr));
+            return;
+        }
+        CFTypeID typeID = CFGetTypeID(value);
+        if (typeID == CFStringGetTypeID()) {
+            if (keyStr == kIOHIDTransportKey) {
+                info->transport = QString::fromCFString((CFStringRef) value);
+            } else if (keyStr == kIOHIDManufacturerKey) {
+                info->manufacturer = QString::fromCFString((CFStringRef) value);
+            } else if (keyStr == kIOHIDProductKey) {
+                info->product = QString::fromCFString((CFStringRef) value);
+            } else if (keyStr == kIOHIDSerialNumberKey) {
+                info->serialNumber = QString::fromCFString((CFStringRef) value);
+            } else if (keyStr == kIOHIDDeviceUsageKey) {
+                info->deviceUsage = QString::fromCFString((CFStringRef) value);
+            }
+        } else if (typeID == CFNumberGetTypeID()) {
+            CFOptionFlags num;
+            CFNumberGetValue((CFNumberRef) value, kCFNumberLongType, &num);
+            if (keyStr == kIOHIDVendorIDKey) {
+                info->vendorId = static_cast<uint>(num);
+            } else if (keyStr == kIOHIDVendorIDSourceKey) {
+                info->vendorIdSource = static_cast<uint>(num);
+            } else if (keyStr == kIOHIDProductIDKey) {
+                info->productId = static_cast<uint>(num);
+            } else if (keyStr == kIOHIDVersionNumberKey) {
+                info->versionNumber = static_cast<uint>(num);
+            } else if (keyStr == kIOHIDCountryCodeKey) {
+                info->countryCode = static_cast<uint>(num);
+            } else if (keyStr == kIOHIDLocationIDKey) {
+                info->locationId = static_cast<uint>(num);
+            } else if (keyStr == kIOHIDPrimaryUsageKey) {
+                info->primaryUsage = static_cast<uint>(num);
+            } else if (keyStr == kIOHIDPrimaryUsagePageKey) {
+                info->primaryUsagePage = static_cast<uint>(num);
+            }
+        } else if (typeID == CFBooleanGetTypeID()) {
+            //bool b = CFBooleanGetValue((CFBooleanRef) value);
+        } else {
+            // For unhandled types, use CFCopyDescription
+            CFStringRef desc = CFCopyDescription(value);
+            qWarning("[HIDDEV] Unhandled HID device property %s: %s", //
+                     qPrintable(keyStr),
+                     qPrintable(QString::fromCFString(desc)));
+            CFRelease(desc);
+        }
+    };
+
+    // List of common property keys to query
+    const CFStringRef keys[13] = //
+        {CFSTR(kIOHIDTransportKey),
+         CFSTR(kIOHIDVendorIDKey),
+         CFSTR(kIOHIDVendorIDSourceKey),
+         CFSTR(kIOHIDProductIDKey),
+         CFSTR(kIOHIDVersionNumberKey),
+         CFSTR(kIOHIDManufacturerKey),
+         CFSTR(kIOHIDProductKey),
+         CFSTR(kIOHIDSerialNumberKey),
+         CFSTR(kIOHIDCountryCodeKey),
+         CFSTR(kIOHIDLocationIDKey),
+         CFSTR(kIOHIDDeviceUsageKey),
+         CFSTR(kIOHIDPrimaryUsageKey),
+         CFSTR(kIOHIDPrimaryUsagePageKey)};
+
+    CFTypeRef value;
+    for (size_t j = 0; j < 13; j++) {
+        value = IOHIDDeviceGetProperty(device, keys[j]);
+        printProperty(keys[j], value, info);
+    }
+}
+
+inline int RTHidMacOS::hidReportById(IOHIDDeviceRef device, int rid, CFIndex length)
+{
+    if (!length || !rid) {
+        return raiseError(kIOReturnBadArgument, tr("Invalid parameters."));
+    }
+
+    IOReturn ret = kIOReturnSuccess;
+    quint8 *buffer = (quint8 *) malloc(length);
+    memset(buffer, 0, length);
+
+    if ((ret = hidReadReport(device, rid, buffer, length)) != kIOReturnSuccess) {
+        free(buffer);
+        return ret;
+    }
+
+    if (!m_handlers.contains(rid)) {
+        free(buffer);
+        qWarning("[HIDEV] Unhandled HID report ID=%d", rid);
+        return kIOReturnSuccess; //be quiet
+    }
+
+    ret = m_handlers[rid](buffer, length);
+    free(buffer);
+
+    // force event handlers
+    qApp->processEvents();
+
+    return ret;
+}
+
+inline int RTHidMacOS::hidReadReport(IOHIDDeviceRef device, quint8 rid, quint8 *buffer, CFIndex length)
+{
+    const IOHIDReportType hrt = kIOHIDReportTypeFeature;
+
+    IOReturn ret = IOHIDDeviceGetReport(device, hrt, rid, buffer, &length);
+    if (ret != kIOReturnSuccess) {
+        return raiseError(ret, tr("Unable to read HID device."));
+    }
+
+    if (length == 0) {
+        qWarning("[HIDDEV] Unexpected data length of HID report 0x%02x.", rid);
+        return kIOReturnIOError;
+    }
+
+#ifdef QT_DEBUG
+    debugReport("hidReadReport", device, buffer, length);
+#endif
+
+    return ret;
+}
+
+inline int RTHidMacOS::hidWriteReport(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length)
+{
+    const IOHIDReportType hrt = kIOHIDReportTypeFeature;
+
+#ifdef QT_DEBUG
+    debugReport("hidWriteReport", device, buffer, length);
+#endif
+
+    IOReturn ret = IOHIDDeviceSetReport(device, hrt, rid, buffer, length);
+    if (ret != kIOReturnSuccess) {
+        return raiseError(ret, tr("Unable to write HID raw message."));
+    }
+
+    // make sure device MCU is ready for next
+    QThread::msleep(250);
+    return ret;
+}
+
+inline int RTHidMacOS::hidWriteAsync(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length)
+{
+    const IOHIDReportType hrt = kIOHIDReportTypeFeature;
+    const quint8 rid = buffer[0];        // first byte always RID
+    const CFTimeInterval timeout = 4.0f; // seconds timeout
+    const QDeadlineTimer dt(timeout * 1000, Qt::PreciseTimer);
+
+    auto checkComplete = [this]() -> bool {
+        QMutexLocker lock(&m_waitMutex);
+        return m_isCBComplete;
+    };
+
+#ifdef QT_DEBUG
+    debugReport("hidWriteAsync", device, buffer, length);
+#endif
+
+    m_isCBComplete = false;
+
+    IOReturn ret = IOHIDDeviceSetReportWithCallback(device, hrt, rid, buffer, length, timeout, _reportCallback, this);
+    if (ret != kIOReturnSuccess) {
+        return raiseError(ret, tr("Unable to write HID message."));
+    }
+
+    while (!checkComplete() && !dt.hasExpired()) {
+        qApp->processEvents();
+    }
+
+    if (dt.hasExpired()) {
+        return raiseError(kIOReturnTimeout, tr("Timeout while waiting for HID device."));
+    }
+
+    // make sure device MCU is ready for next
+    QThread::msleep(250);
+    return ret;
+}

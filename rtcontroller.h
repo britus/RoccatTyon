@@ -15,7 +15,6 @@
 #include <QMutex>
 #include <QObject>
 #include <QPushButton>
-#include <QWaitCondition>
 
 #define HIDAPI_MAX_STR 255
 
@@ -596,7 +595,7 @@ private:
     // HID low level
     inline void hidDeviceProperties(IOHIDDeviceRef device, THidDeviceInfo *info) const;
     inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
-    inline int hidGetReportRaw(IOHIDDeviceRef device, quint8 rid, quint8 *buffer, CFIndex size);
+    inline int hidReadReport(IOHIDDeviceRef device, quint8 rid, quint8 *buffer, CFIndex size);
     inline int hidWriteReport(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length);
     inline int hidWriteReportAsync(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
 };

@@ -278,10 +278,12 @@ mac {
 
 SOURCES += \
     main.cpp \
+    rtabstractdevice.cpp \
     rtcalibratetcudialog.cpp \
     rtcalibratexcdialog.cpp \
     rtcolordialog.cpp \
     rtcontroller.cpp \
+    rthidmacos.cpp \
     rtmainwindow.cpp \
     rtprogress.cpp \
     rtshortcutdialog.cpp \
@@ -291,11 +293,13 @@ SOURCES += \
 
 HEADERS += \
     hid_uid.h \
+    rtabstractdevice.h \
     rtcalibratetcudialog.h \
     rtcalibratexcdialog.h \
     rtcolordialog.h \
     rtcontroller.h \
     rthiddevicedbg.hpp \
+    rthidmacos.h \
     rtmainwindow.h \
     rtprogress.h \
     rtshortcutdialog.h \

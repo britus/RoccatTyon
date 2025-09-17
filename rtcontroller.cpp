@@ -171,12 +171,6 @@ static TyonLight const roccat_colors[TYON_LIGHT_INFO_COLORS_NUM] = {
 
 // -------------------------------------------------------------
 //
-#ifdef QT_DEBUG
-static inline void debugDevice(IOHIDDeviceRef device);
-static inline void debugDevInfo(TyonInfo *p);
-static inline void debugSettings(const RTController::TProfile profile, quint8 currentPix);
-static inline void debugButtons(const RTController::TProfile profile, quint8 currentPix);
-#endif
 
 void RTController::_deviceAttachedCallback(void *context, IOReturn, void *, IOHIDDeviceRef device)
 {
@@ -2678,7 +2672,7 @@ inline int RTController::roccatControlCheck(IOHIDDeviceRef device)
     memset(buffer, 0x00, length);
 
     while (ret == kIOReturnSuccess) {
-        ret = hidGetReportRaw(device, rid, (quint8 *) buffer, length);
+        ret = hidReadReport(device, rid, (quint8 *) buffer, length);
         if (ret != kIOReturnSuccess) {
             raiseError(ret, tr("Unable to read HID device."));
             break;
@@ -2768,7 +2762,7 @@ inline int RTController::hidGetReportById(IOHIDDeviceRef device, int rid, CFInde
     quint8 *buffer = (quint8 *) malloc(length);
     memset(buffer, 0, length);
 
-    if ((ret = hidGetReportRaw(device, rid, buffer, length)) != kIOReturnSuccess) {
+    if ((ret = hidReadReport(device, rid, buffer, length)) != kIOReturnSuccess) {
         free(buffer);
         return ret;
     }
@@ -2788,7 +2782,7 @@ inline int RTController::hidGetReportById(IOHIDDeviceRef device, int rid, CFInde
     return ret;
 }
 
-inline int RTController::hidGetReportRaw(IOHIDDeviceRef device, quint8 rid, quint8 *buffer, CFIndex length)
+inline int RTController::hidReadReport(IOHIDDeviceRef device, quint8 rid, quint8 *buffer, CFIndex length)
 {
     const IOHIDReportType hrt = toMacOSReportType(TYON_INTERFACE_MOUSE);
 
@@ -2803,7 +2797,7 @@ inline int RTController::hidGetReportRaw(IOHIDDeviceRef device, quint8 rid, quin
     }
 
 #ifdef QT_DEBUG
-    debugReport("hidGetReportRaw", device, buffer, length);
+    debugReport("hidReadReport", device, buffer, length);
 #endif
 
     return ret;
