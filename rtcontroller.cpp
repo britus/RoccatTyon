@@ -2063,7 +2063,7 @@ void RTController::onDeviceFound(IOHIDDeviceRef device)
 
         /* read talk-fx status */
         if ((ret = talkRead(device)) != kIOReturnSuccess) {
-            raiseError(ret, "Unable to read device Talk-FX status.");
+            raiseError(ret, "Unable to read device TalkFX status.");
             goto error_exit;
         }
 
@@ -2829,8 +2829,8 @@ inline int RTController::hidWriteReport(IOHIDDeviceRef device, CFIndex rid, cons
 
 inline int RTController::hidWriteReportAsync(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length)
 {
-    const quint8 rid = buffer[0]; // required!
     const IOHIDReportType hrt = toMacOSReportType(TYON_INTERFACE_MOUSE);
+    const quint8 rid = buffer[0];        // required!
     const CFTimeInterval timeout = 4.0f; // seconds timeout
     const QDeadlineTimer dt(timeout * 1000, Qt::PreciseTimer);
     auto checkComplete = [this]() -> bool {
@@ -2855,6 +2855,6 @@ inline int RTController::hidWriteReportAsync(IOHIDDeviceRef device, const uint8_
     }
 
     // make sure device MCU is ready for next
-    QThread::msleep(50);
+    QThread::msleep(150);
     return ret;
 }
