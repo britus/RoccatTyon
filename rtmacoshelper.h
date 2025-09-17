@@ -9,13 +9,13 @@
 #define RTMACOSHELPER_H
 
 /**
- * @brief Get app bundle version from Info.plistt
+ * @brief Get app bundle version from Info.plist
  * @return String major.minor.rc
  */
 const char *GetBundleVersion();
 
 /**
- * @brief Get app build number from Info.plistt
+ * @brief Get app build number from Info.plist
  * @return String
  */
 const char *GetBuildNumber();

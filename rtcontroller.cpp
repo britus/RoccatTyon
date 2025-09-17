@@ -33,13 +33,13 @@
 #include <QThread>
 #include <QTimer>
 
+Q_DECLARE_OPAQUE_POINTER(IOHIDDeviceRef)
+
 //#undef QT_DEBUG
 
 #ifdef QT_DEBUG
 #include "rthiddevicedbg.hpp"
 #endif
-
-Q_DECLARE_OPAQUE_POINTER(IOHIDDeviceRef)
 
 typedef struct
 {
