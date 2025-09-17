@@ -347,7 +347,8 @@ inline void RTMainWindow::initializeUiElements()
         << TYON_BUTTON_TYPE_EASYSHIFT_LOCK_OTHER   //
         << TYON_BUTTON_TYPE_EASYSHIFT_ALL;
 
-    foreach (QString key, groups.keys()) {
+    const QStringList keys = groups.keys();
+    foreach (QString key, keys) {
         QList<TyonButtonType> btl = groups[key];
         if (btl.isEmpty()) {
             continue;
@@ -883,11 +884,11 @@ void RTMainWindow::onDeviceWorkerFinished()
 
 void RTMainWindow::onDeviceInfo(const TyonInfo &info)
 {
-    setWindowTitle(           //
-        tr("%1 FW:%2 DFU:%3") //
-            .arg(qApp->applicationDisplayName())
-            .arg(QString::number((qreal) (info.firmware_version * 0.01), 'f', 2))
-            .arg(QString::number((qreal) (info.dfu_version * 0.01), 'f', 2)));
+    setWindowTitle(                              //
+        tr("%1 FW:%2 DFU:%3")                    //
+            .arg(qApp->applicationDisplayName(), //
+                 QString::number((qreal) (info.firmware_version * 0.01), 'f', 2),
+                 QString::number((qreal) (info.dfu_version * 0.01), 'f', 2)));
 }
 
 void RTMainWindow::onProfileIndex(const quint8 pix)
@@ -901,9 +902,9 @@ void RTMainWindow::onProfileChanged(const RTController::TProfile &profile)
         statusBar()->showMessage(               //
             tr("%1 %2 %3 | Active profile: %4") //
                 .arg(COPYRIGHT,
-                     QApplication::organizationName(), //
-                     QApplication::applicationVersion())
-                .arg(profile.name));
+                     QApplication::organizationName(),   //
+                     QApplication::applicationVersion(), //
+                     profile.name));
         if (profile.settings.size) {
             loadSettings(&profile.settings);
         }

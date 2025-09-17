@@ -6,9 +6,8 @@
 // SPDX-License-Identifier: GPL-3.0
 // ********************************************************************
 #pragma once
+#include "rtabstractdevice.h"
 #include "rttypedefs.h"
-#include <IOKit/hid/IOHIDManager.h>
-#include <dispatch/dispatch.h>
 #include <QAbstractItemModel>
 #include <QColor>
 #include <QMap>
@@ -103,7 +102,7 @@ public:
      * @brief Return true if devices found
      * @return True or False
      */
-    inline bool hasDevice() const { return m_ctrlDevice != nullptr; }
+    inline bool hasDevice() const { return (m_hid && m_hid->hasDevice()); }
 
     /**
      * @brief Return active profile index
@@ -432,47 +431,12 @@ public slots:
     void tcuSensorReadImage();
     int tcuSensorReadMedian(TyonSensorImage *image);
 
-protected:
-    void onDeviceFound(IOHIDDeviceRef device);
-    void onDeviceRemoved(IOHIDDeviceRef device);
-    void onSetReport(IOReturn status, uint rid, CFIndex length, uint8_t *report);
-    void onSpecialReport(uint rid, CFIndex length, uint8_t *report);
-
-protected:
-    // called from static HID callback functions
-    void doDeviceFoundCallback(IOReturn status, IOHIDDeviceRef device);
-    void doReportCallback(IOReturn status, uint rid, CFIndex length, const QByteArray &data);
-
-protected:
-    // Callback HIDManager level
-    static void _deviceAttachedCallback(void *context, //
-                                        IOReturn,
-                                        void *,
-                                        IOHIDDeviceRef device);
-    static void _deviceRemovedCallback(void *context, //
-                                       IOReturn,
-                                       void *,
-                                       IOHIDDeviceRef device);
-    // Callback per HID device
-    static void _inputCallback(void *context, //
-                               IOReturn result,
-                               void *device,
-                               IOHIDReportType /*type*/,
-                               uint32_t reportID,
-                               uint8_t *report,
-                               CFIndex reportLength);
-    static void _inputValueCallback(void *context, //
-                                    IOReturn result,
-                                    void *device,
-                                    IOHIDValueRef value);
-    // Callback per HID report (hidWriteAsync)
-    static void _reportCallback(void *context, //
-                                IOReturn result,
-                                void *device,
-                                IOHIDReportType type,
-                                uint32_t reportID,
-                                uint8_t *report,
-                                CFIndex reportLength);
+private slots:
+    void onDeviceFound(THidDeviceType type);
+    void onDeviceRemoved();
+    void onLookupStarted();
+    void onErrorOccured(int error, const QString &message);
+    void onInputReady(quint32 rid, const QByteArray &data);
 
 private:
     const uint kHIDUsageMouse = 0x04;
@@ -497,16 +461,8 @@ private:
         uint primaryUsagePage; //  Mouse = 0x01 or Misc = 0x0a
     } THidDeviceInfo;
 
-    IOHIDManagerRef m_manager;
-    // --
-    QMutex m_waitMutex;
-    QMutex m_accessMutex;
-    // --
-    IOHIDDeviceRef m_ctrlDevice;
-    IOHIDDeviceRef m_inputDevice;
-    // --
-    QMap<quint8, TReportHandler> m_handlers;
-    // --
+    RTAbstractDevice *m_hid;
+    TReportHandlers m_handlers;
     TDeviceColors m_colors;
     TyonInfo m_info;
     TyonProfile m_activeProfile;
@@ -515,22 +471,13 @@ private:
     TyonSensor m_sensor;
     TyonSensorImage m_sensorImage;
     TyonControlUnit m_controlUnit;
-    // --
     quint8 m_requestedProfile;
-    bool m_isCBComplete;
     bool m_initComplete;
-    // for input report callback
-    uint8_t m_inputBuffer[4096];
-    uint m_inputLength = 4096;
-    // --
     QMap<quint8, QString> m_buttonTypes;
     QMap<quint8, RTController::TPhysicalButton> m_physButtons;
 
 private:
-    inline void releaseManager();
-    inline void releaseDevices();
-    // --
-    inline int raiseError(int error, const QString &message);
+    inline void raiseError(int error, const QString &message);
     // --
     inline void initializeProfiles();
     inline void initializeColorMapping();
@@ -545,59 +492,52 @@ private:
     inline void setModified(quint8 pix, bool changed);
     inline void setModified(TProfile *p, bool changed);
     inline void updateProfile(TProfile &p, bool changed);
-    // --
-    inline int roccatControlWrite(IOHIDDeviceRef device, uint pix, uint req);
-    inline int roccatControlCheck(IOHIDDeviceRef device);
     // get state of device
-    inline int readDeviceControl(IOHIDDeviceRef device);
-    inline int setDeviceState(bool state, IOHIDDeviceRef device = nullptr);
+    inline bool roccatControlCheck();
+    inline bool roccatControlWrite(uint pix, uint req);
+    inline bool readDeviceControl();
+    inline bool setDeviceState(bool state);
     // get firmware,DFU,X-Celerator min/max info
-    inline int readDeviceInfo(IOHIDDeviceRef device);
+    inline bool readDeviceInfo();
     // get and set device profiles
-    inline int readActiveProfile(IOHIDDeviceRef device);
-    inline int readProfiles(IOHIDDeviceRef device, quint8 pix);
-    inline int selectProfileSettings(IOHIDDeviceRef device, uint pix);
-    inline int readProfileSettings(IOHIDDeviceRef device);
-    inline int selectProfileButtons(IOHIDDeviceRef device, uint pix);
-    inline int readProfileButtons(IOHIDDeviceRef device);
+    inline bool readActiveProfile();
+    inline bool readProfiles(quint8 pix);
+    inline bool selectProfileSettings(uint pix);
+    inline bool readProfileSettings();
+    inline bool selectProfileButtons(uint pix);
+    inline bool readProfileButtons();
     // get and set button macros
-    inline int selectMacro(IOHIDDeviceRef device, uint pix, uint dix, uint bix);
-    inline int readButtonMacro(IOHIDDeviceRef device, uint pix, uint bix);
+    inline bool selectMacro(uint pix, uint dix, uint bix);
+    inline bool readButtonMacro(uint pix, uint bix);
     // X-Celerator calibration
-    inline int xcCalibWriteStart(IOHIDDeviceRef device);
-    inline int xcCalibWriteEnd(IOHIDDeviceRef device);
-    inline int xcCalibWriteData(IOHIDDeviceRef device, quint8 min, quint8 mid, quint8 max);
+    inline bool xcCalibWriteStart();
+    inline bool xcCalibWriteEnd();
+    inline bool xcCalibWriteData(quint8 min, quint8 mid, quint8 max);
     // TCU calibration
-    inline int readControlUnit(IOHIDDeviceRef device);
-    inline int tcuReadSensor(IOHIDDeviceRef device);
-    inline int tcuReadSensorImage(IOHIDDeviceRef device);
-    inline int tcuReadSensorRegister(IOHIDDeviceRef device, quint8 reg);
-    inline int tcuWriteTest(IOHIDDeviceRef device, quint8 dcuState, uint median);
-    inline int tcuWriteAccept(IOHIDDeviceRef device, quint8 dcuState, uint median);
-    inline int tcuWriteCancel(IOHIDDeviceRef device, quint8 dcuState);
-    inline int tcuWriteOff(IOHIDDeviceRef device, quint8 dcuState);
-    inline int tcuWriteTry(IOHIDDeviceRef device, quint8 dcuState);
-    inline int tcuWriteSensorCommand(IOHIDDeviceRef device, quint8 action, quint8 reg, quint8 value);
-    inline int tcuWriteSensorRegister(IOHIDDeviceRef device, quint8 reg, quint8 value);
-    inline int tcuWriteSensorImageCapture(IOHIDDeviceRef device);
+    inline bool readControlUnit();
+    inline bool tcuReadSensor();
+    inline bool tcuReadSensorImage();
+    inline bool tcuReadSensorRegister(quint8 reg);
+    inline bool tcuWriteTest(quint8 dcuState, uint median);
+    inline bool tcuWriteAccept(quint8 dcuState, uint median);
+    inline bool tcuWriteCancel(quint8 dcuState);
+    inline bool tcuWriteOff(quint8 dcuState);
+    inline bool tcuWriteTry(quint8 dcuState);
+    inline bool tcuWriteSensorCommand(quint8 action, quint8 reg, quint8 value);
+    inline bool tcuWriteSensorRegister(quint8 reg, quint8 value);
+    inline bool tcuWriteSensorImageCapture();
     // --
-    inline int dcuWriteState(IOHIDDeviceRef device, quint8 dcuState);
+    inline bool dcuWriteState(quint8 dcuState);
     // --
-    inline int talkRead(IOHIDDeviceRef device);
-    inline int talkWriteReport(IOHIDDeviceRef device, TyonTalk *talk);
-    inline int talkWriteKey(IOHIDDeviceRef device, quint8 easyshift, quint8 easyshift_lock, quint8 easyaim);
-    inline int talkWriteEasyshift(IOHIDDeviceRef device, quint8 state);
-    inline int talkWriteEasyshiftLock(IOHIDDeviceRef device, quint8 state);
-    inline int talkWriteEasyAim(IOHIDDeviceRef device, quint8 state);
-    inline int talkWriteFxData(IOHIDDeviceRef device, TyonTalk *tyonTalk);
-    inline int talkWriteFx(IOHIDDeviceRef device, quint32 effect, quint32 ambient_color, quint32 event_color);
-    inline int talkWriteFxState(IOHIDDeviceRef device, quint8 state);
-    // HID low level
-    inline void hidDeviceProperties(IOHIDDeviceRef device, THidDeviceInfo *info) const;
-    inline int hidGetReportById(IOHIDDeviceRef device, int reportId, CFIndex size);
-    inline int hidReadReport(IOHIDDeviceRef device, quint8 rid, quint8 *buffer, CFIndex size);
-    inline int hidWriteReport(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length);
-    inline int hidWriteReportAsync(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
+    inline bool talkRead();
+    inline bool talkWriteReport(TyonTalk *talk);
+    inline bool talkWriteKey(quint8 easyshift, quint8 easyshift_lock, quint8 easyaim);
+    inline bool talkWriteEasyshift(quint8 state);
+    inline bool talkWriteEasyshiftLock(quint8 state);
+    inline bool talkWriteEasyAim(quint8 state);
+    inline bool talkWriteFxData(TyonTalk *tyonTalk);
+    inline bool talkWriteFx(quint32 effect, quint32 ambient_color, quint32 event_color);
+    inline bool talkWriteFxState(quint8 state);
 };
 
 Q_DECLARE_METATYPE(TyonInfo);

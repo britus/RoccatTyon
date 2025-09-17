@@ -30,14 +30,43 @@ public:
     void registerHandlers(const QMap<quint32, TReportHandler> &handlers) override;
 
     /**
+     * @brief hasDevice
+     * @return
+     */
+    bool hasDevice() const override;
+
+    /**
+     * @brief openDevice
+     * @param type
+     * @return
+     */
+    bool openDevice(THidDeviceType type) override;
+
+    /**
+     * @brief closeDevice
+     * @param type
+     * @return
+     */
+    bool closeDevice(THidDeviceType type) override;
+
+    /**
      * @brief readHidMessage
      * @param reportId
      * @param buffer
      * @param length
      * @return
      */
-    bool readHidMessage(quint32 reportId, qsizetype length) override;
+    bool readHidMessage(THidDeviceType type, quint32 reportId, qsizetype length) override;
 
+    /**
+     * @brief readHidMessage
+     * @param type
+     * @param reportId
+     * @param buffer
+     * @param length
+     * @return
+     */
+    bool readHidMessage(THidDeviceType type, quint32 reportId, quint8 *buffer, qsizetype length) override;
     /**
      * @brief writeHidMessage
      * @param reportId
@@ -45,7 +74,7 @@ public:
      * @param length
      * @return
      */
-    bool writeHidMessage(quint32 reportId, quint8 *buffer, qsizetype length) override;
+    bool writeHidMessage(THidDeviceType type, quint32 reportId, const quint8 *buffer, qsizetype length) override;
 
     /**
      * @brief writeHidAsync
@@ -54,7 +83,7 @@ public:
      * @param length
      * @return
      */
-    bool writeHidAsync(quint32 reportId, quint8 *buffer, qsizetype length) override;
+    bool writeHidAsync(THidDeviceType type, quint32 reportId, const quint8 *buffer, qsizetype length) override;
 
 public slots:
     /**
@@ -64,13 +93,13 @@ public slots:
 
 protected:
     // Callback HIDManager level
-    static void _deviceAttachedCallback(void *, IOReturn, void *, IOHIDDeviceRef);
-    static void _deviceRemovedCallback(void *, IOReturn, void *, IOHIDDeviceRef);
+    static void _deviceAttached(void *, IOReturn, void *, IOHIDDeviceRef);
+    static void _deviceRemoved(void *, IOReturn, void *, IOHIDDeviceRef);
     // Callback per HID device
-    static void _inputCallback(void *, IOReturn, void *, IOHIDReportType, uint32_t, uint8_t *, CFIndex);
+    static void _deviceInput(void *, IOReturn, void *, IOHIDReportType, uint32_t, uint8_t *, CFIndex);
     static void _inputValueCallback(void *context, IOReturn result, void *device, IOHIDValueRef value);
     // Callback per HID report (write async)
-    static void _reportCallback(void *, IOReturn, void *, IOHIDReportType, uint32_t, uint8_t *, CFIndex);
+    static void _reportSent(void *, IOReturn, void *, IOHIDReportType, uint32_t, uint8_t *, CFIndex);
 
 protected:
     void doDeviceFound(IOHIDDeviceRef device);
@@ -81,9 +110,9 @@ protected:
 private:
     IOHIDManagerRef m_manager;
     IOHIDDeviceRef m_ctrlDevice;
-    IOHIDDeviceRef m_inputDevice;
+    IOHIDDeviceRef m_miscDevice;
     // --
-    QMap<quint8, TReportHandler> m_handlers;
+    TReportHandlers m_handlers;
     // --
     QMutex m_waitMutex;
     bool m_isCBComplete;
@@ -97,9 +126,10 @@ private:
     // --
     inline int raiseError(int error, const QString &message);
     // --
+    inline IOHIDDeviceRef toDevice(THidDeviceType type);
     inline void hidDeviceProperties(IOHIDDeviceRef device, THidDeviceInfo *info) const;
-    inline int hidReportById(IOHIDDeviceRef device, int rid, CFIndex size);
-    inline int hidReadReport(IOHIDDeviceRef device, quint8 rid, quint8 *buffer, CFIndex size);
+    inline int hidReadAsync(IOHIDDeviceRef device, CFIndex rid, CFIndex size);
+    inline int hidReadReport(IOHIDDeviceRef device, CFIndex rid, quint8 *buffer, CFIndex size);
     inline int hidWriteReport(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length);
-    inline int hidWriteAsync(IOHIDDeviceRef device, const uint8_t *buffer, CFIndex length);
+    inline int hidWriteAsync(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length);
 };

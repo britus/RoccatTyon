@@ -231,7 +231,7 @@ inline void RTCalibrateXCDialog::setParentEnabled(QWidget *parent, bool enable)
 
 inline bool RTCalibrateXCDialog::inRange(qint32 a, qint32 b, qint32 range)
 {
-    return ((a - b) < range || (b - a) < range) ? TRUE : FALSE;
+    return ((a - b) < range || (b - a) < range) ? true : false;
 }
 
 inline void RTCalibrateXCDialog::setPhase(uint phase)

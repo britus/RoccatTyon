@@ -1,4 +1,5 @@
 #pragma once
+#include <QMap>
 #include <QObject>
 
 /**
@@ -20,11 +21,20 @@ typedef struct
     uint primaryUsage;     //  MacOS: Mouse = 0x04 or Misc = 0x00
     uint primaryUsagePage; //  MacOS: Mouse = 0x01 or Misc = 0x0a
 } THidDeviceInfo;
+Q_DECLARE_METATYPE(THidDeviceInfo)
+
+typedef enum {
+    HidUnknown = 0,
+    HidMouseControl,
+    HidMouseInput,
+} THidDeviceType;
+Q_DECLARE_METATYPE(THidDeviceType)
 
 /**
  * @brief HID report response handler function
  */
-typedef std::function<int(const quint8 *, qsizetype)> TReportHandler;
+typedef std::function<bool(const quint8 *, qsizetype)> TReportHandler;
+typedef QMap<quint32, TReportHandler> TReportHandlers;
 
 /**
  * @brief The HID device interface
@@ -33,12 +43,17 @@ class RTHidDevice
 {
 public:
     virtual ~RTHidDevice() {};
-    virtual void registerHandlers(const QMap<quint32, TReportHandler> &handlers) = 0;
+    virtual void registerHandlers(const TReportHandlers &handlers) = 0;
     virtual bool lookupDevices(quint32 vendorId, QList<quint32> products) = 0;
-    virtual bool readHidMessage(quint32 reportId, qsizetype length) = 0;
-    virtual bool writeHidMessage(quint32 reportId, quint8 *buffer, qsizetype length) = 0;
-    virtual bool writeHidAsync(quint32 reportId, quint8 *buffer, qsizetype length) = 0;
+    virtual bool openDevice(THidDeviceType type) = 0;
+    virtual bool closeDevice(THidDeviceType type) = 0;
+    virtual bool readHidMessage(THidDeviceType type, quint32 reportId, qsizetype length) = 0;
+    virtual bool readHidMessage(THidDeviceType type, quint32 reportId, quint8 *buffer, qsizetype length) = 0;
+    virtual bool writeHidMessage(THidDeviceType type, quint32 reportId, const quint8 *buffer, qsizetype length) = 0;
+    virtual bool writeHidAsync(THidDeviceType type, quint32 reportId, const quint8 *buffer, qsizetype length) = 0;
+    virtual bool hasDevice() const = 0;
 };
+Q_DECLARE_INTERFACE(RTHidDevice, "org.eof.tools.RoccatTyon.RTHidDevice")
 
 /**
  * @brief Abstract HID device class with signals
@@ -49,12 +64,6 @@ class RTAbstractDevice : public QObject, public RTHidDevice
     Q_INTERFACES(RTHidDevice)
 
 public:
-    typedef enum {
-        MouseControl = 0,
-        MouseInput = 1,
-    } TDeviceType;
-    Q_ENUM(TDeviceType)
-
     /**
      * @brief Constructor
      * @param parent
@@ -64,10 +73,9 @@ public:
     {}
 
 signals:
-    void deviceFound(RTAbstractDevice *device, TDeviceType type);
+    void deviceFound(THidDeviceType type);
     void deviceRemoved();
     void lookupStarted();
     void errorOccured(int error, const QString &message);
-    void readyRead(quint32 rid, quint8 *buffer, qsizetype length);
+    void inputReady(quint32 rid, const QByteArray &data);
 };
-Q_DECLARE_METATYPE(RTAbstractDevice::TDeviceType)
