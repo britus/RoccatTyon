@@ -1,9 +1,8 @@
 #pragma once
-
-#include <QObject>
+#include <QtCore/QtGlobal>
+#include "rtabstractdevice.h"
 
 #ifdef Q_OS_MACOS
-#include "rtabstractdevice.h"
 #include <IOKit/hid/IOHIDManager.h>
 #include <dispatch/dispatch.h>
 #include <QMap>

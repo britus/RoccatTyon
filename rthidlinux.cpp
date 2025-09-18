@@ -1,4 +1,4 @@
-#include <QObject>
+#include <QtCore/QtGlobal>
 
 #ifdef Q_OS_LINUX
 #include "rthidlinux.h"

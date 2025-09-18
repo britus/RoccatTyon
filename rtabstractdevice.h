@@ -1,4 +1,5 @@
 #pragma once
+#include <QtCore/QtGlobal>
 #include <QMap>
 #include <QObject>
 #include <QDebug>

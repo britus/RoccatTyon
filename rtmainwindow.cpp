@@ -56,6 +56,10 @@ RTMainWindow::RTMainWindow(QWidget *parent)
 
     // --
     ui->setupUi(this);
+    ui->pbReset->setEnabled(false);
+    ui->pbSave->setEnabled(false);
+    ui->pbXCelCalibrate->setEnabled(false);
+    ui->pbTcuCalibrate->setEnabled(false);
 
     QStringList sl;
     QScreen *scn = qApp->primaryScreen();
@@ -72,12 +76,15 @@ RTMainWindow::RTMainWindow(QWidget *parent)
             .arg(COPYRIGHT,   //
                  QApplication::organizationName(),
                  QApplication::applicationVersion()));
+
     disableUserInterface();
     initializeSettings();
     initializeUiElements();
     loadSettings(m_settings);
     connectUiElements();
     connectController();
+
+    // --
     m_device->lookupDevice();
 }
 
@@ -100,8 +107,10 @@ inline void RTMainWindow::enableUserInterface()
 {
     ui->pnlLeft->setEnabled(true);
     ui->tabWidget->setEnabled(true);
-    ui->pbSave->setEnabled(true);
-    ui->pbReset->setEnabled(true);
+    ui->pbSave->setEnabled(m_device->hasDevice());
+    ui->pbReset->setEnabled(m_device->hasDevice());
+    ui->pbXCelCalibrate->setEnabled(m_device->hasDevice());
+    ui->pbTcuCalibrate->setEnabled(m_device->hasDevice());
 }
 
 inline void RTMainWindow::disableUserInterface()
@@ -110,6 +119,8 @@ inline void RTMainWindow::disableUserInterface()
     ui->tabWidget->setEnabled(false);
     ui->pbSave->setEnabled(false);
     ui->pbReset->setEnabled(false);
+    ui->pbXCelCalibrate->setEnabled(false);
+    ui->pbTcuCalibrate->setEnabled(false);
 }
 
 inline void RTMainWindow::initializeSettings()
@@ -842,17 +853,12 @@ void RTMainWindow::onLookupStarted()
 {
     RTProgress::present(tr("Searching ROCCAT Tyon..."), this);
 
-    // timeout timer
-    QTimer::singleShot(15000, this, [this]() {
-        if (!m_device->hasDevice()) {
-            RTProgress::dismiss();
-            QMessageBox::warning( //
-                this,
-                qApp->applicationDisplayName(),
-                tr("Unable to find ROCCAT Tyon device."));
-            disableUserInterface();
-            return;
-        }
+    // timeout timer, disable device buttons
+    QTimer::singleShot(10000, this, [this]() {
+        ui->pbReset->setEnabled(m_device->hasDevice());
+        ui->pbSave->setEnabled(m_device->hasDevice());
+        ui->pbXCelCalibrate->setEnabled(m_device->hasDevice());
+        ui->pbTcuCalibrate->setEnabled(m_device->hasDevice());
     });
 
     QThread::yieldCurrentThread();
@@ -874,14 +880,16 @@ void RTMainWindow::onDeviceRemoved()
 
 void RTMainWindow::onDeviceError(uint error, const QString &message)
 {
-    qCritical("[APPWIN] ERROR 0x%08x: %s", error, qPrintable(message));
-
+#if 0
     QMessageBox::warning(this,
                          qApp->applicationDisplayName(), //
                          tr("ERROR 0x%1: %2")            //
                              .arg(error, 8, 16, QChar('0'))
                              .arg(message));
-
+#endif
+    ui->statusbar->showMessage(tr("ERROR 0x%1: %2") //
+                               .arg(error, 8, 16, QChar('0'))
+                               .arg(message), 2000);
     RTProgress::dismiss();
     enableUserInterface();
     onProfileIndex(0);

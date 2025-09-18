@@ -279,12 +279,21 @@ mac {
     # Objective-C compiler
     OBJECTIVE_SOURCES += $$PWD/rtmacoshelper.mm
     OBJECTIVE_HEADERS += $$PWD/rtmacoshelper.h
+
+    SOURCES += rthidmacos.cpp
+    HEADERS += rthidmacos.h
 }
 
 linux {
     LIBS += -lhidapi-hidraw
     LIBS += -lhidapi-libusb
+    SOURCES += rthidlinux.cpp
+    HEADERS += rthidlinux.h
 }
+
+##############################################
+#
+##############################################
 
 SOURCES += \
     main.cpp \
@@ -298,9 +307,7 @@ SOURCES += \
     rtshortcutdialog.cpp \
     rttablemodel.cpp \
     rttcuimagewidget.cpp \
-    rtxceleratorwidget.cpp \
-    rthidlinux.cpp \
-    rthidmacos.cpp
+    rtxceleratorwidget.cpp
 
 HEADERS += \
     hid_uid.h \
@@ -316,9 +323,7 @@ HEADERS += \
     rttablemodel.h \
     rttcuimagewidget.h \
     rttypedefs.h \
-    rtxceleratorwidget.h \
-    rthidmacos.h \
-    rthidlinux.h
+    rtxceleratorwidget.h
 
 FORMS += \
     rtcalibratetcudialog.ui \

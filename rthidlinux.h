@@ -1,15 +1,14 @@
 #pragma once
-
-#include <QObject>
+#include <QtCore/QtGlobal>
+#include "rtabstractdevice.h"
 
 #ifdef Q_OS_LINUX
-#include "rtabstractdevice.h"
-#include <hidapi/hidapi.h>
-#include <hidapi/hidapi_libusb.h>
 #include <QObject>
 #include <QMap>
 #include <QMutex>
 #include <QThread>
+#include <hidapi/hidapi.h>
+#include <hidapi/hidapi_libusb.h>
 
 typedef struct {
     QString path;
