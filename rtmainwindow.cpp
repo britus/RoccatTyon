@@ -56,10 +56,6 @@ RTMainWindow::RTMainWindow(QWidget *parent)
 
     // --
     ui->setupUi(this);
-    ui->pbReset->setEnabled(false);
-    ui->pbSave->setEnabled(false);
-    ui->pbXCelCalibrate->setEnabled(false);
-    ui->pbTcuCalibrate->setEnabled(false);
 
     QStringList sl;
     QScreen *scn = qApp->primaryScreen();
@@ -85,6 +81,8 @@ RTMainWindow::RTMainWindow(QWidget *parent)
     connectController();
 
     // --
+    show();
+    raise();
     m_device->lookupDevice();
 }
 
@@ -107,10 +105,8 @@ inline void RTMainWindow::enableUserInterface()
 {
     ui->pnlLeft->setEnabled(true);
     ui->tabWidget->setEnabled(true);
-    ui->pbSave->setEnabled(m_device->hasDevice());
-    ui->pbReset->setEnabled(m_device->hasDevice());
-    ui->pbXCelCalibrate->setEnabled(m_device->hasDevice());
-    ui->pbTcuCalibrate->setEnabled(m_device->hasDevice());
+    ui->pbSave->setEnabled(true);
+    ui->pbReset->setEnabled(true);
 }
 
 inline void RTMainWindow::disableUserInterface()
@@ -119,8 +115,6 @@ inline void RTMainWindow::disableUserInterface()
     ui->tabWidget->setEnabled(false);
     ui->pbSave->setEnabled(false);
     ui->pbReset->setEnabled(false);
-    ui->pbXCelCalibrate->setEnabled(false);
-    ui->pbTcuCalibrate->setEnabled(false);
 }
 
 inline void RTMainWindow::initializeSettings()
@@ -184,7 +178,7 @@ inline void RTMainWindow::initializeUiElements()
     QSlider *s;
     foreach (QObject *o, ui->pnlSensorDpi->children()) {
         QSpinBox *c;
-        if (!(c=dynamic_cast<QSpinBox *>(o))) {
+        if (!(c = dynamic_cast<QSpinBox *>(o))) {
             continue;
         }
         c->setMinimum(TYON_CPI_MIN);
@@ -199,7 +193,7 @@ inline void RTMainWindow::initializeUiElements()
     QSpinBox *b;
     foreach (QObject *o, ui->pnlSensorDpi->children()) {
         QSlider *c;
-        if (!(c=dynamic_cast<QSlider *>(o))) {
+        if (!(c = dynamic_cast<QSlider *>(o))) {
             continue;
         }
         c->setMinimum(TYON_CPI_MIN);
@@ -419,6 +413,20 @@ inline void RTMainWindow::connectController()
     connect(m_device, &RTController::talkFxChanged, this, &RTMainWindow::onTalkFxChanged, ct);
 }
 
+inline bool RTMainWindow::checkDeviceAvailable()
+{
+    if (m_device->hasDevice())
+        return true;
+
+    const QString msg = tr( //
+        "By now, you should have a ROCCAT Tyon mouse connected to "
+        "your computer. If you don't have one, we recommend purchasing "
+        "one from the ROCCAT Store or elsewhere online. 😏");
+
+    QMessageBox::warning(this, qApp->applicationDisplayName(), msg);
+    return false;
+}
+
 inline void RTMainWindow::connectUiElements()
 {
     connect(ui->pbImport, &QPushButton::clicked, this, [this](bool) { //
@@ -436,6 +444,9 @@ inline void RTMainWindow::connectUiElements()
         }
     });
     connect(ui->pbReset, &QPushButton::clicked, this, [this](bool) { //
+        if (!checkDeviceAvailable()) {
+            return;
+        }
         const QString title = tr("Device reset");
         const QString msg = tr("Warning!\nAny changes will be lost.\n\n" //
                                "Do you want to reset ROCCAT Tyon?\n");
@@ -445,6 +456,9 @@ inline void RTMainWindow::connectUiElements()
         }
     });
     connect(ui->pbSave, &QPushButton::clicked, this, [this](bool) { //
+        if (!checkDeviceAvailable()) {
+            return;
+        }
         const QString title = tr("Save device profiles");
         const QString msg = tr("Do you want to update ROCCAT Tyon?\n");
         if (QMessageBox::question(this, title, msg) == QMessageBox::Yes) {
@@ -541,7 +555,7 @@ inline void RTMainWindow::connectUiElements()
     });
 
     quint8 sbIndex = 0;
-    foreach (QObject* o, ui->pnlSensorDpi->children()) {
+    foreach (QObject *o, ui->pnlSensorDpi->children()) {
         QSpinBox *c = nullptr;
         if (!(dynamic_cast<QSpinBox *>(o))) {
             continue;
@@ -665,6 +679,9 @@ inline void RTMainWindow::connectUiElements()
     });
 
     connect(ui->pbTcuCalibrate, &QPushButton::clicked, this, [this]() { //
+        if (!checkDeviceAvailable()) {
+            return;
+        }
         doCalibrateTcu();
     });
 
@@ -685,6 +702,9 @@ inline void RTMainWindow::connectUiElements()
     });
 
     connect(ui->pbXCelCalibrate, &QPushButton::clicked, this, [this](bool) { //
+        if (!checkDeviceAvailable()) {
+            return;
+        }
         doCalibrateXCelerator();
     });
 }
@@ -851,14 +871,18 @@ inline void RTMainWindow::linkButton(QPushButton *pb, const QMap<QString, QActio
 
 void RTMainWindow::onLookupStarted()
 {
-    RTProgress::present(tr("Searching ROCCAT Tyon..."), this);
+    RTProgress::present(tr("Please wait, searching ROCCAT Tyon..."), this);
 
-    // timeout timer, disable device buttons
-    QTimer::singleShot(10000, this, [this]() {
-        ui->pbReset->setEnabled(m_device->hasDevice());
-        ui->pbSave->setEnabled(m_device->hasDevice());
-        ui->pbXCelCalibrate->setEnabled(m_device->hasDevice());
-        ui->pbTcuCalibrate->setEnabled(m_device->hasDevice());
+    // if device not found bring up UI
+    QTimer::singleShot(3000, this, [this]() {
+        RTProgress::dismiss();
+        enableUserInterface();
+        // force profile 0
+        if (m_device->hasDevice()) {
+            bool found;
+            onProfileChanged(m_device->profile(0, found));
+            onProfileIndex(0);
+        }
     });
 
     QThread::yieldCurrentThread();
@@ -888,8 +912,9 @@ void RTMainWindow::onDeviceError(uint error, const QString &message)
                              .arg(message));
 #endif
     ui->statusbar->showMessage(tr("ERROR 0x%1: %2") //
-                               .arg(error, 8, 16, QChar('0'))
-                               .arg(message), 2000);
+                                   .arg(error, 8, 16, QChar('0'))
+                                   .arg(message),
+                               2000);
     RTProgress::dismiss();
     enableUserInterface();
     onProfileIndex(0);

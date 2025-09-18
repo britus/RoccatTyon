@@ -64,6 +64,7 @@ private:
     inline void initializeSettings();
     inline void connectController();
     inline void connectUiElements();
+    inline bool checkDeviceAvailable();
     inline void loadSettings(QSettings *settings);
     inline void saveSettings(QSettings *settings);
     inline void enableUserInterface();
