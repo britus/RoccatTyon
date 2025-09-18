@@ -15,9 +15,10 @@ QT  += quick3druntimerender
 QT  += qml
 QT  += qmlmodels
 QT  += qmlworkerscript
+
 mac {
     greaterThan(QT_MAJOR_VERSION, 5) {
-        QT  += core5compats
+        #QT  += core5compats
         QT  += qmlmeta
     }
 }
