@@ -1,3 +1,6 @@
+#include <QObject>
+
+#ifdef Q_OS_MACOS
 #include "rthidmacos.h"
 #include <DriverKit/IOUserClient.h>
 #include <IOKit/hid/IOHIDLib.h>
@@ -10,6 +13,8 @@
 #include <QThread>
 
 Q_DECLARE_OPAQUE_POINTER(IOHIDDeviceRef)
+
+//#undef QT_DEBUG
 
 #ifdef QT_DEBUG
 static inline void debugDevice(IOHIDDeviceRef device)
@@ -643,3 +648,5 @@ inline int RTHidMacOS::hidWriteAsync(IOHIDDeviceRef device, CFIndex rid, const q
     QThread::msleep(150);
     return ret;
 }
+
+#endif // Q_OS_MACOS

@@ -30,12 +30,17 @@
 
 #ifdef Q_OS_MACOS
 #include "rthidmacos.h"
-#endif
-#ifdef Q_OS_LINUX
-#include "rthidlinux.h"
+#define HIDAPI 1
 #endif
 
-#undef QT_DEBUG
+#ifdef Q_OS_LINUX
+#include "rthidlinux.h"
+#define HIDAPI 1
+#endif
+
+#ifndef HIDAPI
+#error "Xcode compiler option -DQ_OS_MACOS must be defined."
+#endif
 
 #ifdef QT_DEBUG
 #include "rthiddevicedbg.hpp"
@@ -206,6 +211,7 @@ RTController::RTController(QObject *parent)
     connect(m_hid, &RTAbstractDevice::deviceRemoved, this, &RTController::onDeviceRemoved, ct);
     connect(m_hid, &RTAbstractDevice::errorOccured, this, &RTController::onErrorOccured, ct);
     connect(m_hid, &RTAbstractDevice::inputReady, this, &RTController::onInputReady, ct);
+        
     // register HID report handlers
     m_hid->registerHandlers(m_handlers);
 }
@@ -476,6 +482,8 @@ inline void RTController::initializeHandlers()
 #ifdef QT_DEBUG
         RoccatControl *p = (RoccatControl *) buffer;
         qDebug("[HIDDEV] TYON_REPORT_ID_CONTROL: reqest=0x%02x value=0x%02x", p->request, p->value);
+#else
+        Q_UNUSED(buffer)
 #endif
         return true;
     };
@@ -555,6 +563,8 @@ inline void RTController::initializeHandlers()
         TyonDeviceState *p = (TyonDeviceState *) buffer;
 #ifdef QT_DEBUG
         qDebug("[HIDDEV] DEVICE_STATE: state=%d", p->state);
+#else
+        Q_UNUSED(p)
 #endif
         return true;
     };

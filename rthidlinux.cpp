@@ -1,8 +1,10 @@
+#include <QObject>
+
+#ifdef Q_OS_LINUX
 #include "rthidlinux.h"
 #include "rttypedefs.h"
 #include <QThread>
 #include <QMutexLocker>
-
 #include <linux/ioctl.h>
 #include <linux/hidraw.h>
 #include <sys/ioctl.h>
@@ -336,3 +338,5 @@ void RTHidMonitor::run()
     ::close(fd);
     this->exit(0);
 }
+
+#endif // Q_OS_LINUX

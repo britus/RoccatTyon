@@ -1,6 +1,8 @@
-#ifndef RTHIDLINUX_H
-#define RTHIDLINUX_H
+#pragma once
 
+#include <QObject>
+
+#ifdef Q_OS_LINUX
 #include "rtabstractdevice.h"
 #include <hidapi/hidapi.h>
 #include <hidapi/hidapi_libusb.h>
@@ -130,4 +132,4 @@ private:
     THidDevice m_device;
 };
 
-#endif // RTHIDLINUX_H
+#endif // Q_OS_LINUX

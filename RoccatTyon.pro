@@ -17,7 +17,7 @@ QT  += qmlmodels
 QT  += qmlworkerscript
 mac {
     greaterThan(QT_MAJOR_VERSION, 5) {
-        QT  += core5compats
+        #QT  += core5compats
         QT  += qmlmeta
     }
 }
@@ -26,16 +26,17 @@ CONFIG += c++17
 CONFIG += lrelease
 CONFIG += embed_translations
 
-# define where frameworks and plugins exist
-HOME = $$system(echo $HOME)
-QTDIR = $$HOME/Qt/6.9.1/macos
-
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 # disables all the APIs deprecated before Qt 6.0.0
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
 
 mac {
+
+    # define where frameworks and plugins exist
+    HOME = $$system(echo $HOME)
+    QTDIR = $$HOME/Qt/6.9.1/macos
+
     lessThan(QT_MAJOR_VERSION, 6) {
         QT += macextras
     }
@@ -278,23 +279,11 @@ mac {
     # Objective-C compiler
     OBJECTIVE_SOURCES += $$PWD/rtmacoshelper.mm
     OBJECTIVE_HEADERS += $$PWD/rtmacoshelper.h
-
-    SOURCES += \
-        rthidmacos.cpp
-
-    HEADERS += \
-        rthidmacos.h \
 }
 
 linux {
     LIBS += -lhidapi-hidraw
     LIBS += -lhidapi-libusb
-
-SOURCES += \
-    rthidlinux.cpp
-
-HEADERS += \
-    rthidlinux.h
 }
 
 SOURCES += \
@@ -309,7 +298,9 @@ SOURCES += \
     rtshortcutdialog.cpp \
     rttablemodel.cpp \
     rttcuimagewidget.cpp \
-    rtxceleratorwidget.cpp
+    rtxceleratorwidget.cpp \
+    rthidlinux.cpp \
+    rthidmacos.cpp
 
 HEADERS += \
     hid_uid.h \
@@ -325,7 +316,9 @@ HEADERS += \
     rttablemodel.h \
     rttcuimagewidget.h \
     rttypedefs.h \
-    rtxceleratorwidget.h
+    rtxceleratorwidget.h \
+    rthidmacos.h \
+    rthidlinux.h
 
 FORMS += \
     rtcalibratetcudialog.ui \

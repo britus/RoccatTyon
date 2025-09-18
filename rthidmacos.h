@@ -1,5 +1,8 @@
 #pragma once
 
+#include <QObject>
+
+#ifdef Q_OS_MACOS
 #include "rtabstractdevice.h"
 #include <IOKit/hid/IOHIDManager.h>
 #include <dispatch/dispatch.h>
@@ -131,3 +134,6 @@ private:
     inline int hidWriteReport(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length);
     inline int hidWriteAsync(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length);
 };
+
+#endif //Q_OS_MACOS
+
