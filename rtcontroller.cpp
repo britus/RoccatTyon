@@ -8,7 +8,6 @@
 #include "rtcontroller.h"
 #include "hid_uid.h"
 #include "rttypedefs.h"
-#include <dispatch/dispatch.h>
 #include <QApplication>
 #include <QColor>
 #include <QCoreApplication>
@@ -36,7 +35,7 @@
 #include "rthidlinux.h"
 #endif
 
-//#undef QT_DEBUG
+#undef QT_DEBUG
 
 #ifdef QT_DEBUG
 #include "rthiddevicedbg.hpp"
@@ -207,7 +206,6 @@ RTController::RTController(QObject *parent)
     connect(m_hid, &RTAbstractDevice::deviceRemoved, this, &RTController::onDeviceRemoved, ct);
     connect(m_hid, &RTAbstractDevice::errorOccured, this, &RTController::onErrorOccured, ct);
     connect(m_hid, &RTAbstractDevice::inputReady, this, &RTController::onInputReady, ct);
-
     // register HID report handlers
     m_hid->registerHandlers(m_handlers);
 }

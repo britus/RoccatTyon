@@ -171,7 +171,11 @@ inline void RTMainWindow::initializeUiElements()
     ui->tableView->setModel(m_model);
 
     QSlider *s;
-    foreach (QSpinBox *c, ui->pnlSensorDpi->findChildren<QSpinBox *>(fco)) {
+    foreach (QObject *o, ui->pnlSensorDpi->children()) {
+        QSpinBox *c;
+        if (!(c=dynamic_cast<QSpinBox *>(o))) {
+            continue;
+        }
         c->setMinimum(TYON_CPI_MIN);
         c->setMaximum(TYON_CPI_MAX);
         c->setSingleStep(TYON_CPI_STEP);
@@ -182,7 +186,11 @@ inline void RTMainWindow::initializeUiElements()
     }
 
     QSpinBox *b;
-    foreach (QSlider *c, ui->pnlSensorDpi->findChildren<QSlider *>(fco)) {
+    foreach (QObject *o, ui->pnlSensorDpi->children()) {
+        QSlider *c;
+        if (!(c=dynamic_cast<QSlider *>(o))) {
+            continue;
+        }
         c->setMinimum(TYON_CPI_MIN);
         c->setMaximum(TYON_CPI_MAX);
         c->setSingleStep(TYON_CPI_STEP);
@@ -522,7 +530,11 @@ inline void RTMainWindow::connectUiElements()
     });
 
     quint8 sbIndex = 0;
-    foreach (QSpinBox *c, ui->pnlSensorDpi->findChildren<QSpinBox *>(Qt::FindChildrenRecursively)) {
+    foreach (QObject* o, ui->pnlSensorDpi->children()) {
+        QSpinBox *c = nullptr;
+        if (!(dynamic_cast<QSpinBox *>(o))) {
+            continue;
+        }
         connect(c, &QSpinBox::valueChanged, this, [this, c, sbIndex](int value) { //
             QSlider *s;
             QVariant v = c->property("link");
@@ -535,7 +547,11 @@ inline void RTMainWindow::connectUiElements()
     }
 
     quint8 hsIndex = 0;
-    foreach (QSlider *c, ui->pnlSensorDpi->findChildren<QSlider *>(Qt::FindChildrenRecursively)) {
+    foreach (QObject *o, ui->pnlSensorDpi->children()) {
+        QSlider *c = nullptr;
+        if (!(dynamic_cast<QSlider *>(o))) {
+            continue;
+        }
         connect(c, &QSlider::valueChanged, this, [this, c, hsIndex](int value) { //
             QSpinBox *b;
             QVariant v = c->property("link");

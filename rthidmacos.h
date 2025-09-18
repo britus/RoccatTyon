@@ -124,8 +124,6 @@ private:
     inline void releaseManager();
     inline void releaseDevices();
     // --
-    inline int raiseError(int error, const QString &message);
-    // --
     inline IOHIDDeviceRef toDevice(THidDeviceType type);
     inline void hidDeviceProperties(IOHIDDeviceRef device, THidDeviceInfo *info) const;
     inline int hidReadAsync(IOHIDDeviceRef device, CFIndex rid, CFIndex size);

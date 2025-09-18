@@ -3,7 +3,6 @@ QT  += core
 QT  += gui
 QT  += widgets
 QT  += concurrent
-QT  += core5compat
 QT  += network
 QT  += dbus
 QT  += opengl
@@ -14,9 +13,14 @@ QT  += quick3dutils
 QT  += quick3druntimerender
 #QT  += quickshapes
 QT  += qml
-QT  += qmlmeta
 QT  += qmlmodels
 QT  += qmlworkerscript
+mac {
+    greaterThan(QT_MAJOR_VERSION, 5) {
+        QT  += core5compats
+        QT  += qmlmeta
+    }
+}
 
 CONFIG += c++17
 CONFIG += lrelease
@@ -48,10 +52,6 @@ mac {
     QMAKE_INFO_PLIST = $$PWD/Info.plist
 
     QMAKE_MACOSX_DEPLOYMENT_TARGET = 13.5
-
-    # Objective-C compiler
-    OBJECTIVE_SOURCES += $$PWD/rtmacoshelper.mm
-    OBJECTIVE_HEADERS += $$PWD/rtmacoshelper.h
 
     # Important for the App with embedded frameworks and libs
     #QMAKE_RPATHDIR += @executable_path/../Frameworks
@@ -274,6 +274,27 @@ mac {
         $$PWD/assets/icns/RoccatTyon.icns
         icons.path = Contents/Resources/
     QMAKE_BUNDLE_DATA += icons
+
+    # Objective-C compiler
+    OBJECTIVE_SOURCES += $$PWD/rtmacoshelper.mm
+    OBJECTIVE_HEADERS += $$PWD/rtmacoshelper.h
+
+    SOURCES += \
+        rthidmacos.cpp
+
+    HEADERS += \
+        rthidmacos.h \
+}
+
+linux {
+    LIBS += -lhidapi-hidraw
+    LIBS += -lhidapi-libusb
+
+SOURCES += \
+    rthidlinux.cpp
+
+HEADERS += \
+    rthidlinux.h
 }
 
 SOURCES += \
@@ -283,7 +304,6 @@ SOURCES += \
     rtcalibratexcdialog.cpp \
     rtcolordialog.cpp \
     rtcontroller.cpp \
-    rthidmacos.cpp \
     rtmainwindow.cpp \
     rtprogress.cpp \
     rtshortcutdialog.cpp \
@@ -299,7 +319,6 @@ HEADERS += \
     rtcolordialog.h \
     rtcontroller.h \
     rthiddevicedbg.hpp \
-    rthidmacos.h \
     rtmainwindow.h \
     rtprogress.h \
     rtshortcutdialog.h \

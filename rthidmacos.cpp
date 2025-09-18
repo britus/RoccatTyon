@@ -416,13 +416,6 @@ bool RTHidMacOS::writeHidAsync(THidDeviceType type, quint32 reportId, const quin
     return hidWriteAsync(device, reportId, buffer, length) == kIOReturnSuccess;
 }
 
-inline int RTHidMacOS::raiseError(int error, const QString &message)
-{
-    qCritical("[HIDDEV] Error 0x%08x: %s", error, qPrintable(message));
-    emit errorOccured(error, message);
-    return error;
-}
-
 inline void RTHidMacOS::releaseManager()
 {
     if (m_manager) {

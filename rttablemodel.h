@@ -7,11 +7,12 @@
 // ********************************************************************
 #pragma once
 #include "rtcontroller.h"
-#include <QKeyCombination>
 #include <QKeySequence>
 #include <QMap>
 #include <QObject>
 #include <QPushButton>
+//--
+#include <QKeyCombination>
 #include <QtCompare>
 
 /**

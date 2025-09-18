@@ -1,6 +1,7 @@
 #pragma once
 #include <QMap>
 #include <QObject>
+#include <QDebug>
 
 /**
  * @brief HID device information
@@ -27,6 +28,7 @@ typedef enum {
     HidUnknown = 0,
     HidMouseControl,
     HidMouseInput,
+    HidJoystick,
 } THidDeviceType;
 Q_DECLARE_METATYPE(THidDeviceType)
 
@@ -71,6 +73,13 @@ public:
     explicit RTAbstractDevice(QObject *parent = nullptr)
         : QObject(parent)
     {}
+
+protected:
+    virtual int raiseError(int error, const QString &message) {
+        qCritical("[HIDDEV] Error 0x%08x: %s", error, qPrintable(message));
+        emit errorOccured(error, message);
+        return error;
+    }
 
 signals:
     void deviceFound(THidDeviceType type);

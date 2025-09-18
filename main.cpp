@@ -16,8 +16,13 @@
 #include <QStyleFactory>
 #include <QTranslator>
 
+#ifdef Q_OS_MACOS
 extern const char *GetBundleVersion();
 extern const char *GetBuildNumber();
+#else
+static const char *GetBundleVersion() { return "1.0.0"; }
+static const char *GetBuildNumber() { return "1"; }
+#endif
 
 class RTApplication : public QApplication
 {
