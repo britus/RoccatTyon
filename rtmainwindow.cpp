@@ -23,6 +23,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileDialog>
+#include <QGroupBox>
 #include <QList>
 #include <QMenu>
 #include <QMessageBox>
@@ -168,42 +169,26 @@ inline void RTMainWindow::saveSettings(QSettings *settings)
     m_settings->sync();
 }
 
+inline void RTMainWindow::setDpiMinMax(QSlider *sl, QSpinBox *sb)
+{
+    sl->setMinimum(TYON_CPI_MIN);
+    sl->setMaximum(TYON_CPI_MAX);
+    sl->setSingleStep(1);
+    sb->setMinimum(TYON_CPI_MIN);
+    sb->setMaximum(TYON_CPI_MAX);
+    sb->setSingleStep(TYON_CPI_STEP);
+}
+
 inline void RTMainWindow::initializeUiElements()
 {
-    const Qt::FindChildOption fco = Qt::FindChildrenRecursively;
-
     ui->cbxDPIActiveSlot->setMaxVisibleItems(15);
     ui->tableView->setModel(m_model);
 
-    QSlider *s;
-    foreach (QObject *o, ui->pnlSensorDpi->children()) {
-        QSpinBox *c;
-        if (!(c = dynamic_cast<QSpinBox *>(o))) {
-            continue;
-        }
-        c->setMinimum(TYON_CPI_MIN);
-        c->setMaximum(TYON_CPI_MAX);
-        c->setSingleStep(TYON_CPI_STEP);
-        QString name = QString(c->objectName()).replace("ed", "hs");
-        if ((s = ui->pnlSensorDpi->findChild<QSlider *>(name, fco))) {
-            c->setProperty("link", QVariant::fromValue(s));
-        }
-    }
-
-    QSpinBox *b;
-    foreach (QObject *o, ui->pnlSensorDpi->children()) {
-        QSlider *c;
-        if (!(c = dynamic_cast<QSlider *>(o))) {
-            continue;
-        }
-        c->setMinimum(TYON_CPI_MIN);
-        c->setMaximum(TYON_CPI_MAX);
-        c->setSingleStep(TYON_CPI_STEP);
-        QString name = QString(c->objectName()).replace("hs", "ed");
-        if ((b = ui->pnlSensorDpi->findChild<QSpinBox *>(name, fco))) {
-            c->setProperty("link", QVariant::fromValue(b));
-        }
-    }
+    setDpiMinMax(ui->hsDpiSlot1, ui->edDpiSlot1);
+    setDpiMinMax(ui->hsDpiSlot2, ui->edDpiSlot3);
+    setDpiMinMax(ui->hsDpiSlot3, ui->edDpiSlot4);
+    setDpiMinMax(ui->hsDpiSlot4, ui->edDpiSlot5);
+    setDpiMinMax(ui->hsDpiSlot5, ui->edDpiSlot5);
 
     // Standard
     m_buttons[ui->pbMBStdTopLeft] = {TYON_BUTTON_INDEX_LEFT, CB_BIND(m_device, &RTController::assignButton)};
@@ -554,54 +539,34 @@ inline void RTMainWindow::connectUiElements()
         }
     });
 
-    quint8 sbIndex = 0;
-    foreach (QObject *o, ui->pnlSensorDpi->children()) {
-        QSpinBox *c = nullptr;
-        if (!(dynamic_cast<QSpinBox *>(o))) {
-            continue;
-        }
-        connect(c, &QSpinBox::valueChanged, this, [this, c, sbIndex](int value) { //
-            QSlider *s;
-            QVariant v = c->property("link");
-            if (v.isValid() && (s = v.value<QSlider *>())) {
-                s->setValue(value);
-            }
-            m_device->setDpiLevel(sbIndex, value);
-        });
-        sbIndex++;
-    }
-
-    quint8 hsIndex = 0;
-    foreach (QObject *o, ui->pnlSensorDpi->children()) {
-        QSlider *c = nullptr;
-        if (!(dynamic_cast<QSlider *>(o))) {
-            continue;
-        }
-        connect(c, &QSlider::valueChanged, this, [this, c, hsIndex](int value) { //
-            QSpinBox *b;
-            QVariant v = c->property("link");
-            if (v.isValid() && (b = v.value<QSpinBox *>())) {
-                b->setValue(value);
-            }
-            m_device->setDpiLevel(hsIndex, value);
-        });
-        hsIndex++;
-    }
-
+    connect(ui->edDpiSlot1, &QSpinBox::valueChanged, this, [this](int value) { //
+        m_device->setDpiLevel(0, value);
+    });
     connect(ui->edDpiSlot2, &QSpinBox::valueChanged, this, [this](int value) { //
-        ui->hsDpiSlot2->setValue(value);
         m_device->setDpiLevel(1, value);
     });
     connect(ui->edDpiSlot3, &QSpinBox::valueChanged, this, [this](int value) { //
-        ui->hsDpiSlot3->setValue(value);
         m_device->setDpiLevel(2, value);
     });
     connect(ui->edDpiSlot4, &QSpinBox::valueChanged, this, [this](int value) { //
-        ui->hsDpiSlot4->setValue(value);
         m_device->setDpiLevel(3, value);
     });
     connect(ui->edDpiSlot5, &QSpinBox::valueChanged, this, [this](int value) { //
-        ui->hsDpiSlot5->setValue(value);
+        m_device->setDpiLevel(4, value);
+    });
+    connect(ui->hsDpiSlot1, &QSlider::valueChanged, this, [this](int value) { //
+        m_device->setDpiLevel(0, value);
+    });
+    connect(ui->hsDpiSlot2, &QSlider::valueChanged, this, [this](int value) { //
+        m_device->setDpiLevel(1, value);
+    });
+    connect(ui->hsDpiSlot3, &QSlider::valueChanged, this, [this](int value) { //
+        m_device->setDpiLevel(2, value);
+    });
+    connect(ui->hsDpiSlot4, &QSlider::valueChanged, this, [this](int value) { //
+        m_device->setDpiLevel(3, value);
+    });
+    connect(ui->hsDpiSlot5, &QSlider::valueChanged, this, [this](int value) { //
         m_device->setDpiLevel(4, value);
     });
 

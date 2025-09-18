@@ -14,6 +14,8 @@
 #include <QMap>
 #include <QPushButton>
 #include <QSettings>
+#include <QSlider>
+#include <QSpinBox>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -69,6 +71,7 @@ private:
     inline void saveSettings(QSettings *settings);
     inline void enableUserInterface();
     inline void disableUserInterface();
+    inline void setDpiMinMax(QSlider *sl, QSpinBox *sb);
     inline void linkButton(QPushButton *pb, const QMap<QString, QActionGroup *> &actions);
     inline QAction *linkAction(QAction *action, TyonButtonType function);
     inline void loadSettings(const TyonProfileSettings *settings);
