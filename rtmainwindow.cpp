@@ -874,12 +874,12 @@ void RTMainWindow::onLookupStarted()
     RTProgress::present(tr("Please wait, searching ROCCAT Tyon..."), this);
 
     // if device not found bring up UI
-    QTimer::singleShot(3000, this, [this]() {
+    QTimer::singleShot(3500, this, [this]() {
+        bool found;
         RTProgress::dismiss();
         enableUserInterface();
         // force profile 0
-        if (m_device->hasDevice()) {
-            bool found;
+        if (!m_device->hasDevice()) {
             onProfileChanged(m_device->profile(0, found));
             onProfileIndex(0);
         }
@@ -1075,21 +1075,23 @@ inline void RTMainWindow::loadSettings(const TyonProfileSettings *s)
         });
     }
 
-    ui->rbLightCustomColor->setChecked(s->lights_enabled & TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR);
-    ui->rbLightPaletteColor->setChecked(!ui->rbLightCustomColor->isChecked());
-    ui->cbxLightWheel->setChecked(s->lights_enabled & TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_WHEEL);
-    ui->cbxLightBottom->setChecked(s->lights_enabled & TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_BOTTOM);
-
     ui->rbLightsOff->setChecked(s->light_effect == TYON_PROFILE_SETTINGS_LIGHT_EFFECT_ALL_OFF);
     ui->rbLightFullOn->setChecked(s->light_effect == TYON_PROFILE_SETTINGS_LIGHT_EFFECT_FULLY_LIGHTED);
     ui->rbLightBlink->setChecked(s->light_effect == TYON_PROFILE_SETTINGS_LIGHT_EFFECT_BLINKING);
     ui->rbLightBreath->setChecked(s->light_effect == TYON_PROFILE_SETTINGS_LIGHT_EFFECT_BREATHING);
     ui->rbLightBeat->setChecked(s->light_effect == TYON_PROFILE_SETTINGS_LIGHT_EFFECT_HEARTBEAT);
 
+    ui->gbxLightFlow->setEnabled(!ui->rbLightsOff->isChecked());
     ui->rbColorNoFlow->setChecked(s->color_flow == TYON_PROFILE_SETTINGS_COLOR_FLOW_OFF);
     ui->rbColorAllLights->setChecked(s->color_flow == TYON_PROFILE_SETTINGS_COLOR_FLOW_SIMULTANEOUSLY);
     ui->rbColorDirUp->setChecked(s->color_flow == TYON_PROFILE_SETTINGS_COLOR_FLOW_UP);
     ui->rbColorDirDown->setChecked(s->color_flow == TYON_PROFILE_SETTINGS_COLOR_FLOW_DOWN);
+
+    ui->gbxLightColor->setEnabled(!ui->rbLightsOff->isChecked() && ui->rbColorNoFlow->isChecked());
+    ui->rbLightCustomColor->setChecked(s->lights_enabled & TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_CUSTOM_COLOR);
+    ui->rbLightPaletteColor->setChecked(!ui->rbLightCustomColor->isChecked());
+    ui->cbxLightWheel->setChecked(s->lights_enabled & TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_WHEEL);
+    ui->cbxLightBottom->setChecked(s->lights_enabled & TYON_PROFILE_SETTINGS_LIGHTS_ENABLED_BIT_BOTTOM);
 
     for (qint8 i = 0; i < TYON_LIGHTS_NUM; i++) {
         QColor color = m_device->toScreenColor(s->lights[i], ui->rbLightCustomColor->isChecked());
