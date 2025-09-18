@@ -23,7 +23,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Sensor Calibration</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="spacing">
@@ -45,16 +45,16 @@
              <string>The next steps will run a surface test and then calibrate the sensor. Please do not move the mouse.</string>
             </property>
             <property name="textFormat">
-             <enum>Qt::PlainText</enum>
+             <enum>Qt::TextFormat::PlainText</enum>
             </property>
             <property name="alignment">
-             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+             <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
             </property>
             <property name="textInteractionFlags">
-             <set>Qt::NoTextInteraction</set>
+             <set>Qt::TextInteractionFlag::NoTextInteraction</set>
             </property>
            </widget>
           </item>
@@ -111,10 +111,10 @@
              <string>Surface test and calibration in progress! Do not move the device.</string>
             </property>
             <property name="textFormat">
-             <enum>Qt::PlainText</enum>
+             <enum>Qt::TextFormat::PlainText</enum>
             </property>
             <property name="alignment">
-             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+             <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
@@ -126,7 +126,7 @@
              <number>4</number>
             </property>
             <property name="textInteractionFlags">
-             <set>Qt::NoTextInteraction</set>
+             <set>Qt::TextInteractionFlag::NoTextInteraction</set>
             </property>
            </widget>
           </item>
@@ -159,7 +159,13 @@
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
         </property>
        </spacer>
       </item>
