@@ -7,6 +7,8 @@
 #include <QMap>
 #include <QMutex>
 #include <QThread>
+#include <QTimer>
+
 #include <hidapi/hidapi.h>
 #include <hidapi/hidapi_libusb.h>
 
@@ -103,6 +105,7 @@ private:
     TReportHandlers m_handlers;
     RTHidMonitor* m_monitor;
     QMutex m_mutex;
+    QTimer m_timer;
 
 private:
     inline void releaseDevices();

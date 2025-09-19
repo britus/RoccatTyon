@@ -33,10 +33,20 @@ RTHidLinux::RTHidLinux(QObject *parent)
     , m_handlers()
     , m_monitor(nullptr)
     , m_mutex()
+    , m_timer(this)
 {
-    if (hid_init()) {
-        emit errorOccured(ENODEV, tr("Unable to initialize HID subsystem."));
-    }
+    hid_init();
+
+    m_timer.setInterval(2000);
+    m_timer.setTimerType(Qt::CoarseTimer);
+    connect(&m_timer, &QTimer::timeout, this, [this](){ //
+        if (m_devices.isEmpty()) {
+            QList<quint32> products;
+            products.append(USB_DEVICE_ID_ROCCAT_TYON_BLACK);
+            products.append(USB_DEVICE_ID_ROCCAT_TYON_WHITE);
+            lookupDevices(USB_DEVICE_ID_VENDOR_ROCCAT, products);
+        }
+    });
 }
 
 RTHidLinux::~RTHidLinux()
@@ -124,11 +134,15 @@ bool RTHidLinux::lookupDevices(quint32 vendorId, QList<quint32> products)
     // notify if control interface found
     foreach(auto key, m_devices.keys()) {
         if (key == HidMouseControl) {
+            if (m_timer.isActive()) {
+                m_timer.stop();
+            }
             emit deviceFound(key);
             return true;
         }
     }
 
+    m_timer.start();
     return false;
 }
 
@@ -158,7 +172,7 @@ inline void RTHidLinux::hidMonitor(const THidDevice& device)
 
     m_monitor = new RTHidMonitor(device);
     connect(m_monitor, &RTHidMonitor::errorOccured, this, [this](int error, const QString &message) { //
-        emit errorOccured(error, message);
+        raiseError(error, message);
     }, ct);
     connect(m_monitor, &RTHidMonitor::inputReady, this, [this](quint32 rid, const QByteArray &data) { //
         emit inputReady(rid, data);

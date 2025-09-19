@@ -282,13 +282,22 @@ mac {
 
     SOURCES += rthidmacos.cpp
     HEADERS += rthidmacos.h
+
+    # Default rules for deployment.
+    target.path = /Application
+    INSTALLS += target
 }
 
 linux {
     LIBS += -lhidapi-hidraw
     LIBS += -lhidapi-libusb
+    LIBS += -lusb-1.0
     SOURCES += rthidlinux.cpp
     HEADERS += rthidlinux.h
+
+    # Default rules for deployment.
+    target.path = /usr/local/bin
+    INSTALLS += target
 }
 
 ##############################################
@@ -334,27 +343,6 @@ FORMS += \
 
 TRANSLATIONS += \
     RoccatTyon_en_US.ts
-
-### HIDAPI/LIBUSB
-#HIDAPI_BUILDER = $$PWD/hidapi.sh
-#HIDAPI_SOURCE = $$PWD/hidapi
-#HIDAPI_TARGET = $$OUT_PWD/.hidapi
-#$${HIDAPI_TARGET}.depends = FORCE # or $${PRETARGET}.CONFIG = phony
-#$${HIDAPI_TARGET}.commands = $$HIDAPI_BUILDER $$HIDAPI_SOURCE $$OUT_PWD
-
-# build completion tag
-#QMAKE_EXTRA_TARGETS += $${HIDAPI_TARGET}
-#PRE_TARGETDEPS += $${HIDAPI_TARGET}
-
-#INCLUDEPATH += /usr/local/include
-#INCLUDEPATH += /usr/local/include/hidapi
-#QMAKE_LIBDIR += /usr/local/lib
-#QMAKE_LIBS += -lhidapi
-#QMAKE_LIBS += -lusb-1.0
-
-# Default rules for deployment.
-target.path = /Application/$${TARGET}
-INSTALLS += target
 
 RESOURCES += \
     rtassets.qrc

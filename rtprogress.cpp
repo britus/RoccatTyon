@@ -29,17 +29,19 @@ RTProgress::RTProgress(const QString &message, QWidget *parent)
 
     QLabel *label = new QLabel((message.isEmpty() ? tr("Please wait...") : message), this);
     label->setAlignment(Qt::AlignCenter);
+    label->setWordWrap(true);
+    label->setFixedWidth(320);
 
     progressBar->setVisible(false);
     progressBar->setRange(0, 100);
     progressBar->setValue(0);
-    progressBar->setFixedWidth(200);
+    progressBar->setFixedWidth(260);
 
     layout->addWidget(label);
     layout->addWidget(progressBar);
 
     setLayout(layout);
-    setFixedSize(300, 120);
+    setFixedSize(450, 120);
 }
 
 void RTProgress::present(const QString &message, QWidget *parent)
