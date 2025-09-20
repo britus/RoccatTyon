@@ -316,7 +316,7 @@ bool RTHidMacOS::lookupDevices(quint32 vendorId, QList<quint32> productIds)
     // Open HID manager -536870174
     // kernel[0:1b4e77] (IOHIDFamily) IOHIDLibUserClient:0x0
     // [RoccatTyon] Entitlements 0 privilegedClient : No
-    result = IOHIDManagerOpen(m_manager, kIOHIDOptionsTypeSeizeDevice);
+    result = IOHIDManagerOpen(m_manager, kIOHIDOptionsTypeNone);
     if (result != kIOReturnSuccess          //
         && result != kIOReturnNotPrivileged //
         && result != kIOReturnNotPermitted) //
@@ -351,7 +351,7 @@ bool RTHidMacOS::openDevice(THidDeviceType type)
         return false;
     }
 
-    IOReturn ret = IOHIDDeviceOpen(device, kIOHIDOptionsTypeSeizeDevice);
+    IOReturn ret = IOHIDDeviceOpen(device, kIOHIDOptionsTypeNone);
     if (ret != kIOReturnSuccess) {
         raiseError(kIOReturnNoDevice, "Unable to open device.");
         return false;
@@ -372,7 +372,7 @@ bool RTHidMacOS::closeDevice(THidDeviceType type)
         return false;
     }
 
-    IOReturn ret = IOHIDDeviceClose(device, kIOHIDOptionsTypeSeizeDevice);
+    IOReturn ret = IOHIDDeviceClose(device, kIOHIDOptionsTypeNone);
     return ret == kIOReturnSuccess;
 }
 
@@ -434,11 +434,11 @@ inline void RTHidMacOS::releaseManager()
 inline void RTHidMacOS::releaseDevices()
 {
     if (m_ctrlDevice != nullptr) {
-        IOHIDDeviceClose(m_ctrlDevice, kIOHIDOptionsTypeSeizeDevice);
+        IOHIDDeviceClose(m_ctrlDevice, kIOHIDOptionsTypeNone);
         m_ctrlDevice = nullptr;
     }
     if (m_miscDevice != nullptr) {
-        IOHIDDeviceClose(m_miscDevice, kIOHIDOptionsTypeSeizeDevice);
+        IOHIDDeviceClose(m_miscDevice, kIOHIDOptionsTypeNone);
         m_miscDevice = nullptr;
     }
 }
