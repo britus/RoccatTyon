@@ -30,16 +30,10 @@
 
 #ifdef Q_OS_MACOS
 #include "rthidmacos.h"
-#define HIDAPI 1
 #endif
 
 #ifdef Q_OS_LINUX
 #include "rthidlinux.h"
-#define HIDAPI 1
-#endif
-
-#ifndef HIDAPI
-#error "Xcode compiler option -DQ_OS_MACOS must be defined."
 #endif
 
 #ifdef QT_DEBUG
