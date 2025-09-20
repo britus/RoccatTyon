@@ -333,10 +333,6 @@ bool RTHidMacOS::lookupDevices(quint32 vendorId, QList<quint32> productIds)
     return true;
 }
 
-/**
-     * @brief Register HID report handlers
-     * @param handlers A map of reportId / handler function
-     */
 void RTHidMacOS::registerHandlers(const TReportHandlers &handlers)
 {
     m_handlers.clear();
@@ -388,7 +384,7 @@ bool RTHidMacOS::readHidMessage(THidDeviceType type, quint32 reportId, qsizetype
         raiseError(kIOReturnNoDevice, "HID device not connected.");
         return false;
     }
-    return hidReadAsync(device, reportId, length) == kIOReturnSuccess;
+    return hidReadWithHandler(device, reportId, length) == kIOReturnSuccess;
 }
 
 bool RTHidMacOS::readHidMessage(THidDeviceType type, quint32 reportId, quint8 *buffer, qsizetype length)
@@ -540,7 +536,7 @@ inline void RTHidMacOS::hidDeviceProperties(IOHIDDeviceRef device, THidDeviceInf
     }
 }
 
-inline int RTHidMacOS::hidReadAsync(IOHIDDeviceRef device, CFIndex rid, CFIndex length)
+inline int RTHidMacOS::hidReadWithHandler(IOHIDDeviceRef device, CFIndex rid, CFIndex length)
 {
     if (!length || !rid) {
         return raiseError(kIOReturnBadArgument, tr("Invalid parameters."));

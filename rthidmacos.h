@@ -128,7 +128,7 @@ private:
     // --
     inline IOHIDDeviceRef toDevice(THidDeviceType type);
     inline void hidDeviceProperties(IOHIDDeviceRef device, THidDeviceInfo *info) const;
-    inline int hidReadAsync(IOHIDDeviceRef device, CFIndex rid, CFIndex size);
+    inline int hidReadWithHandler(IOHIDDeviceRef device, CFIndex rid, CFIndex size);
     inline int hidReadReport(IOHIDDeviceRef device, CFIndex rid, quint8 *buffer, CFIndex size);
     inline int hidWriteReport(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length);
     inline int hidWriteAsync(IOHIDDeviceRef device, CFIndex rid, const quint8 *buffer, CFIndex length);
