@@ -113,7 +113,7 @@ This process calibrates the endpoints of the analog thumb lever (paddle).
 / [X-Celerator](https://github.com/britus/RoccatTyon/blob/master/screens/page_10_1280%C3%97800.png) 
 
 ### 7. General Functions
-* Import/Export: You can export your profile settings (Export) to save them or import them to another computer (Import).
+* Import/Export: You can save your profile settings to the disk or load the profiles from the disk.
 * Update: Transfers the configured settings to the mouse.
 * Reset: Resets the mouse profiles on the device to the default values.
 * Close: Closes the application.
